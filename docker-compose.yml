@@ -6,7 +6,7 @@ services:
     image: markdown-mermaid-renderer:latest
     container_name: markdown-renderer
     ports:
-      - "8080:80"
+      - "8081:80"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]

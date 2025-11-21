@@ -23,9 +23,7 @@
             integrity="sha384-+NGfjU8KzpDLXRHduEqW+ZiJr2rIg+cidUVk7B51R5xK7cHwMKQfrdFwGdrq1Bcz"
             crossorigin="anonymous"></script>
     <!-- Syntax highlighting - using full bundle with all languages -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css"
-          integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH"
-          crossorigin="anonymous">
+    <!-- Theme loaded dynamically by JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"
             integrity="sha384-F/bZzf7p3Joyp5psL90p/p89AZJsndkSoGwRpXcZhleCWhd8SnRuoYo4d0yirjJp"
             crossorigin="anonymous"></script>
@@ -646,23 +644,8 @@
 
                 currentStyleLink = styleElement;
 
-                // Ensure syntax highlighting styles take precedence over document styles
-                let syntaxOverride = document.getElementById('syntax-override');
-                if (!syntaxOverride) {
-                    syntaxOverride = document.createElement('style');
-                    syntaxOverride.id = 'syntax-override';
-                    document.head.appendChild(syntaxOverride);
-                }
-
-                // Add minimal override to prevent document styles from breaking syntax highlighting
-                syntaxOverride.textContent = `
-                    /* Ensure code blocks maintain their structure */
-                    #wrapper pre code.hljs {
-                        display: block;
-                        overflow-x: auto;
-                        padding: 1em;
-                    }
-                `;
+                // Apply minimal structure override (no color changes)
+                applySyntaxOverride();
 
                 // Save preference
                 localStorage.setItem('markdown-style', styleName);
@@ -763,6 +746,32 @@
             return css;
         }
 
+        // Simple override: just set structure, let .hljs handle colors naturally
+        function applySyntaxOverride() {
+            let syntaxOverride = document.getElementById('syntax-override');
+            if (!syntaxOverride) {
+                syntaxOverride = document.createElement('style');
+                syntaxOverride.id = 'syntax-override';
+                document.head.appendChild(syntaxOverride);
+            }
+
+            // Minimal override - just structure, NO color overrides
+            syntaxOverride.textContent = `
+                /* Let syntax theme .hljs rule handle ALL colors naturally */
+                #wrapper pre {
+                    padding: 0;
+                    margin: 1em 0;
+                }
+
+                #wrapper pre code.hljs {
+                    display: block;
+                    padding: 1em;
+                    overflow-x: auto;
+                    border-radius: 4px;
+                }
+            `;
+        }
+
         // Change style
         async function changeStyle(styleName) {
             if (!styleName) return;
@@ -852,32 +861,8 @@
 
             currentStyleLink = styleElement;
 
-            // Ensure syntax highlighting theme controls code block backgrounds
-            let syntaxOverride = document.getElementById('syntax-override');
-            if (!syntaxOverride) {
-                syntaxOverride = document.createElement('style');
-                syntaxOverride.id = 'syntax-override';
-                document.head.appendChild(syntaxOverride);
-            }
-
-            // Make pre inherit background from .hljs code inside
-            syntaxOverride.textContent = `
-                /* Let syntax theme control everything about code blocks */
-                #wrapper pre {
-                    background: none !important;
-                    background-color: transparent !important;
-                }
-
-                #wrapper pre code.hljs {
-                    display: block !important;
-                    padding: 1em !important;
-                }
-
-                /* Remove any margins/padding that might show through */
-                #wrapper pre:has(code.hljs) {
-                    padding: 0 !important;
-                }
-            `;
+            // Apply minimal structure override
+            applySyntaxOverride();
 
             // Save preference (if it's a named style)
             if (sourceName && !sourceName.startsWith('http')) {
@@ -960,6 +945,10 @@
                 });
 
                 currentSyntaxThemeLink = link;
+
+                // CRITICAL: Wait a bit for browser to parse the stylesheet
+                // The onload event fires when downloaded, but CSSOM might not be ready
+                await new Promise(resolve => setTimeout(resolve, 100));
 
                 // Save preference
                 localStorage.setItem('syntax-theme', themeName);

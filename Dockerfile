@@ -11,6 +11,9 @@ RUN rm -rf ./*
 COPY --chmod=644 index.html .
 COPY --chmod=644 README.md .
 
+# Copy styles directory
+COPY --chmod=755 styles/ ./styles/
+
 # Copy custom nginx configuration
 COPY --chmod=644 nginx.conf /etc/nginx/conf.d/default.conf
 

@@ -80,7 +80,8 @@
     font-style: italic;
 }
 
-#wrapper code {
+/* Inline code only - exclude code blocks which are controlled by syntax highlighting */
+#wrapper code:not(.hljs) {
     padding: 0.2em 0.4em;
     margin: 0;
     font-size: 85%;

@@ -119,7 +119,8 @@
     font-style: italic;
 }
 
-#wrapper code {
+/* Inline code only - exclude code blocks which are controlled by syntax highlighting */
+#wrapper code:not(.hljs) {
     padding: 2px 6px;
     font-size: 100%;
     background-color: #e8e8e8;
