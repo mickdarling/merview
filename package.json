@@ -24,7 +24,7 @@
     "pdf"
   ],
   "author": "",
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "devDependencies": {
     "@playwright/test": "^1.57.0",
     "http-server": "^14.1.1"

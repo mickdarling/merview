@@ -114,9 +114,42 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
+### 4. CodeMirror 5
+
+**Version:** 5.65.18
+**Source:** https://github.com/codemirror/codemirror5
+**License:** MIT License
+**Used For:** Editor syntax highlighting and code editing
+
+```
+MIT License
+
+Copyright (C) 2017 by Marijn Haverbeke <marijn@haverbeke.berlin> and others
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+---
+
 ## Development Dependencies (npm)
 
-### 4. http-server
+### 5. http-server
 
 **Version:** 14.1.1
 **Source:** https://github.com/http-party/http-server
@@ -151,7 +184,7 @@ SOFTWARE.
 
 ## External Resources (CDN)
 
-### 5. MarkedCustomStyles (CSS Themes)
+### 6. MarkedCustomStyles (CSS Themes)
 
 **Source:** https://github.com/ttscoff/MarkedCustomStyles
 **Author:** Brett Terpstra (@ttscoff)
@@ -209,7 +242,7 @@ This application loads libraries from the following CDN providers:
 
 ## License Compatibility
 
-All explicitly licensed dependencies (marked.js, mermaid.js, highlight.js, http-server) are compatible with the MIT License used by this project. The licenses allow:
+All explicitly licensed dependencies (marked.js, mermaid.js, highlight.js, CodeMirror, http-server) are compatible with the AGPL-3.0 License used by this project. The licenses allow:
 
 - ✅ Commercial use
 - ✅ Modification
@@ -250,7 +283,7 @@ This document is provided for informational purposes. The application developers
 
 ## Updates
 
-This notice was last updated: **2025-01-21**
+This notice was last updated: **2025-11-30**
 
 If you discover any license issues or inaccuracies, please:
 - Open an issue on GitHub
@@ -266,6 +299,7 @@ If you discover any license issues or inaccuracies, please:
 | marked.js | MIT | ✅ Yes | ✅ Yes | Compatible |
 | mermaid.js | MIT | ✅ Yes | ✅ Yes | Compatible |
 | highlight.js | BSD-3 | ✅ Yes | ✅ Yes | Compatible |
+| CodeMirror 5 | MIT | ✅ Yes | ✅ Yes | Compatible |
 | http-server | MIT | ✅ Yes | ✅ Yes | Dev only |
 | MarkedCustomStyles | ⚠️ None | ⚠️ Unclear | ⚠️ Unclear | **NEEDS RESOLUTION** |
 

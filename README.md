@@ -1,5 +1,7 @@
 # Merdown
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+
 A client-side markdown editor with live Mermaid diagram rendering. No logins, no payments, completely free and open source.
 
 ## Features
@@ -133,8 +135,12 @@ npm run docker:logs            # View logs
 
 ## License
 
-MIT License - Feel free to use, modify, and distribute.
+This project is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).
+
+This means you're free to use, modify, and distribute this software, but if you run a modified version as a network service, you must make your source code available to users of that service.
+
+See the [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
-This is a simple, self-contained project. Feel free to fork and customize!
+Contributions are welcome! Feel free to fork and submit pull requests.
