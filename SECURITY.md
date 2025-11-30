@@ -1,3 +1,90 @@
+# Security Policy
+
+## Reporting Security Vulnerabilities
+
+We take security seriously in the MerDown project. If you discover a security vulnerability, please report it responsibly.
+
+### How to Report
+
+**Please use GitHub's Security Advisories feature for private vulnerability reporting:**
+
+1. Visit: https://github.com/mickdarling/merdown/security/advisories
+2. Click "Report a vulnerability"
+3. Fill out the advisory form with details (see below)
+
+**Do NOT:**
+- Open a public GitHub issue for security vulnerabilities
+- Disclose the vulnerability publicly before we've had a chance to address it
+- Use the vulnerability maliciously or share it with others
+
+### What to Include in Your Report
+
+To help us understand and address the issue quickly, please include:
+
+1. **Description**: Clear explanation of the vulnerability
+2. **Steps to Reproduce**: Detailed steps to reproduce the issue
+3. **Impact**: What an attacker could achieve by exploiting this
+4. **Affected Versions**: Which versions of MerDown are affected
+5. **Proof of Concept**: Code, screenshots, or demonstrations (if applicable)
+6. **Suggested Fix**: If you have ideas on how to fix it (optional)
+7. **Your Environment**: Browser version, OS, etc. (if relevant)
+
+### What Constitutes a Security Issue?
+
+**Security vulnerabilities** include:
+- Cross-Site Scripting (XSS) that could affect other users
+- Content Security Policy (CSP) bypasses that enable malicious code execution
+- Dependency vulnerabilities in critical libraries (Mermaid.js, CodeMirror, etc.)
+- Authentication/authorization issues (if auth features are added)
+- Subresource Integrity (SRI) bypass vulnerabilities
+- Malicious markdown/Mermaid syntax that could execute unintended code
+- URL injection vulnerabilities in custom CSS loading
+- Issues that could compromise user data in localStorage
+
+**Regular bugs** (please use normal GitHub issues):
+- UI/UX issues that don't have security implications
+- Performance problems
+- Feature requests
+- Rendering bugs in markdown or Mermaid diagrams
+- Browser compatibility issues (unless security-related)
+
+### Response Timeline
+
+MerDown is maintained in spare time, but we prioritize security issues:
+
+- **Initial Response**: Within 7 days of report
+- **Severity Assessment**: Within 14 days
+- **Fix Timeline**:
+  - Critical vulnerabilities: 30 days
+  - High severity: 60 days
+  - Medium/Low severity: 90 days or next release
+
+These are goals, not guarantees. Complex issues may take longer. We'll keep you updated on progress.
+
+### Disclosure Policy
+
+- We follow coordinated disclosure practices
+- We'll work with you to understand and fix the issue
+- Once a fix is released, we'll publish a security advisory
+- We ask that you wait for our fix before public disclosure
+- If you have a deadline for disclosure, please let us know in your report
+
+### Recognition
+
+We believe in recognizing security researchers who help make MerDown safer:
+
+- **Credit**: We'll credit you in the security advisory (if you wish)
+- **Hall of Fame**: We maintain a list of security contributors in SECURITY.md
+- **What we can't offer**: As an open-source spare-time project, we cannot offer bug bounties or financial rewards
+
+### Security Hall of Fame
+
+Security researchers who have responsibly disclosed vulnerabilities:
+
+- *None yet - be the first!*
+
+---
+
 # Security Analysis & Cloudflare Tunnel Setup
 
 ## Security Assessment
