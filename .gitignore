@@ -36,6 +36,7 @@ build/
 # Test artifacts
 playwright-report/
 test-results/
+.playwright/
 
 # Temporary files
 *.tmp
