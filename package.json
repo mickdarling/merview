@@ -1,22 +1,32 @@
 {
-  "name": "markdown-mermaid-renderer",
+  "name": "merdown",
   "version": "1.0.0",
-  "description": "Local Markdown and Mermaid diagram renderer with PDF export",
+  "description": "A client-side markdown editor with live Mermaid diagram rendering",
   "main": "index.html",
   "scripts": {
     "start": "npx http-server -p 8080 -o",
-    "docker:build": "docker build -t markdown-mermaid-renderer:latest .",
-    "docker:run": "docker run -d -p 8080:80 --name markdown-renderer markdown-mermaid-renderer:latest",
-    "docker:stop": "docker stop markdown-renderer && docker rm markdown-renderer",
-    "docker:logs": "docker logs -f markdown-renderer",
+    "test": "npx playwright test",
+    "test:ui": "npx playwright test --ui",
+    "test:headed": "npx playwright test --headed",
+    "test:report": "npx playwright show-report",
+    "docker:build": "docker build -t merdown:latest .",
+    "docker:run": "docker run -d -p 8080:80 --name merdown merdown:latest",
+    "docker:stop": "docker stop merdown && docker rm merdown",
+    "docker:logs": "docker logs -f merdown",
     "docker:compose:up": "docker-compose up -d",
     "docker:compose:down": "docker-compose down",
     "docker:compose:logs": "docker-compose logs -f"
   },
-  "keywords": ["markdown", "mermaid", "renderer", "pdf"],
+  "keywords": [
+    "markdown",
+    "mermaid",
+    "renderer",
+    "pdf"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "http-server": "^14.1.1"
   }
 }

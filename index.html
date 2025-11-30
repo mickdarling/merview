@@ -13,7 +13,7 @@
                    frame-src 'none';
                    object-src 'none';
                    base-uri 'self';">
-    <title>Markdown + Mermaid Renderer</title>
+    <title>Merdown - Markdown + Mermaid Editor</title>
 
     <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"
@@ -27,6 +27,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"
             integrity="sha384-F/bZzf7p3Joyp5psL90p/p89AZJsndkSoGwRpXcZhleCWhd8SnRuoYo4d0yirjJp"
             crossorigin="anonymous"></script>
+
+    <!-- CodeMirror 5 for editor syntax highlighting (reliable script-tag loading) -->
+    <!-- Theme CSS loaded dynamically from styles/editor/*.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/markdown/markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/gfm/gfm.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/yaml/yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/edit/continuelist.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/mode/overlay.min.js"></script>
 
     <style>
         * {
@@ -152,30 +166,62 @@
             padding: 10px 20px;
             font-weight: 600;
             font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        #editor {
+        .panel-selectors {
+            display: flex;
+            gap: 8px;
+        }
+
+        .panel-selector {
+            background: #2c3e50;
+            color: white;
+            border: 1px solid #4a6278;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            outline: none;
+        }
+
+        .panel-selector:hover {
+            background: #415b76;
+        }
+
+        #editor-container {
             flex: 1;
-            border: none;
-            padding: 20px;
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            overflow: hidden;
+            background: #282c34;
+        }
+
+        /* CodeMirror 5 styling */
+        #editor-container .CodeMirror {
+            height: 100%;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
             font-size: 14px;
             line-height: 1.6;
-            resize: none;
-            outline: none;
-            background: #2c3e50;
-            color: #ecf0f1;
-            transition: background 0.2s;
+            background: #282c34;
         }
 
-        #editor.drag-over {
-            background: #34495e;
-            border: 2px dashed #3498db;
+        #editor-container .CodeMirror-gutters {
+            background: #21252b;
+            border-right: 1px solid #3a3f4b;
         }
+
+        #editor-container.drag-over {
+            outline: 2px dashed #3498db;
+            outline-offset: -2px;
+        }
+
+        /* Editor theme loaded dynamically from styles/editor/*.css */
 
         .preview-panel {
             background: white;
             border-left: 1px solid #ddd;
+            position: relative;
         }
 
         /* Preview container - maintain layout, prevent style leaking */
@@ -184,6 +230,7 @@
             overflow-y: auto !important;
             background: white !important;
             display: block !important;
+            position: relative !important;
             /* Prevent styles from affecting the container */
             width: auto !important;
             max-width: none !important;
@@ -204,11 +251,137 @@
         }
 
         /* Mermaid diagram styling */
-        .mermaid {
+        .mermaid-container {
+            position: relative;
             margin: 20px 0;
+        }
+
+        .mermaid {
             text-align: center;
         }
 
+        .mermaid-expand-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(52, 73, 94, 0.8);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 10;
+        }
+
+        .mermaid-container:hover .mermaid-expand-btn {
+            opacity: 1;
+        }
+
+        .mermaid-expand-btn:hover {
+            background: rgba(52, 152, 219, 0.9);
+        }
+
+        /* Fullscreen overlay for mermaid diagrams */
+        .mermaid-fullscreen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.98);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .mermaid-fullscreen-overlay .mermaid-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .mermaid-fullscreen-overlay .mermaid-close-btn:hover {
+            background: #c0392b;
+        }
+
+        .mermaid-fullscreen-overlay .mermaid-fullscreen-content {
+            width: 95vw;
+            height: 85vh;
+            overflow: hidden;
+            cursor: grab;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mermaid-fullscreen-overlay .mermaid-fullscreen-content:active {
+            cursor: grabbing;
+        }
+
+        .mermaid-fullscreen-overlay .mermaid-fullscreen-content svg {
+            transform-origin: center center;
+            transition: none;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        /* Double-click hint cursor on mermaid diagrams */
+        .mermaid-container .mermaid {
+            cursor: zoom-in;
+        }
+
+        .mermaid-fullscreen-overlay .mermaid-zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(52, 73, 94, 0.9);
+            padding: 8px 16px;
+            border-radius: 8px;
+            z-index: 10;
+        }
+
+        .mermaid-fullscreen-overlay .mermaid-zoom-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 14px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .mermaid-fullscreen-overlay .mermaid-zoom-btn:hover {
+            background: #2980b9;
+        }
+
+        .mermaid-fullscreen-overlay .mermaid-zoom-level {
+            color: white;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            min-width: 50px;
+            justify-content: center;
+        }
 
         .status {
             position: fixed;
@@ -407,12 +580,8 @@
     <div class="toolbar">
         <h1>📝 Markdown + Mermaid Renderer</h1>
         <div class="toolbar-buttons">
-            <select class="style-selector" id="styleSelector" onchange="changeStyle(this.value)">
-                <option value="">Loading styles...</option>
-            </select>
-            <select class="style-selector" id="syntaxThemeSelector" onchange="changeSyntaxTheme(this.value)">
-                <option value="">Loading themes...</option>
-            </select>
+            <button class="btn btn-success" onclick="saveFile()">💾 Save</button>
+            <button class="btn btn-success" onclick="saveFileAs()">📥 Save As</button>
             <button class="btn" id="lintToggle" onclick="toggleLintPanel()">🔍 Code Validation</button>
             <button class="btn btn-success" onclick="exportToPDF()">🖨️ Print/PDF</button>
             <button class="btn btn-success" onclick="exportToPDFDirect()">📄 Print (New Tab)</button>
@@ -433,14 +602,31 @@
 
     <div class="container">
         <div class="editor-panel">
-            <div class="panel-header">Editor</div>
-            <textarea id="editor" placeholder="Start typing your markdown here... or drag and drop a .md file"></textarea>
+            <div class="panel-header">
+                <span>Editor</span>
+                <select class="panel-selector" id="editorThemeSelector" onchange="changeEditorTheme(this.value)" title="Editor syntax highlighting">
+                    <option value="">Theme...</option>
+                </select>
+            </div>
+            <div id="editor-container">
+                <textarea id="editor"></textarea>
+            </div>
         </div>
 
         <div class="resize-handle" id="resizeHandle"></div>
 
         <div class="preview-panel">
-            <div class="panel-header">Preview</div>
+            <div class="panel-header">
+                <span>Preview</span>
+                <div class="panel-selectors">
+                    <select class="panel-selector" id="styleSelector" onchange="changeStyle(this.value)" title="Document style">
+                        <option value="">Style...</option>
+                    </select>
+                    <select class="panel-selector" id="syntaxThemeSelector" onchange="changeSyntaxTheme(this.value)" title="Code block theme">
+                        <option value="">Code...</option>
+                    </select>
+                </div>
+            </div>
             <div id="preview">
                 <div id="wrapper"></div>
             </div>
@@ -457,7 +643,8 @@
             securityLevel: 'strict',  // Security: Prevents XSS attacks through malicious diagrams
         });
 
-        const editor = document.getElementById('editor');
+        const editorTextarea = document.getElementById('editor');
+        const editorContainer = document.getElementById('editor-container');
         const preview = document.getElementById('preview');
         const wrapper = document.getElementById('wrapper');
         const statusDiv = document.getElementById('status');
@@ -470,6 +657,7 @@
         const lintContent = document.getElementById('lintContent');
         const lintToggle = document.getElementById('lintToggle');
         const syntaxThemeSelector = document.getElementById('syntaxThemeSelector');
+        const editorThemeSelector = document.getElementById('editorThemeSelector');
 
         let renderTimeout;
         let mermaidCounter = 0;
@@ -477,8 +665,65 @@
         let currentSyntaxThemeLink = null;
         let lintEnabled = false;
         let codeIssues = [];
+        let cmEditor = null; // CodeMirror instance
+        let currentEditorThemeLink = null; // Editor theme CSS link
 
-        // Available syntax highlighting themes
+        // Initialize CodeMirror 5
+        function initCodeMirror() {
+            cmEditor = CodeMirror.fromTextArea(editorTextarea, {
+                mode: 'gfm', // GitHub Flavored Markdown
+                theme: 'custom', // Our custom theme loaded from styles/editor/
+                lineNumbers: true,
+                lineWrapping: true,
+                autofocus: true,
+                dragDrop: false, // Disable drag and drop of selections
+                extraKeys: {
+                    'Enter': 'newlineAndIndentContinueMarkdownList',
+                    'Ctrl-S': function(cm) { saveFile(); return false; },
+                    'Cmd-S': function(cm) { saveFile(); return false; }
+                }
+            });
+
+            // Listen for changes
+            cmEditor.on('change', function() {
+                scheduleRender();
+            });
+
+            // Expose global helper functions
+            window.getEditorContent = function() {
+                return cmEditor.getValue();
+            };
+
+            window.setEditorContent = function(content) {
+                cmEditor.setValue(content);
+            };
+
+            // Handle drag and drop on the CodeMirror wrapper
+            const cmWrapper = cmEditor.getWrapperElement();
+
+            cmWrapper.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                editorContainer.classList.add('drag-over');
+            });
+
+            cmWrapper.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                editorContainer.classList.remove('drag-over');
+            });
+
+            cmWrapper.addEventListener('drop', async function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                editorContainer.classList.remove('drag-over');
+                handleFileDrop(e);
+            });
+
+            return cmEditor;
+        }
+
+        // Available syntax highlighting themes for PREVIEW code blocks (highlight.js)
         const syntaxThemes = [
             { name: 'GitHub Dark', file: 'github-dark', default: true },
             { name: 'GitHub Light', file: 'github' },
@@ -500,6 +745,16 @@
             { name: 'Tomorrow Night', file: 'tomorrow-night' },
             { name: 'Obsidian', file: 'obsidian' },
             { name: 'Agate', file: 'agate' }
+        ];
+
+        // Available EDITOR themes (CodeMirror - local CSS files you can customize)
+        const editorThemes = [
+            { name: 'Material Darker', file: 'material-darker', default: true },
+            { name: 'GitHub Dark', file: 'github-dark' },
+            { name: 'Monokai', file: 'monokai' },
+            { name: 'Dracula', file: 'dracula' },
+            { name: 'Solarized Dark', file: 'solarized-dark' },
+            { name: 'Solarized Light', file: 'solarized-light' }
         ];
 
         // Resize handle functionality
@@ -968,7 +1223,7 @@
             await renderMarkdown();
         }
 
-        // Initialize syntax theme selector
+        // Initialize syntax theme selector (for preview code blocks)
         async function initSyntaxThemeSelector() {
             syntaxThemeSelector.innerHTML = '';
 
@@ -986,6 +1241,68 @@
 
             syntaxThemeSelector.value = themeToLoad;
             await loadSyntaxTheme(themeToLoad);
+        }
+
+        // Load editor theme (CodeMirror) from local CSS files
+        async function loadEditorTheme(themeName) {
+            const theme = editorThemes.find(t => t.name === themeName);
+            if (!theme) return;
+
+            try {
+                // Remove previous editor theme
+                if (currentEditorThemeLink) {
+                    currentEditorThemeLink.remove();
+                }
+
+                // Load new theme from local styles/editor/ directory
+                const response = await fetch(`styles/editor/${theme.file}.css`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const cssText = await response.text();
+
+                // Create style element
+                const styleElement = document.createElement('style');
+                styleElement.id = 'editor-theme';
+                styleElement.textContent = cssText;
+                document.head.appendChild(styleElement);
+
+                currentEditorThemeLink = styleElement;
+
+                // Save preference
+                localStorage.setItem('editor-theme', themeName);
+
+                showStatus(`Editor theme: ${theme.name}`);
+            } catch (error) {
+                console.error('Failed to load editor theme:', error);
+                showStatus(`Error loading editor theme: ${theme.name}`);
+            }
+        }
+
+        // Change editor theme
+        async function changeEditorTheme(themeName) {
+            if (!themeName) return;
+            await loadEditorTheme(themeName);
+        }
+
+        // Initialize editor theme selector
+        async function initEditorThemeSelector() {
+            editorThemeSelector.innerHTML = '';
+
+            editorThemes.forEach(theme => {
+                const option = document.createElement('option');
+                option.value = theme.name;
+                option.textContent = theme.name;
+                editorThemeSelector.appendChild(option);
+            });
+
+            // Load saved theme or default
+            const savedTheme = localStorage.getItem('editor-theme');
+            const defaultTheme = editorThemes.find(t => t.default)?.name || 'Material Darker';
+            const themeToLoad = savedTheme || defaultTheme;
+
+            editorThemeSelector.value = themeToLoad;
+            await loadEditorTheme(themeToLoad);
         }
 
         // Initialize style selector
@@ -1025,6 +1342,7 @@
         // Initialize on page load
         initStyleSelector();
         initSyntaxThemeSelector();
+        initEditorThemeSelector();
 
         // Configure marked to handle mermaid code blocks
         marked.setOptions({
@@ -1041,7 +1359,10 @@
         renderer.code = function(code, language) {
             if (language === 'mermaid') {
                 const id = `mermaid-${mermaidCounter++}`;
-                return `<div class="mermaid" id="${id}">${code}</div>`;
+                return `<div class="mermaid-container">
+                    <button class="mermaid-expand-btn" onclick="expandMermaid('${id}')" title="Expand diagram">⛶</button>
+                    <div class="mermaid" id="${id}" ondblclick="expandMermaid('${id}')">${code}</div>
+                </div>`;
             }
 
             // Check if highlight.js is available
@@ -1095,7 +1416,7 @@
         async function renderMarkdown() {
             try {
                 console.log('Starting renderMarkdown...');
-                const markdown = editor.value;
+                const markdown = cmEditor ? cmEditor.getValue() : '';
 
                 // Reset mermaid counter
                 mermaidCounter = 0;
@@ -1146,14 +1467,19 @@
             }
         }
 
-        // Debounced render
+        // Debounced render function
         function scheduleRender() {
             clearTimeout(renderTimeout);
             renderTimeout = setTimeout(renderMarkdown, 300);
         }
 
-        // Editor change handler
-        editor.addEventListener('input', scheduleRender);
+        // Expose renderMarkdown globally
+        window.renderMarkdown = renderMarkdown;
+
+        // Sync highlighting removed
+        function initSync() {
+            // Placeholder - sync removed
+        }
 
         // Export to PDF using browser's print dialog
         function exportToPDF() {
@@ -1591,14 +1917,67 @@ classDiagram
 
 **Happy documenting!** 📝`;
 
-            editor.value = sample;
+            if (cmEditor) {
+                cmEditor.setValue(sample);
+            }
             renderMarkdown();
+        }
+
+        // Expose loadSample globally
+        window.loadSample = loadSample;
+
+        // Track current filename for "Save" functionality
+        let currentFilename = null;
+
+        // Save file (uses current filename or prompts for one)
+        function saveFile() {
+            if (currentFilename) {
+                downloadFile(currentFilename);
+            } else {
+                saveFileAs();
+            }
+        }
+
+        // Save As - always prompts for filename
+        function saveFileAs() {
+            const defaultName = currentFilename || 'document.md';
+            const filename = prompt('Save as:', defaultName);
+
+            if (filename) {
+                // Ensure .md extension
+                const finalName = filename.endsWith('.md') ? filename : filename + '.md';
+                currentFilename = finalName;
+                downloadFile(finalName);
+            }
+        }
+
+        // Expose saveFile globally for CodeMirror Ctrl+S binding
+        window.saveFile = saveFile;
+
+        // Download the markdown content as a file
+        function downloadFile(filename) {
+            const content = cmEditor ? cmEditor.getValue() : '';
+            const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showStatus(`Saved: ${filename}`);
         }
 
         // Clear editor
         function clearEditor() {
             if (confirm('Are you sure you want to clear the editor?')) {
-                editor.value = '';
+                if (cmEditor) {
+                    cmEditor.setValue('');
+                }
+                currentFilename = null;
                 renderMarkdown();
             }
         }
@@ -1744,23 +2123,140 @@ classDiagram
             lintContent.innerHTML = html;
         }
 
-        // Load saved content on startup
-        window.addEventListener('load', () => {
-            const saved = localStorage.getItem('markdown-content');
-            if (saved) {
-                editor.value = saved;
-                renderMarkdown();
-            } else {
-                loadSample();
+        // Mermaid fullscreen functionality with zoom/pan
+        let mermaidZoom = { scale: 1, panX: 0, panY: 0, isPanning: false, startX: 0, startY: 0 };
+
+        function expandMermaid(mermaidId) {
+            const mermaidElement = document.getElementById(mermaidId);
+            if (!mermaidElement) return;
+
+            // Reset zoom state
+            mermaidZoom = { scale: 1, panX: 0, panY: 0, isPanning: false, startX: 0, startY: 0 };
+
+            // Clone the SVG content
+            const svgContent = mermaidElement.innerHTML;
+
+            // Create fullscreen overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'mermaid-fullscreen-overlay';
+            overlay.id = 'mermaid-fullscreen-overlay';
+            overlay.innerHTML = `
+                <button class="mermaid-close-btn" onclick="closeMermaidFullscreen()">✕ Close</button>
+                <div class="mermaid-fullscreen-content" id="mermaid-pan-area">${svgContent}</div>
+                <div class="mermaid-zoom-controls">
+                    <button class="mermaid-zoom-btn" onclick="mermaidZoomIn()">+</button>
+                    <span class="mermaid-zoom-level" id="mermaid-zoom-level">100%</span>
+                    <button class="mermaid-zoom-btn" onclick="mermaidZoomOut()">−</button>
+                    <button class="mermaid-zoom-btn" onclick="mermaidZoomReset()">Reset</button>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            // Set up pan area
+            const panArea = document.getElementById('mermaid-pan-area');
+            const svg = panArea.querySelector('svg');
+
+            if (svg) {
+                // Make SVG fill the container initially
+                svg.style.width = '100%';
+                svg.style.height = '100%';
+                updateMermaidTransform();
             }
-        });
+
+            // Mouse wheel zoom
+            panArea.addEventListener('wheel', handleMermaidWheel, { passive: false });
+
+            // Pan with mouse drag
+            panArea.addEventListener('mousedown', handleMermaidPanStart);
+            document.addEventListener('mousemove', handleMermaidPanMove);
+            document.addEventListener('mouseup', handleMermaidPanEnd);
+
+            // Close on Escape key
+            document.addEventListener('keydown', handleMermaidEscape);
+        }
+
+        function updateMermaidTransform() {
+            const panArea = document.getElementById('mermaid-pan-area');
+            if (!panArea) return;
+            const svg = panArea.querySelector('svg');
+            if (!svg) return;
+
+            svg.style.transform = `translate(${mermaidZoom.panX}px, ${mermaidZoom.panY}px) scale(${mermaidZoom.scale})`;
+
+            const zoomLevel = document.getElementById('mermaid-zoom-level');
+            if (zoomLevel) {
+                zoomLevel.textContent = Math.round(mermaidZoom.scale * 100) + '%';
+            }
+        }
+
+        function mermaidZoomIn() {
+            mermaidZoom.scale = Math.min(mermaidZoom.scale * 1.25, 10);
+            updateMermaidTransform();
+        }
+
+        function mermaidZoomOut() {
+            mermaidZoom.scale = Math.max(mermaidZoom.scale / 1.25, 0.1);
+            updateMermaidTransform();
+        }
+
+        function mermaidZoomReset() {
+            mermaidZoom.scale = 1;
+            mermaidZoom.panX = 0;
+            mermaidZoom.panY = 0;
+            updateMermaidTransform();
+        }
+
+        function handleMermaidWheel(e) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            mermaidZoom.scale = Math.min(Math.max(mermaidZoom.scale * delta, 0.1), 10);
+            updateMermaidTransform();
+        }
+
+        function handleMermaidPanStart(e) {
+            if (e.target.closest('.mermaid-zoom-controls')) return;
+            mermaidZoom.isPanning = true;
+            mermaidZoom.startX = e.clientX - mermaidZoom.panX;
+            mermaidZoom.startY = e.clientY - mermaidZoom.panY;
+        }
+
+        function handleMermaidPanMove(e) {
+            if (!mermaidZoom.isPanning) return;
+            mermaidZoom.panX = e.clientX - mermaidZoom.startX;
+            mermaidZoom.panY = e.clientY - mermaidZoom.startY;
+            updateMermaidTransform();
+        }
+
+        function handleMermaidPanEnd() {
+            mermaidZoom.isPanning = false;
+        }
+
+        function closeMermaidFullscreen() {
+            const overlay = document.getElementById('mermaid-fullscreen-overlay');
+            if (overlay) {
+                overlay.remove();
+            }
+            document.removeEventListener('keydown', handleMermaidEscape);
+            document.removeEventListener('mousemove', handleMermaidPanMove);
+            document.removeEventListener('mouseup', handleMermaidPanEnd);
+        }
+
+        function handleMermaidEscape(e) {
+            if (e.key === 'Escape') {
+                closeMermaidFullscreen();
+            }
+        }
+
+        // Note: Content loading on startup is handled by the CodeMirror module
+        // which reads from localStorage and calls renderMarkdown/loadSample
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            // Ctrl/Cmd + S to show save status
+            // Ctrl/Cmd + S to save file
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
-                showStatus('Auto-saved to browser storage');
+                saveFile();
             }
 
             // Ctrl/Cmd + P to print/export PDF
@@ -1776,24 +2272,8 @@ classDiagram
             }
         });
 
-        // Drag and drop file handling
-        editor.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            editor.classList.add('drag-over');
-        });
-
-        editor.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            editor.classList.remove('drag-over');
-        });
-
-        editor.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            editor.classList.remove('drag-over');
-
+        // Centralized file drop handler
+        async function handleFileDrop(e) {
             const files = e.dataTransfer.files;
 
             if (files.length === 0) {
@@ -1813,7 +2293,13 @@ classDiagram
                 console.log('Loading file:', file.name);
                 const content = await file.text();
                 console.log('File content loaded, length:', content.length);
-                editor.value = content;
+
+                if (cmEditor) {
+                    cmEditor.setValue(content);
+                }
+
+                // Set current filename for Save functionality
+                currentFilename = file.name;
                 console.log('Editor value set, calling renderMarkdown...');
                 await renderMarkdown();
                 console.log('renderMarkdown completed');
@@ -1821,6 +2307,24 @@ classDiagram
             } catch (error) {
                 console.error('Error in drop handler:', error);
                 showStatus(`Error loading file: ${error.message}`);
+            }
+        }
+
+        // Initialize the application
+        window.addEventListener('DOMContentLoaded', function() {
+            // Initialize CodeMirror
+            initCodeMirror();
+
+            // Initialize editor <-> preview sync highlighting
+            initSync();
+
+            // Load saved content or sample
+            const saved = localStorage.getItem('markdown-content');
+            if (saved) {
+                cmEditor.setValue(saved);
+                renderMarkdown();
+            } else {
+                loadSample();
             }
         });
     </script>
