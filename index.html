@@ -2018,6 +2018,29 @@ classDiagram
         mdFileInput.style.display = 'none';
         document.body.appendChild(mdFileInput);
 
+        // Shared file loading logic (used by both file picker and drag-and-drop)
+        async function loadMarkdownFile(file) {
+            try {
+                const content = await file.text();
+                if (cmEditor) {
+                    cmEditor.setValue(content);
+                }
+                currentFilename = file.name;
+                await renderMarkdown();
+                showStatus(`Loaded: ${file.name}`);
+                return true;
+            } catch (error) {
+                console.error('Error loading file:', error);
+                showStatus(`Error loading file: ${error.message}`);
+                return false;
+            }
+        }
+
+        // Validate file type (text or markdown)
+        function isValidMarkdownFile(file) {
+            return file.type.match('text.*') || file.name.match(/\.(md|markdown|txt|text)$/i);
+        }
+
         // Open file using native file picker
         function openFile() {
             mdFileInput.click();
@@ -2028,18 +2051,14 @@ classDiagram
             const file = e.target.files[0];
             if (!file) return;
 
-            try {
-                const content = await file.text();
-                if (cmEditor) {
-                    cmEditor.setValue(content);
-                }
-                currentFilename = file.name;
-                await renderMarkdown();
-                showStatus(`Loaded: ${file.name}`);
-            } catch (error) {
-                console.error('Error loading file:', error);
-                showStatus(`Error loading file: ${error.message}`);
+            // Defensive validation (browser's accept attribute can be bypassed)
+            if (!isValidMarkdownFile(file)) {
+                showStatus('Please select a text or markdown file');
+                mdFileInput.value = '';
+                return;
             }
+
+            await loadMarkdownFile(file);
 
             // Reset input so the same file can be selected again
             mdFileInput.value = '';
@@ -2399,31 +2418,13 @@ classDiagram
 
             const file = files[0];
 
-            // Check if it's a text file (markdown, txt, or other text formats)
-            if (!file.type.match('text.*') && !file.name.match(/\.(md|markdown|txt|text)$/i)) {
+            // Validate file type
+            if (!isValidMarkdownFile(file)) {
                 showStatus('Please drop a text or markdown file');
                 return;
             }
 
-            try {
-                console.log('Loading file:', file.name);
-                const content = await file.text();
-                console.log('File content loaded, length:', content.length);
-
-                if (cmEditor) {
-                    cmEditor.setValue(content);
-                }
-
-                // Set current filename for Save functionality
-                currentFilename = file.name;
-                console.log('Editor value set, calling renderMarkdown...');
-                await renderMarkdown();
-                console.log('renderMarkdown completed');
-                showStatus(`Loaded: ${file.name}`);
-            } catch (error) {
-                console.error('Error in drop handler:', error);
-                showStatus(`Error loading file: ${error.message}`);
-            }
+            await loadMarkdownFile(file);
         }
 
         // Initialize the application
