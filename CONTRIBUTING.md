@@ -79,7 +79,10 @@ docker build -t merdown:latest .
 docker run -d -p 8080:80 --name merdown merdown:latest
 
 # Open in browser
-open http://localhost:8080
+# macOS: open http://localhost:8080
+# Linux: xdg-open http://localhost:8080
+# Windows: start http://localhost:8080
+# Or just navigate to http://localhost:8080 in your browser
 ```
 
 ### Quick Start with npm
@@ -92,11 +95,8 @@ cd merdown
 # Install dependencies
 npm install
 
-# Start development server
+# Start development server (opens browser automatically)
 npm start
-
-# Open in browser (usually opens automatically)
-open http://localhost:8080
 ```
 
 ### Running Tests

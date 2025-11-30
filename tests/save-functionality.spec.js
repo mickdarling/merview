@@ -18,7 +18,7 @@ test.describe('Save Functionality', () => {
       // Set up dialog handler before triggering
       let dialogMessage = '';
       let dialogDefaultValue = '';
-      page.on('dialog', async dialog => {
+      page.once('dialog', async dialog => {
         dialogMessage = dialog.message();
         dialogDefaultValue = dialog.defaultValue();
         await dialog.accept('test-document.md');
@@ -36,7 +36,7 @@ test.describe('Save Functionality', () => {
 
     test('should download file with entered filename', async ({ page }) => {
       // Handle the prompt dialog
-      page.on('dialog', async dialog => {
+      page.once('dialog', async dialog => {
         await dialog.accept('my-test-file.md');
       });
 
@@ -54,7 +54,7 @@ test.describe('Save Functionality', () => {
     });
 
     test('should add .md extension if not provided', async ({ page }) => {
-      page.on('dialog', async dialog => {
+      page.once('dialog', async dialog => {
         await dialog.accept('my-document');
       });
 
@@ -66,7 +66,7 @@ test.describe('Save Functionality', () => {
     });
 
     test('should not add extra .md if already present', async ({ page }) => {
-      page.on('dialog', async dialog => {
+      page.once('dialog', async dialog => {
         await dialog.accept('already-has.md');
       });
 
@@ -78,20 +78,26 @@ test.describe('Save Functionality', () => {
     });
 
     test('should not download if prompt is cancelled', async ({ page }) => {
-      page.on('dialog', async dialog => {
+      page.once('dialog', async dialog => {
         await dialog.dismiss();
       });
 
       // Try to detect if download starts (it shouldn't)
       let downloadStarted = false;
-      page.on('download', () => {
+      page.once('download', () => {
         downloadStarted = true;
       });
 
       await page.click('button[onclick="saveFileAs()"]');
 
-      // Small wait to ensure no download triggered
-      await page.waitForTimeout(500);
+      // Wait for status to update (indicates operation completed) instead of arbitrary timeout
+      await page.waitForFunction(() => {
+        const status = document.getElementById('status');
+        return status && status.textContent !== '';
+      }, { timeout: 2000 }).catch(() => {
+        // Status might not update on cancel, that's ok
+      });
+
       expect(downloadStarted).toBe(false);
     });
 
@@ -112,7 +118,7 @@ test.describe('Save Functionality', () => {
         return;
       }
 
-      page.on('dialog', async dialog => {
+      page.once('dialog', async dialog => {
         await dialog.accept('content-test.md');
       });
 
@@ -127,8 +133,12 @@ test.describe('Save Functionality', () => {
       const savedContent = fs.readFileSync(downloadPath, 'utf-8');
       expect(savedContent).toBe(testContent);
 
-      // Cleanup
-      fs.unlinkSync(downloadPath);
+      // Cleanup (with error handling)
+      try {
+        fs.unlinkSync(downloadPath);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
     });
   });
 
@@ -186,7 +196,7 @@ test.describe('Save Functionality', () => {
 
   test.describe('Keyboard Shortcut Ctrl+S', () => {
     test('should trigger save on Ctrl+S', async ({ page }) => {
-      page.on('dialog', async dialog => {
+      page.once('dialog', async dialog => {
         await dialog.accept('keyboard-save.md');
       });
 
@@ -201,7 +211,7 @@ test.describe('Save Functionality', () => {
     });
 
     test('should trigger save on Cmd+S (Mac)', async ({ page }) => {
-      page.on('dialog', async dialog => {
+      page.once('dialog', async dialog => {
         await dialog.accept('mac-save.md');
       });
 
@@ -216,7 +226,7 @@ test.describe('Save Functionality', () => {
 
     test('should prevent default browser save dialog', async ({ page }) => {
       // This test verifies that Ctrl+S doesn't open browser's save page dialog
-      page.on('dialog', async dialog => {
+      page.once('dialog', async dialog => {
         // This should be our custom prompt, not browser's save dialog
         expect(dialog.type()).toBe('prompt');
         await dialog.accept('prevent-default.md');
@@ -285,8 +295,16 @@ test.describe('Save Functionality', () => {
       // Clear the editor (this will show a confirm dialog)
       await page.click('button[onclick="clearEditor()"]');
 
-      // Wait for clear to complete
-      await page.waitForTimeout(200);
+      // Wait for editor to be cleared (content should be empty or have sample)
+      await page.waitForFunction(() => {
+        const editor = document.querySelector('.CodeMirror');
+        if (editor && editor.CodeMirror) {
+          const content = editor.CodeMirror.getValue();
+          // After clear, content will be empty or reset to sample
+          return content === '' || content.startsWith('# ');
+        }
+        return false;
+      }, { timeout: 2000 });
 
       // Try to save again - should prompt because filename was reset
       downloadPromise = page.waitForEvent('download');
@@ -300,7 +318,7 @@ test.describe('Save Functionality', () => {
 
   test.describe('Status Messages', () => {
     test('should show status message after save', async ({ page }) => {
-      page.on('dialog', async dialog => {
+      page.once('dialog', async dialog => {
         await dialog.accept('status-test.md');
       });
 
