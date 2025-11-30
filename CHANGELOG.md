@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### User Interface
 - Fullscreen mode support
-- Clean, modern toolbar with MerDown branding and logo
+- Clean, modern toolbar with Merview branding and logo
 - Responsive split-pane layout
 - Professional UI with intuitive controls
 
@@ -67,5 +67,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CodeMirror for code editing (MIT License)
 - highlight.js for syntax highlighting (BSD License)
 
-[unreleased]: https://github.com/mickdarling/merdown/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/mickdarling/merdown/releases/tag/v1.0.0
+[unreleased]: https://github.com/mickdarling/merview/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/mickdarling/merview/releases/tag/v1.0.0

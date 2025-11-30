@@ -2,13 +2,13 @@
 
 ## Reporting Security Vulnerabilities
 
-We take security seriously in the MerDown project. If you discover a security vulnerability, please report it responsibly.
+We take security seriously in the Merview project. If you discover a security vulnerability, please report it responsibly.
 
 ### How to Report
 
 **Please use GitHub's Security Advisories feature for private vulnerability reporting:**
 
-1. Visit: https://github.com/mickdarling/merdown/security/advisories
+1. Visit: https://github.com/mickdarling/merview/security/advisories
 2. Click "Report a vulnerability"
 3. Fill out the advisory form with details (see below)
 
@@ -24,7 +24,7 @@ To help us understand and address the issue quickly, please include:
 1. **Description**: Clear explanation of the vulnerability
 2. **Steps to Reproduce**: Detailed steps to reproduce the issue
 3. **Impact**: What an attacker could achieve by exploiting this
-4. **Affected Versions**: Which versions of MerDown are affected
+4. **Affected Versions**: Which versions of Merview are affected
 5. **Proof of Concept**: Code, screenshots, or demonstrations (if applicable)
 6. **Suggested Fix**: If you have ideas on how to fix it (optional)
 7. **Your Environment**: Browser version, OS, etc. (if relevant)
@@ -50,7 +50,7 @@ To help us understand and address the issue quickly, please include:
 
 ### Response Timeline
 
-MerDown is maintained in spare time, but we prioritize security issues:
+Merview is maintained in spare time, but we prioritize security issues:
 
 - **Initial Response**: Within 7 days of report
 - **Severity Assessment**: Within 14 days
@@ -71,7 +71,7 @@ These are goals, not guarantees. Complex issues may take longer. We'll keep you 
 
 ### Recognition
 
-We believe in recognizing security researchers who help make MerDown safer:
+We believe in recognizing security researchers who help make Merview safer:
 
 - **Credit**: We'll credit you in the security advisory (if you wish)
 - **Hall of Fame**: We maintain a list of security contributors in SECURITY.md

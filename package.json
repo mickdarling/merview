@@ -1,5 +1,5 @@
 {
-  "name": "merdown",
+  "name": "merview",
   "version": "1.0.0",
   "description": "A client-side markdown editor with live Mermaid diagram rendering",
   "main": "index.html",
@@ -9,10 +9,10 @@
     "test:ui": "npx playwright test --ui",
     "test:headed": "npx playwright test --headed",
     "test:report": "npx playwright show-report",
-    "docker:build": "docker build -t merdown:latest .",
-    "docker:run": "docker run -d -p 8080:80 --name merdown merdown:latest",
-    "docker:stop": "docker stop merdown && docker rm merdown",
-    "docker:logs": "docker logs -f merdown",
+    "docker:build": "docker build -t merview:latest .",
+    "docker:run": "docker run -d -p 8080:80 --name merview merview:latest",
+    "docker:stop": "docker stop merview && docker rm merview",
+    "docker:logs": "docker logs -f merview",
     "docker:compose:up": "docker-compose up -d",
     "docker:compose:down": "docker-compose down",
     "docker:compose:logs": "docker-compose logs -f"

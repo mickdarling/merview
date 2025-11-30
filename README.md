@@ -1,4 +1,4 @@
-# Merdown
+# Merview
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
@@ -29,8 +29,8 @@ Then open http://localhost:8080 in your browser.
 
 **Using Docker CLI:**
 ```bash
-docker build -t merdown:latest .
-docker run -d -p 8080:80 --name merdown merdown:latest
+docker build -t merview:latest .
+docker run -d -p 8080:80 --name merview merview:latest
 ```
 
 **Using npm scripts:**

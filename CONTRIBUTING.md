@@ -1,6 +1,6 @@
-# Contributing to MerDown
+# Contributing to Merview
 
-Thank you for your interest in contributing to MerDown! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to Merview! This document provides guidelines and instructions for contributing.
 
 ## Code of Conduct
 
@@ -8,7 +8,7 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 
 ## Development Philosophy
 
-MerDown is intentionally designed as a **single-file, client-side web application**. This means:
+Merview is intentionally designed as a **single-file, client-side web application**. This means:
 
 - **No server required** - Everything runs in the browser
 - **No build step** - The `index.html` file is the application
@@ -30,14 +30,14 @@ This is an open source project maintained in spare time. Please be patient:
 
 ## License
 
-MerDown is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0). By contributing to this project, you agree that your contributions will be licensed under the same license.
+Merview is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0). By contributing to this project, you agree that your contributions will be licensed under the same license.
 
 ## How to Contribute
 
 ### Reporting Bugs
 
-1. **Check existing issues** - Search [open issues](https://github.com/mickdarling/merdown/issues) to see if the bug has already been reported.
-2. **Create a new issue** - If not found, [open a new issue](https://github.com/mickdarling/merdown/issues/new) with:
+1. **Check existing issues** - Search [open issues](https://github.com/mickdarling/merview/issues) to see if the bug has already been reported.
+2. **Create a new issue** - If not found, [open a new issue](https://github.com/mickdarling/merview/issues/new) with:
    - Clear, descriptive title
    - Steps to reproduce the bug
    - Expected vs actual behavior
@@ -71,12 +71,12 @@ MerDown is licensed under the [GNU Affero General Public License v3.0](LICENSE) 
 
 ```bash
 # Clone the repository
-git clone https://github.com/mickdarling/merdown.git
-cd merdown
+git clone https://github.com/mickdarling/merview.git
+cd merview
 
 # Build and run
-docker build -t merdown:latest .
-docker run -d -p 8080:80 --name merdown merdown:latest
+docker build -t merview:latest .
+docker run -d -p 8080:80 --name merview merview:latest
 
 # Open in browser
 # macOS: open http://localhost:8080
@@ -89,8 +89,8 @@ docker run -d -p 8080:80 --name merdown merdown:latest
 
 ```bash
 # Clone the repository
-git clone https://github.com/mickdarling/merdown.git
-cd merdown
+git clone https://github.com/mickdarling/merview.git
+cd merview
 
 # Install dependencies
 npm install
@@ -119,7 +119,7 @@ npm run test:report
 
 ### General Principles
 
-- **Keep it simple** - MerDown is a single-file application. Avoid over-engineering.
+- **Keep it simple** - Merview is a single-file application. Avoid over-engineering.
 - **Self-documenting code** - Use clear variable and function names.
 - **Comments for "why"** - Comment complex logic, not obvious code.
 
@@ -224,8 +224,8 @@ Fixes #10
 
 ## Questions?
 
-- Open a [GitHub Discussion](https://github.com/mickdarling/merdown/discussions) for general questions
-- Check existing [issues](https://github.com/mickdarling/merdown/issues) for known problems
+- Open a [GitHub Discussion](https://github.com/mickdarling/merview/discussions) for general questions
+- Check existing [issues](https://github.com/mickdarling/merview/issues) for known problems
 - Read the [README](README.md) for usage information
 
-Thank you for contributing to MerDown!
+Thank you for contributing to Merview!
