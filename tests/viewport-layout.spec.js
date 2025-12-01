@@ -35,8 +35,8 @@ test.describe('Viewport Layout', () => {
     test('should prevent page scroll when editor scrolled to bottom', async ({ page }) => {
       // Load content that fills the editor
       await page.evaluate(() => {
-        const longContent = Array(100).fill('# Heading\n\nParagraph with some text.').join('\n\n');
-        window.setEditorContent(longContent);
+        const longContent = new Array(100).fill('# Heading\n\nParagraph with some text.').join('\n\n');
+        globalThis.setEditorContent(longContent);
       });
 
       // Wait for content to render
@@ -64,8 +64,8 @@ test.describe('Viewport Layout', () => {
     test('should prevent page scroll when preview scrolled to bottom', async ({ page }) => {
       // Load content that fills the preview
       await page.evaluate(() => {
-        const longContent = Array(100).fill('# Heading\n\nParagraph with some text.').join('\n\n');
-        window.setEditorContent(longContent);
+        const longContent = new Array(100).fill('# Heading\n\nParagraph with some text.').join('\n\n');
+        globalThis.setEditorContent(longContent);
       });
 
       // Wait for preview to render
