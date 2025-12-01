@@ -1095,11 +1095,11 @@
             // Use regex to find all CSS rules and scope their selectors
 
             // First, replace body/html with #wrapper at the start of selectors
-            css = css.replaceAll(/(^|[,\s\n])(body|html)(\s*[,{:])/gm, '$1#wrapper$3');
+            css = css.replaceAll(/(^|[,\s\n])(body|html)(\s*[,{:])/m, '$1#wrapper$3');
 
             // Then scope all other selectors by adding #wrapper prefix
             // This regex finds selectors (text before {) and prefixes them
-            css = css.replaceAll(/([^\r\n,{}]+)(,(?=[^}]*{)|\s*{)/g, function(match, selector, separator) {
+            css = css.replaceAll(/([^\r\n,{}]+)(,(?=[^}]*{)|\s*{)/, function(match, selector, separator) {
                 selector = selector.trim();
 
                 // Skip if it's a comment, @-rule, or already scoped
@@ -1542,7 +1542,7 @@
             // Check if highlight.js is available
             if (typeof hljs === 'undefined') {
                 console.error('highlight.js (hljs) is not loaded!');
-                const escaped = code.replaceAll(/&/g, '&amp;').replaceAll(/</g, '&lt;').replaceAll(/>/g, '&gt;');
+                const escaped = code.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
                 return `<pre><code data-language="${language || 'text'}">${escaped}</code></pre>`;
             }
 
@@ -1579,7 +1579,7 @@
             } catch (err) {
                 console.error('Auto-highlight error:', err);
                 // Final fallback to plain code block
-                const escaped = code.replaceAll(/&/g, '&amp;').replaceAll(/</g, '&lt;').replaceAll(/>/g, '&gt;');
+                const escaped = code.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
                 return `<pre><code data-language="${language || 'text'}">${escaped}</code></pre>`;
             }
         };
@@ -1692,8 +1692,8 @@
                 // Just need to remove #wrapper scoping for the print window
                 // since the entire document IS the wrapper content
                 if (customStyleCSS) {
-                    customStyleCSS = customStyleCSS.replaceAll(/#wrapper\s+/g, '');
-                    customStyleCSS = customStyleCSS.replaceAll(/#preview\s+/g, '');
+                    customStyleCSS = customStyleCSS.replaceAll(/#wrapper\s+/, '');
+                    customStyleCSS = customStyleCSS.replaceAll(/#preview\s+/, '');
                 }
 
                 // Create a printable version
