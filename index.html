@@ -1095,7 +1095,7 @@
             // Use regex to find all CSS rules and scope their selectors
 
             // First, replace body/html with #wrapper at the start of selectors
-            css = css.replaceAll(/(^|[,\s\n])(body|html)(\s*[,{:])/m, '$1#wrapper$3');
+            css = css.replaceAll(/(^|[,\s])(body|html)(\s*[,{:])/m, '$1#wrapper$3');
 
             // Then scope all other selectors by adding #wrapper prefix
             // This regex finds selectors (text before {) and prefixes them
