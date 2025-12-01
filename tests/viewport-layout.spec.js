@@ -1,0 +1,281 @@
+// @ts-check
+const { test, expect } = require('@playwright/test');
+
+test.describe('Viewport Layout', () => {
+  test.beforeEach(async ({ page }) => {
+    // Set a consistent viewport size for all tests
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/');
+    // Wait for CodeMirror to initialize
+    await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+    await page.waitForFunction(() => typeof window.setEditorContent === 'function', { timeout: 5000 });
+    // Wait for layout to stabilize
+    await page.waitForTimeout(200);
+  });
+
+  test.describe('No Page Overflow', () => {
+    test('body should not have significant vertical overflow', async ({ page }) => {
+      // Allow up to 2px tolerance for browser rendering differences
+      const overflow = await page.evaluate(() => {
+        return document.body.scrollHeight - document.body.clientHeight;
+      });
+      expect(overflow).toBeLessThanOrEqual(2);
+    });
+
+    test('should prevent page scroll when editor scrolled to bottom', async ({ page }) => {
+      // Load content that fills the editor
+      await page.evaluate(() => {
+        const longContent = Array(100).fill('# Heading\n\nParagraph with some text.').join('\n\n');
+        window.setEditorContent(longContent);
+      });
+
+      // Wait for content to render
+      await page.waitForTimeout(100);
+
+      // Scroll editor to bottom
+      await page.evaluate(() => {
+        const cmScroll = document.querySelector('.CodeMirror-scroll');
+        if (cmScroll) {
+          cmScroll.scrollTop = cmScroll.scrollHeight;
+        }
+      });
+
+      // Check body scroll position hasn't changed
+      const bodyScrollTop = await page.evaluate(() => document.documentElement.scrollTop || document.body.scrollTop);
+      expect(bodyScrollTop).toBe(0);
+
+      // Also verify body still doesn't have significant overflow
+      const overflow = await page.evaluate(() => {
+        return document.body.scrollHeight - document.body.clientHeight;
+      });
+      expect(overflow).toBeLessThanOrEqual(2);
+    });
+
+    test('should prevent page scroll when preview scrolled to bottom', async ({ page }) => {
+      // Load content that fills the preview
+      await page.evaluate(() => {
+        const longContent = Array(100).fill('# Heading\n\nParagraph with some text.').join('\n\n');
+        window.setEditorContent(longContent);
+      });
+
+      // Wait for preview to render
+      await page.waitForTimeout(500);
+
+      // Scroll preview to bottom
+      await page.evaluate(() => {
+        const preview = document.getElementById('preview');
+        if (preview) {
+          preview.scrollTop = preview.scrollHeight;
+        }
+      });
+
+      // Check body scroll position hasn't changed
+      const bodyScrollTop = await page.evaluate(() => document.documentElement.scrollTop || document.body.scrollTop);
+      expect(bodyScrollTop).toBe(0);
+    });
+  });
+
+  test.describe('Responsive Toolbar', () => {
+    test('layout should work with narrow viewport (wrapped toolbar)', async ({ page }) => {
+      // Resize to narrow viewport where toolbar wraps
+      await page.setViewportSize({ width: 600, height: 800 });
+
+      // Wait for layout to adjust
+      await page.waitForTimeout(100);
+
+      // Body should still not have significant overflow
+      const overflow = await page.evaluate(() => {
+        return document.body.scrollHeight - document.body.clientHeight;
+      });
+      expect(overflow).toBeLessThanOrEqual(2);
+
+      // Container should fill remaining space
+      const layoutCheck = await page.evaluate(() => {
+        const toolbar = document.querySelector('.toolbar');
+        const container = document.querySelector('.container');
+        const footer = document.querySelector('.site-footer');
+        const body = document.body;
+
+        const toolbarHeight = toolbar ? toolbar.offsetHeight : 0;
+        const containerHeight = container ? container.offsetHeight : 0;
+        const footerHeight = footer ? footer.offsetHeight : 0;
+        const totalHeight = toolbarHeight + containerHeight + footerHeight;
+        const bodyHeight = body.clientHeight;
+
+        return {
+          toolbarHeight,
+          containerHeight,
+          footerHeight,
+          totalHeight,
+          bodyHeight,
+          difference: Math.abs(totalHeight - bodyHeight)
+        };
+      });
+
+      // Total should equal body height (within 1px tolerance for rounding)
+      expect(layoutCheck.difference).toBeLessThanOrEqual(1);
+    });
+
+    test('layout should work with very narrow viewport', async ({ page }) => {
+      // Very narrow viewport
+      await page.setViewportSize({ width: 400, height: 600 });
+      await page.waitForTimeout(100);
+
+      const overflow = await page.evaluate(() => {
+        return document.body.scrollHeight - document.body.clientHeight;
+      });
+      expect(overflow).toBeLessThanOrEqual(2);
+    });
+
+    test('layout should work with wide viewport', async ({ page }) => {
+      // Wide desktop viewport
+      await page.setViewportSize({ width: 1920, height: 1080 });
+      await page.waitForTimeout(100);
+
+      const overflow = await page.evaluate(() => {
+        return document.body.scrollHeight - document.body.clientHeight;
+      });
+      expect(overflow).toBeLessThanOrEqual(2);
+    });
+  });
+
+  test.describe('Footer', () => {
+    test('footer should be visible', async ({ page }) => {
+      const footer = page.locator('.site-footer');
+      await expect(footer).toBeVisible();
+    });
+
+    test('footer should contain copyright text', async ({ page }) => {
+      const footer = page.locator('.site-footer');
+      await expect(footer).toContainText('2025 Merview');
+      await expect(footer).toContainText('AGPL-3.0');
+    });
+
+    test('footer should be hidden in print mode', async ({ page }) => {
+      // Emulate print media
+      await page.emulateMedia({ media: 'print' });
+
+      const footer = page.locator('.site-footer');
+      await expect(footer).toBeHidden();
+    });
+
+    test('footer should not cause overflow', async ({ page }) => {
+      // Get footer position
+      const footerBottom = await page.evaluate(() => {
+        const footer = document.querySelector('.site-footer');
+        if (footer) {
+          const rect = footer.getBoundingClientRect();
+          return rect.bottom;
+        }
+        return 0;
+      });
+
+      const viewportHeight = await page.evaluate(() => window.innerHeight);
+
+      // Footer bottom should be at or within viewport
+      expect(footerBottom).toBeLessThanOrEqual(viewportHeight);
+    });
+  });
+
+  test.describe('Flexbox Layout Structure', () => {
+    test('body should be flex container with column direction', async ({ page }) => {
+      const bodyStyles = await page.evaluate(() => {
+        const computed = window.getComputedStyle(document.body);
+        return {
+          display: computed.display,
+          flexDirection: computed.flexDirection
+        };
+      });
+
+      expect(bodyStyles.display).toBe('flex');
+      expect(bodyStyles.flexDirection).toBe('column');
+    });
+
+    test('toolbar should not shrink', async ({ page }) => {
+      const toolbarFlexShrink = await page.evaluate(() => {
+        const toolbar = document.querySelector('.toolbar');
+        if (toolbar) {
+          return window.getComputedStyle(toolbar).flexShrink;
+        }
+        return null;
+      });
+
+      expect(toolbarFlexShrink).toBe('0');
+    });
+
+    test('container should flex to fill space', async ({ page }) => {
+      const containerStyles = await page.evaluate(() => {
+        const container = document.querySelector('.container');
+        if (container) {
+          const computed = window.getComputedStyle(container);
+          return {
+            flexGrow: computed.flexGrow,
+            flexShrink: computed.flexShrink
+          };
+        }
+        return null;
+      });
+
+      expect(containerStyles.flexGrow).toBe('1');
+    });
+
+    test('footer should not shrink', async ({ page }) => {
+      const footerFlexShrink = await page.evaluate(() => {
+        const footer = document.querySelector('.site-footer');
+        if (footer) {
+          return window.getComputedStyle(footer).flexShrink;
+        }
+        return null;
+      });
+
+      expect(footerFlexShrink).toBe('0');
+    });
+  });
+
+  test.describe('Visual Regression - Layout Dimensions', () => {
+    test('toolbar, container, and footer heights should sum to viewport', async ({ page }) => {
+      // Standard viewport
+      await page.setViewportSize({ width: 1280, height: 720 });
+      await page.waitForTimeout(100);
+
+      const dimensions = await page.evaluate(() => {
+        const toolbar = document.querySelector('.toolbar');
+        const container = document.querySelector('.container');
+        const footer = document.querySelector('.site-footer');
+
+        return {
+          viewport: window.innerHeight,
+          toolbar: toolbar ? toolbar.offsetHeight : 0,
+          container: container ? container.offsetHeight : 0,
+          footer: footer ? footer.offsetHeight : 0
+        };
+      });
+
+      const totalHeight = dimensions.toolbar + dimensions.container + dimensions.footer;
+
+      // Should match viewport exactly (within 1px tolerance)
+      expect(Math.abs(totalHeight - dimensions.viewport)).toBeLessThanOrEqual(1);
+    });
+
+    test('editor and preview panels should have equal width by default', async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 720 });
+      await page.waitForTimeout(100);
+
+      const panelWidths = await page.evaluate(() => {
+        const editor = document.querySelector('.editor-panel');
+        const preview = document.querySelector('.preview-panel');
+        const resizeHandle = document.querySelector('.resize-handle');
+
+        return {
+          editor: editor ? editor.offsetWidth : 0,
+          preview: preview ? preview.offsetWidth : 0,
+          resizeHandle: resizeHandle ? resizeHandle.offsetWidth : 0
+        };
+      });
+
+      // Panels should be roughly equal (within 10px tolerance for resize handle)
+      const widthDifference = Math.abs(panelWidths.editor - panelWidths.preview);
+      expect(widthDifference).toBeLessThanOrEqual(10);
+    });
+  });
+});
