@@ -156,7 +156,7 @@ test.describe('Viewport Layout', () => {
       const footer = page.locator('.site-footer');
       const currentYear = new Date().getFullYear().toString();
       await expect(footer).toContainText(currentYear);
-      await expect(footer).toContainText('Merview');
+      await expect(footer).toContainText('Mick Darling');
       await expect(footer).toContainText('AGPL-3.0');
     });
 
