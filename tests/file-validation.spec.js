@@ -23,7 +23,7 @@ const { test, expect } = require('@playwright/test');
 async function testFileValidation(page, fileDescriptor, expectedResult) {
   const isValid = await page.evaluate((file) => {
     // @ts-ignore - isValidMarkdownFile is defined in the app
-    return !!window.isValidMarkdownFile(file);
+    return !!globalThis.isValidMarkdownFile(file);
   }, fileDescriptor);
   expect(isValid).toBe(expectedResult);
 }

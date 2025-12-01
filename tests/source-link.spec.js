@@ -5,6 +5,30 @@
 const { test, expect } = require('@playwright/test');
 
 /**
+ * Helper to get computed style property
+ * Moved to module scope for better performance
+ */
+async function getComputedStyle(locator, property) {
+  return await locator.evaluate((el, prop) => {
+    return globalThis.getComputedStyle(el)[prop];
+  }, property);
+}
+
+/**
+ * Helper to get multiple computed style properties
+ * Moved to module scope for better performance
+ */
+async function getComputedStyles(locator, properties) {
+  return await locator.evaluate((el, props) => {
+    const styles = globalThis.getComputedStyle(el);
+    return props.reduce((acc, prop) => {
+      acc[prop] = styles[prop];
+      return acc;
+    }, {});
+  }, properties);
+}
+
+/**
  * Tests for source link functionality (Issue #26)
  *
  * AGPL-3.0 Section 13 requires that source code be made available
@@ -29,28 +53,6 @@ test.describe('Source Link Functionality (AGPL-3.0 Compliance)', () => {
     sourceLabel = page.locator('.github-label');
     toolbar = page.locator('.toolbar');
   });
-
-  /**
-   * Helper to get computed style property
-   */
-  async function getComputedStyle(locator, property) {
-    return await locator.evaluate((el, prop) => {
-      return window.getComputedStyle(el)[prop];
-    }, property);
-  }
-
-  /**
-   * Helper to get multiple computed style properties
-   */
-  async function getComputedStyles(locator, properties) {
-    return await locator.evaluate((el, props) => {
-      const styles = window.getComputedStyle(el);
-      return props.reduce((acc, prop) => {
-        acc[prop] = styles[prop];
-        return acc;
-      }, {});
-    }, properties);
-  }
 
   test.describe('Visibility and Presence', () => {
     test('should have a visible GitHub source link in the toolbar', async () => {

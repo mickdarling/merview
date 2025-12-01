@@ -13,6 +13,17 @@ const LOGO_LOAD_TIMEOUT_MS = 2000;  // Maximum time to wait for logo to be visib
 // Helper function to get logo locator
 const getLogo = (page) => page.locator('.brand-logo');
 
+// Helper function to test image loading error handling
+// Extracted to reduce nesting depth
+const testImageLoad = () => {
+  return new Promise(resolve => {
+    const testImg = new Image();
+    testImg.onerror = () => resolve(true);
+    testImg.onload = () => resolve(false);
+    testImg.src = 'images/non-existent-logo.png';
+  });
+};
+
 test.describe('Logo Loading and Display', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
@@ -94,15 +105,15 @@ test.describe('Logo Loading and Display', () => {
     const logo = getLogo(page);
 
     // Check that the logo has the expected styling from CSS
-    const height = await logo.evaluate(el => window.getComputedStyle(el).height);
-    const width = await logo.evaluate(el => window.getComputedStyle(el).width);
+    const height = await logo.evaluate(el => globalThis.getComputedStyle(el).height);
+    const width = await logo.evaluate(el => globalThis.getComputedStyle(el).width);
 
     // Verify height is set to 28px as per CSS
     expect(height).toBe('28px');
 
     // Verify width is auto-computed
     expect(width).not.toBe('0px');
-    expect(parseInt(width)).toBeGreaterThan(0);
+    expect(Number.parseInt(width)).toBeGreaterThan(0);
   });
 
   test('logo is located in the toolbar brand area', async ({ page }) => {
@@ -165,14 +176,7 @@ test.describe('Logo Loading and Display', () => {
 
       // Test that if we try to change to a broken image, it handles gracefully
       // This simulates what would happen if the logo file was missing
-      const errorHandled = await logo.evaluate(img => {
-        return new Promise(resolve => {
-          const testImg = new Image();
-          testImg.onerror = () => resolve(true);
-          testImg.onload = () => resolve(false);
-          testImg.src = 'images/non-existent-logo.png';
-        });
-      });
+      const errorHandled = await logo.evaluate(testImageLoad);
 
       // The error should be caught (even if there's no explicit handler)
       expect(errorHandled).toBe(true);
