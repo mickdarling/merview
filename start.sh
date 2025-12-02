@@ -10,15 +10,15 @@ echo ""
 
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then
-    echo "❌ Error: Docker is not installed."
-    echo "Please install Docker from https://docker.com"
+    echo "❌ Error: Docker is not installed." >&2
+    echo "Please install Docker from https://docker.com" >&2
     exit 1
 fi
 
 # Check if Docker is running
 if ! docker info &> /dev/null; then
-    echo "❌ Error: Docker is not running."
-    echo "Please start Docker Desktop and try again."
+    echo "❌ Error: Docker is not running." >&2
+    echo "Please start Docker Desktop and try again." >&2
     exit 1
 fi
 

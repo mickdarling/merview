@@ -19,7 +19,7 @@ test.describe('Viewport Layout', () => {
     await page.goto('/');
     // Wait for CodeMirror to initialize
     await page.waitForSelector('.CodeMirror', { timeout: CODEMIRROR_INIT_TIMEOUT });
-    await page.waitForFunction(() => typeof window.setEditorContent === 'function', { timeout: EDITOR_API_TIMEOUT });
+    await page.waitForFunction(() => typeof globalThis.setEditorContent === 'function', { timeout: EDITOR_API_TIMEOUT });
     // Wait for layout to stabilize
     await page.waitForTimeout(LAYOUT_STABILIZE_DELAY);
   });
@@ -182,7 +182,7 @@ test.describe('Viewport Layout', () => {
         return 0;
       });
 
-      const viewportHeight = await page.evaluate(() => window.innerHeight);
+      const viewportHeight = await page.evaluate(() => globalThis.innerHeight);
 
       // Footer bottom should be at or within viewport
       expect(footerBottom).toBeLessThanOrEqual(viewportHeight);
@@ -192,7 +192,7 @@ test.describe('Viewport Layout', () => {
   test.describe('Flexbox Layout Structure', () => {
     test('body should be flex container with column direction', async ({ page }) => {
       const bodyStyles = await page.evaluate(() => {
-        const computed = window.getComputedStyle(document.body);
+        const computed = globalThis.getComputedStyle(document.body);
         return {
           display: computed.display,
           flexDirection: computed.flexDirection
@@ -207,7 +207,7 @@ test.describe('Viewport Layout', () => {
       const toolbarFlexShrink = await page.evaluate(() => {
         const toolbar = document.querySelector('.toolbar');
         if (toolbar) {
-          return window.getComputedStyle(toolbar).flexShrink;
+          return globalThis.getComputedStyle(toolbar).flexShrink;
         }
         return null;
       });
@@ -219,7 +219,7 @@ test.describe('Viewport Layout', () => {
       const containerStyles = await page.evaluate(() => {
         const container = document.querySelector('.container');
         if (container) {
-          const computed = window.getComputedStyle(container);
+          const computed = globalThis.getComputedStyle(container);
           return {
             flexGrow: computed.flexGrow,
             flexShrink: computed.flexShrink
@@ -235,7 +235,7 @@ test.describe('Viewport Layout', () => {
       const footerFlexShrink = await page.evaluate(() => {
         const footer = document.querySelector('.site-footer');
         if (footer) {
-          return window.getComputedStyle(footer).flexShrink;
+          return globalThis.getComputedStyle(footer).flexShrink;
         }
         return null;
       });
@@ -256,7 +256,7 @@ test.describe('Viewport Layout', () => {
         const footer = document.querySelector('.site-footer');
 
         return {
-          viewport: window.innerHeight,
+          viewport: globalThis.innerHeight,
           toolbar: toolbar ? toolbar.offsetHeight : 0,
           container: container ? container.offsetHeight : 0,
           footer: footer ? footer.offsetHeight : 0

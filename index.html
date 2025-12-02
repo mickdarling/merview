@@ -959,12 +959,8 @@
         document.body.appendChild(fileInput);
 
         // Load style from various sources
-        async function loadStyle(styleName) {
-            const style = availableStyles.find(s => s.name === styleName);
-            if (!style) return;
-
-            // Handle special actions
-            if (style.source === 'separator') return;
+        // Handle special style source types (none, file, url, repository)
+        async function handleSpecialStyleSource(style) {
             if (style.source === 'none') {
                 // Remove all custom styles
                 if (currentStyleLink) {
@@ -973,68 +969,77 @@
                 }
                 showStatus('CSS removed');
                 await renderMarkdown();
-                return;
+                return true;
             }
             if (style.source === 'file') {
                 fileInput.click();
-                return;
+                return true;
             }
             if (style.source === 'url') {
                 promptForURL();
-                return;
+                return true;
             }
             if (style.source === 'repository') {
                 promptForRepositoryStyle(style);
-                return;
+                return true;
             }
+            return false;
+        }
+
+        // Apply loaded CSS to the page
+        async function applyStyleToPage(cssText, styleName, style) {
+            // Remove @media print blocks that might override colors for printing
+            cssText = stripPrintMediaQueries(cssText);
+
+            // Scope the CSS to only affect #wrapper (the content area)
+            if (style.source !== 'local' && !cssText.includes('#wrapper')) {
+                cssText = scopeCSSToPreview(cssText);
+            }
+
+            // Debug: Log first 500 chars of scoped CSS
+            console.log('Scoped CSS preview:', cssText.substring(0, 500));
+
+            // Remove previous style if exists
+            if (currentStyleLink) {
+                currentStyleLink.remove();
+            }
+
+            // Create style element with scoped CSS
+            const styleElement = document.createElement('style');
+            styleElement.id = 'marked-custom-style';
+            styleElement.textContent = cssText;
+            document.head.appendChild(styleElement);
+
+            currentStyleLink = styleElement;
+
+            // Apply minimal structure override (no color changes)
+            applySyntaxOverride();
+
+            // Save preference
+            localStorage.setItem('markdown-style', styleName);
+
+            // Re-render markdown to update Mermaid diagrams with new CSS
+            await renderMarkdown();
+        }
+
+        async function loadStyle(styleName) {
+            const style = availableStyles.find(s => s.name === styleName);
+            if (!style || style.source === 'separator') return;
+
+            // Handle special actions (file picker, URL prompt, etc.)
+            if (await handleSpecialStyleSource(style)) return;
 
             showStatus(`Loading style: ${style.name}...`);
 
             try {
-                let cssText;
-
                 // Load from local styles/ directory or external URL
                 const response = await fetch(style.file);
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
-                cssText = await response.text();
+                const cssText = await response.text();
 
-                // Remove @media print blocks that might override colors for printing
-                // We want the screen colors to be used in PDFs
-                cssText = stripPrintMediaQueries(cssText);
-
-                // Scope the CSS to only affect #wrapper (the content area)
-                // Our local styles are already scoped, so only scope external ones
-                if (style.source !== 'local' && !cssText.includes('#wrapper')) {
-                    cssText = scopeCSSToPreview(cssText);
-                }
-
-                // Debug: Log first 500 chars of scoped CSS
-                console.log('Scoped CSS preview:', cssText.substring(0, 500));
-
-                // Remove previous style if exists
-                if (currentStyleLink) {
-                    currentStyleLink.remove();
-                }
-
-                // Create style element with scoped CSS
-                const styleElement = document.createElement('style');
-                styleElement.id = 'marked-custom-style';
-                styleElement.textContent = cssText;
-                document.head.appendChild(styleElement);
-
-                currentStyleLink = styleElement;
-
-                // Apply minimal structure override (no color changes)
-                applySyntaxOverride();
-
-                // Save preference
-                localStorage.setItem('markdown-style', styleName);
-
-                // Re-render markdown to update Mermaid diagrams with new CSS
-                await renderMarkdown();
-
+                await applyStyleToPage(cssText, styleName, style);
                 showStatus(`Style loaded: ${style.name}`);
             } catch (error) {
                 showStatus(`Error loading style: ${style.name}`);
@@ -1213,10 +1218,11 @@
                     return false;
                 }
                 const isAllowed = ALLOWED_CSS_DOMAINS.includes(parsed.hostname.toLowerCase());
-                if (!isAllowed) {
-                    console.warn('CSS URL blocked: domain not in allowlist:', parsed.hostname);
+                if (isAllowed) {
+                    return true;
                 }
-                return isAllowed;
+                console.warn('CSS URL blocked: domain not in allowlist:', parsed.hostname);
+                return false;
             } catch (error) {
                 console.warn('CSS URL blocked: invalid URL format:', url, error.message);
                 return false;
@@ -1625,7 +1631,7 @@
                 console.log('Total code blocks in DOM:', codeBlocks.length);
                 codeBlocks.forEach((block, i) => {
                     const classList = Array.from(block.classList).join(', ');
-                    const lang = block.getAttribute('data-language');
+                    const lang = block.dataset.language;
                     const hasHljsClass = block.classList.contains('hljs');
                     console.log(`  Block ${i + 1}: classes=[${classList}] lang=${lang} hasHljs=${hasHljsClass}`);
                 });
@@ -2205,7 +2211,7 @@ classDiagram
             a.download = filename;
             document.body.appendChild(a);
             a.click();
-            document.body.removeChild(a);
+            a.remove();
             URL.revokeObjectURL(url);
 
             showStatus(`Saved: ${filename}`);
@@ -2248,7 +2254,7 @@ classDiagram
             const codeBlocks = wrapper.querySelectorAll('pre code[data-language]');
 
             codeBlocks.forEach((block, index) => {
-                const language = block.getAttribute('data-language');
+                const language = block.dataset.language;
                 const code = block.textContent;
 
                 // Validate based on language

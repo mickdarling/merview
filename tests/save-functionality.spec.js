@@ -3,9 +3,9 @@
 
 // @ts-check
 const { test, expect } = require('@playwright/test');
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
+const path = require('node:path');
+const fs = require('node:fs');
+const os = require('node:os');
 
 test.describe('Save Functionality', () => {
   test.beforeEach(async ({ page }) => {
@@ -13,7 +13,7 @@ test.describe('Save Functionality', () => {
     // Wait for CodeMirror to initialize (it creates a .CodeMirror wrapper)
     await page.waitForSelector('.CodeMirror', { timeout: 15000 });
     // Wait for the editor API to be ready
-    await page.waitForFunction(() => typeof window.setEditorContent === 'function', { timeout: 5000 });
+    await page.waitForFunction(() => typeof globalThis.setEditorContent === 'function', { timeout: 5000 });
   });
 
   test.describe('Save As Button', () => {
@@ -97,8 +97,10 @@ test.describe('Save Functionality', () => {
       await page.waitForFunction(() => {
         const status = document.getElementById('status');
         return status && status.textContent !== '';
-      }, { timeout: 2000 }).catch(() => {
-        // Status might not update on cancel, that's ok
+      }, { timeout: 2000 }).catch((error) => {
+        // Expected: Status might not update on cancel - this is acceptable behavior
+        // We suppress this timeout error as it indicates the user cancelled the dialog
+        console.debug('Status update timeout after dialog cancel (expected):', error.message);
       });
 
       expect(downloadStarted).toBe(false);
@@ -108,12 +110,12 @@ test.describe('Save Functionality', () => {
       const testContent = '# Test Heading\n\nThis is test content.';
 
       // Check if CodeMirror loaded
-      const hasCodeMirror = await page.evaluate(() => typeof window.setEditorContent === 'function');
+      const hasCodeMirror = await page.evaluate(() => typeof globalThis.setEditorContent === 'function');
 
       if (hasCodeMirror) {
         // Set editor content using CodeMirror's global helper
         await page.evaluate((content) => {
-          window.setEditorContent(content);
+          globalThis.setEditorContent(content);
         }, testContent);
       } else {
         // Skip this test if CodeMirror didn't load
@@ -140,7 +142,9 @@ test.describe('Save Functionality', () => {
       try {
         fs.unlinkSync(downloadPath);
       } catch (e) {
-        // Ignore cleanup errors
+        // Expected: Cleanup may fail if file already deleted or permissions issue
+        // This is acceptable in test cleanup - we don't want test to fail on cleanup
+        console.debug('Test cleanup: unable to delete temp file (non-critical):', e.message);
       }
     });
   });
@@ -180,10 +184,10 @@ test.describe('Save Functionality', () => {
       expect(promptCount).toBe(1);
 
       // Modify content if CodeMirror is available (optional for this test)
-      const hasCodeMirror = await page.evaluate(() => typeof window.setEditorContent === 'function');
+      const hasCodeMirror = await page.evaluate(() => typeof globalThis.setEditorContent === 'function');
       if (hasCodeMirror) {
         await page.evaluate(() => {
-          window.setEditorContent('# Modified content');
+          globalThis.setEditorContent('# Modified content');
         });
       }
 
