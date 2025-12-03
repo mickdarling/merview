@@ -186,6 +186,45 @@ All themes should be scoped to `#wrapper` to avoid affecting the editor UI:
 5. **Test print styles** - Use `@media print` for PDF exports
 6. **Preserve syntax highlighting** - Don't override `.hljs` styles
 
+### Dark Theme Background Requirements
+
+**IMPORTANT:** Dark themes MUST define a background color on `#wrapper` using simple color values.
+
+**Supported background types:**
+- Hex colors: `background: #1e1e1e;`
+- Named colors: `background: black;` or `background-color: darkgray;`
+- RGB/RGBA values: `background: rgb(30, 30, 30);` or `background-color: rgba(0, 0, 0, 0.95);`
+
+**NOT supported (will fall back to white):**
+- CSS variables: `background: var(--bg-color);` ❌
+- Gradients: `background: linear-gradient(...);` ❌
+- Complex backgrounds: `background: url(...) #1e1e1e;` ❌
+
+**Why this limitation?**
+
+The preview panel extracts the `#wrapper` background color using regex-based CSS parsing to ensure the entire preview area matches your theme's background. This provides a seamless visual experience, especially for dark themes.
+
+**Example dark theme:**
+
+```css
+#wrapper {
+    background: #1e1e1e;  /* Simple hex color - GOOD */
+    color: #e0e0e0;
+    max-width: 850px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* NOT this: */
+#wrapper {
+    background: var(--dark-bg);  /* CSS variable - WON'T WORK */
+    color: #e0e0e0;
+}
+```
+
+If your theme uses CSS variables or complex backgrounds, the preview will fall back to white, which will look incorrect for dark themes. Always use simple color values for the `#wrapper` background property.
+
 ---
 
 ## Advanced: Repository Integration

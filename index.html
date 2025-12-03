@@ -988,8 +988,20 @@
         /**
          * Extract background color from loaded CSS and apply to preview container.
          * Parses the #wrapper rule to find background or background-color values.
-         * Note: Complex backgrounds (gradients, CSS variables) may not be extracted correctly
-         * and will fall back to white.
+         *
+         * SUPPORTED background types:
+         * - Hex colors: #1e1e1e, #fff
+         * - Named colors: white, black, darkgray
+         * - RGB/RGBA values: rgb(30, 30, 30), rgba(0, 0, 0, 0.9)
+         *
+         * NOT SUPPORTED (will fall back to white):
+         * - CSS variables: var(--bg-color), var(--theme-background)
+         * - Gradients: linear-gradient(...), radial-gradient(...)
+         * - Complex multi-value backgrounds: url(...) #fff, image-set(...)
+         *
+         * This limitation is due to regex-based CSS parsing. For dark themes,
+         * always use simple color values on #wrapper background property.
+         *
          * @param {string} cssText - The loaded CSS text to parse
          */
         function applyPreviewBackground(cssText) {
@@ -1232,6 +1244,17 @@
             `;
         }
 
+        // Update just the checkbox state for the layout toggle option
+        function updateLayoutToggleCheckbox() {
+            const options = styleSelector.querySelectorAll('option');
+            for (const option of options) {
+                if (option.value === 'Respect Style Layout') {
+                    option.textContent = (respectStyleLayout ? '✓ ' : '☐ ') + 'Respect Style Layout';
+                    break;
+                }
+            }
+        }
+
         // Change style
         async function changeStyle(styleName) {
             if (!styleName) return;
@@ -1241,9 +1264,10 @@
                 respectStyleLayout = !respectStyleLayout;
                 localStorage.setItem('respect-style-layout', respectStyleLayout);
                 applyLayoutConstraints();
-                // Refresh dropdown to update checkmark, then restore previous selection
+                // Update just the checkbox without rebuilding the entire dropdown
+                updateLayoutToggleCheckbox();
+                // Restore previous selection
                 const currentStyle = localStorage.getItem('markdown-style') || 'Clean';
-                await initStyleSelector();
                 styleSelector.value = currentStyle;
                 showStatus(respectStyleLayout ? 'Style layout respected' : 'Style layout overridden');
                 return;

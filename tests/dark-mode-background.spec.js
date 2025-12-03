@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2025 Mick Darling
+
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
@@ -154,5 +157,90 @@ test.describe('Dark Mode Preview Background', () => {
     expect(r).toBeGreaterThan(200);
     expect(g).toBeGreaterThan(200);
     expect(b).toBeGreaterThan(200);
+  });
+
+  test('should fall back to white background when CSS has no #wrapper background', async ({ page }) => {
+    // Create a minimal CSS without any background defined for #wrapper
+    const cssWithoutBackground = `
+      #wrapper {
+        color: #333;
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+    `;
+
+    // Inject the CSS and call applyPreviewBackground
+    await page.evaluate((css) => {
+      const previewEl = document.querySelector('#preview');
+      if (previewEl) {
+        // Reset any existing background
+        previewEl.style.background = '';
+        // Call applyPreviewBackground with CSS that has no background
+        window.applyPreviewBackground(css);
+      }
+    }, cssWithoutBackground);
+
+    const preview = page.locator('#preview');
+    const previewBg = await preview.evaluate(el => globalThis.getComputedStyle(el).backgroundColor);
+    console.log('Preview background with no CSS background:', previewBg);
+
+    // Should fall back to white (rgb(255, 255, 255))
+    const match = previewBg.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+    expect(match).toBeTruthy();
+    expect(Number(match[1])).toBe(255);
+    expect(Number(match[2])).toBe(255);
+    expect(Number(match[3])).toBe(255);
+  });
+
+  test('should handle both background and background-color CSS properties', async ({ page }) => {
+    const preview = page.locator('#preview');
+
+    // Test 1: CSS using background property
+    const cssWithBackground = `
+      #wrapper {
+        background: #2a2a2a;
+        color: #fff;
+      }
+    `;
+
+    await page.evaluate((css) => {
+      const previewEl = document.querySelector('#preview');
+      if (previewEl) {
+        previewEl.style.background = '';
+        window.applyPreviewBackground(css);
+      }
+    }, cssWithBackground);
+
+    let bgColor = await preview.evaluate(el => globalThis.getComputedStyle(el).backgroundColor);
+    console.log('Background from "background" property:', bgColor);
+
+    // Should apply dark background
+    let match = bgColor.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+    expect(match).toBeTruthy();
+    expect(Math.max(Number(match[1]), Number(match[2]), Number(match[3]))).toBeLessThan(50);
+
+    // Test 2: CSS using background-color property
+    const cssWithBackgroundColor = `
+      #wrapper {
+        background-color: #1e1e1e;
+        color: #fff;
+      }
+    `;
+
+    await page.evaluate((css) => {
+      const previewEl = document.querySelector('#preview');
+      if (previewEl) {
+        previewEl.style.background = '';
+        window.applyPreviewBackground(css);
+      }
+    }, cssWithBackgroundColor);
+
+    bgColor = await preview.evaluate(el => globalThis.getComputedStyle(el).backgroundColor);
+    console.log('Background from "background-color" property:', bgColor);
+
+    // Should also apply dark background
+    match = bgColor.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+    expect(match).toBeTruthy();
+    expect(Math.max(Number(match[1]), Number(match[2]), Number(match[3]))).toBeLessThan(50);
   });
 });
