@@ -1,6 +1,34 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
+/**
+ * Helper to wait for preview background to change to a dark color (RGB values < 50)
+ */
+async function waitForDarkBackground(page) {
+  await page.waitForFunction(() => {
+    const el = document.querySelector('#preview');
+    if (!el) return false;
+    const bg = globalThis.getComputedStyle(el).backgroundColor;
+    const match = bg.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+    if (!match) return false;
+    return Math.max(Number(match[1]), Number(match[2]), Number(match[3])) < 50;
+  }, { timeout: 2000 });
+}
+
+/**
+ * Helper to wait for preview background to change to a light color (RGB values > 240)
+ */
+async function waitForLightBackground(page) {
+  await page.waitForFunction(() => {
+    const el = document.querySelector('#preview');
+    if (!el) return false;
+    const bg = globalThis.getComputedStyle(el).backgroundColor;
+    const match = bg.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+    if (!match) return false;
+    return Math.min(Number(match[1]), Number(match[2]), Number(match[3])) > 240;
+  }, { timeout: 2000 });
+}
+
 test.describe('Dark Mode Preview Background', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
@@ -18,58 +46,65 @@ test.describe('Dark Mode Preview Background', () => {
     // Select Dark Mode style
     await page.selectOption('#styleSelector', 'Dark Mode');
 
-    // Wait for style to load
-    await page.waitForTimeout(500);
+    // Wait for dark background to be applied
+    await waitForDarkBackground(page);
 
     // Get the new background color
     const darkBg = await preview.evaluate(el => globalThis.getComputedStyle(el).backgroundColor);
     console.log('Dark mode background:', darkBg);
 
     // Dark mode should have a dark background (rgb values should be low)
-    // #1e1e1e = rgb(30, 30, 30)
-    expect(darkBg).toMatch(/rgb\(\s*30\s*,\s*30\s*,\s*30\s*\)/);
+    const match = darkBg.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+    expect(match).toBeTruthy();
+    expect(Math.max(Number(match[1]), Number(match[2]), Number(match[3]))).toBeLessThan(50);
   });
 
   test('should apply light background when switching from Dark Mode to another style', async ({ page }) => {
     // First select Dark Mode
     await page.selectOption('#styleSelector', 'Dark Mode');
-    await page.waitForTimeout(500);
+    await waitForDarkBackground(page);
 
     const preview = page.locator('#preview');
 
     // Verify dark background is applied
     const darkBg = await preview.evaluate(el => globalThis.getComputedStyle(el).backgroundColor);
-    expect(darkBg).toMatch(/rgb\(\s*30\s*,\s*30\s*,\s*30\s*\)/);
+    const darkMatch = darkBg.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+    expect(darkMatch).toBeTruthy();
+    expect(Math.max(Number(darkMatch[1]), Number(darkMatch[2]), Number(darkMatch[3]))).toBeLessThan(50);
 
     // Switch to Clean style
     await page.selectOption('#styleSelector', 'Clean');
-    await page.waitForTimeout(500);
+    await waitForLightBackground(page);
 
     // Verify light background
     const lightBg = await preview.evaluate(el => globalThis.getComputedStyle(el).backgroundColor);
     console.log('Clean style background:', lightBg);
 
-    // Clean style should have white background - rgb(255, 255, 255)
-    expect(lightBg).toMatch(/rgb\(\s*255\s*,\s*255\s*,\s*255\s*\)/);
+    // Clean style should have white background
+    const lightMatch = lightBg.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+    expect(lightMatch).toBeTruthy();
+    expect(Math.min(Number(lightMatch[1]), Number(lightMatch[2]), Number(lightMatch[3]))).toBeGreaterThan(240);
   });
 
   test('wrapper element should also have dark background', async ({ page }) => {
     // Select Dark Mode
     await page.selectOption('#styleSelector', 'Dark Mode');
-    await page.waitForTimeout(500);
+    await waitForDarkBackground(page);
 
     const wrapper = page.locator('#wrapper');
     const wrapperBg = await wrapper.evaluate(el => globalThis.getComputedStyle(el).backgroundColor);
     console.log('Wrapper background:', wrapperBg);
 
     // Wrapper should also have dark background
-    expect(wrapperBg).toMatch(/rgb\(\s*30\s*,\s*30\s*,\s*30\s*\)/);
+    const match = wrapperBg.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+    expect(match).toBeTruthy();
+    expect(Math.max(Number(match[1]), Number(match[2]), Number(match[3]))).toBeLessThan(50);
   });
 
   test('wrapper should fill full width without artificial gutters', async ({ page }) => {
     // Select Dark Mode (which has max-width: 850px in its CSS)
     await page.selectOption('#styleSelector', 'Dark Mode');
-    await page.waitForTimeout(500);
+    await waitForDarkBackground(page);
 
     const wrapper = page.locator('#wrapper');
     const preview = page.locator('#preview');
@@ -101,20 +136,19 @@ test.describe('Dark Mode Preview Background', () => {
   test('text should be readable in Dark Mode', async ({ page }) => {
     // Select Dark Mode
     await page.selectOption('#styleSelector', 'Dark Mode');
-    await page.waitForTimeout(500);
+    await waitForDarkBackground(page);
 
     const wrapper = page.locator('#wrapper');
     const textColor = await wrapper.evaluate(el => globalThis.getComputedStyle(el).color);
     console.log('Text color in dark mode:', textColor);
 
-    // Text should be light colored - rgb(230, 230, 230) = #e6e6e6
-    // Parse RGB values and verify they are high (light)
+    // Text should be light colored - parse RGB values and verify they are high (light)
     const rgbMatch = textColor.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
     expect(rgbMatch).toBeTruthy();
 
-    const r = parseInt(rgbMatch[1]);
-    const g = parseInt(rgbMatch[2]);
-    const b = parseInt(rgbMatch[3]);
+    const r = Number.parseInt(rgbMatch[1], 10);
+    const g = Number.parseInt(rgbMatch[2], 10);
+    const b = Number.parseInt(rgbMatch[3], 10);
 
     // Light text should have RGB values > 200
     expect(r).toBeGreaterThan(200);

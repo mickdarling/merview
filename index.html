@@ -985,8 +985,16 @@
             return false;
         }
 
-        // Extract background color from CSS and apply to preview container
+        /**
+         * Extract background color from loaded CSS and apply to preview container.
+         * Parses the #wrapper rule to find background or background-color values.
+         * Note: Complex backgrounds (gradients, CSS variables) may not be extracted correctly
+         * and will fall back to white.
+         * @param {string} cssText - The loaded CSS text to parse
+         */
         function applyPreviewBackground(cssText) {
+            if (!preview) return; // Guard against missing element
+
             // Look for #wrapper background in the CSS
             // Match patterns like: #wrapper { ... background: #1e1e1e; ... }
             // or: #wrapper { ... background-color: #1e1e1e; ... }
@@ -994,11 +1002,11 @@
             if (wrapperMatch) {
                 const wrapperRule = wrapperMatch[0];
                 // Extract background or background-color value
+                // The value is sanitized by the browser's CSS parser when assigned to .style
                 const bgMatch = wrapperRule.match(/background(?:-color)?\s*:\s*([^;}\s]+(?:\s+[^;}\s]+)*)/);
                 if (bgMatch) {
                     const bgValue = bgMatch[1].trim();
                     preview.style.background = bgValue;
-                    console.log('Applied preview background:', bgValue);
                     return;
                 }
             }
@@ -1006,8 +1014,14 @@
             preview.style.background = 'white';
         }
 
-        // Apply or remove layout constraint overrides based on toggle
+        /**
+         * Apply or remove layout constraint overrides based on the "Respect Style Layout" toggle.
+         * When OFF (default): Forces full-width layout, user controls width via drag handle.
+         * When ON: Allows loaded styles to apply their own max-width, margins, and gutters.
+         */
         function applyLayoutConstraints() {
+            if (!wrapper) return; // Guard against missing element
+
             if (respectStyleLayout) {
                 // Remove overrides - let loaded style control layout
                 wrapper.style.maxWidth = '';
