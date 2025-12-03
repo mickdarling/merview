@@ -307,22 +307,19 @@
         #editor-container {
             flex: 1;
             overflow: hidden;
-            background: #282c34;
+            /* Background controlled by editor theme CSS */
         }
 
-        /* CodeMirror 5 styling */
+        /* CodeMirror 5 styling - structure only, colors from theme */
         #editor-container .CodeMirror {
             height: 100%;
             font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
             font-size: 14px;
             line-height: 1.6;
-            background: #282c34;
+            /* Background controlled by editor theme CSS */
         }
 
-        #editor-container .CodeMirror-gutters {
-            background: #21252b;
-            border-right: 1px solid #3a3f4b;
-        }
+        /* Gutters styling controlled by editor theme CSS */
 
         #editor-container.drag-over {
             outline: 2px dashed #3498db;
@@ -355,7 +352,8 @@
         }
 
         /* Wrapper for Marked2 styles - base structure only */
-        /* Note: Specific properties reset here, but background/color come from loaded styles */
+        /* Note: Background/color come from loaded styles */
+        /* Layout constraints (max-width, margin) controlled via JS based on toggle */
         #wrapper {
             display: block;
             padding: 20px;
@@ -786,6 +784,7 @@
         const editorThemeSelector = document.getElementById('editorThemeSelector');
 
         let renderTimeout;
+        let respectStyleLayout = localStorage.getItem('respect-style-layout') === 'true';
         let mermaidCounter = 0;
         let currentStyleLink = null;
         let currentSyntaxThemeLink = null;
@@ -941,6 +940,8 @@
             { name: 'Monospace', file: 'styles/monospace.css', source: 'local' },
             { name: 'Newspaper', file: 'styles/newspaper.css', source: 'local' },
             { name: '---', file: '', source: 'separator' }, // Separator
+            { name: 'Respect Style Layout', file: '', source: 'toggle' },
+            { name: '---', file: '', source: 'separator' }, // Separator
             { name: 'Load from file...', file: '', source: 'file' },
             { name: 'Load from URL...', file: '', source: 'url' },
             { name: '---', file: '', source: 'separator' }, // Separator
@@ -1005,6 +1006,21 @@
             preview.style.background = 'white';
         }
 
+        // Apply or remove layout constraint overrides based on toggle
+        function applyLayoutConstraints() {
+            if (respectStyleLayout) {
+                // Remove overrides - let loaded style control layout
+                wrapper.style.maxWidth = '';
+                wrapper.style.margin = '';
+                wrapper.style.width = '';
+            } else {
+                // Apply overrides - user controls width via drag handle
+                wrapper.style.maxWidth = 'none';
+                wrapper.style.margin = '0';
+                wrapper.style.width = 'auto';
+            }
+        }
+
         // Apply loaded CSS to the page
         async function applyStyleToPage(cssText, styleName, style) {
             // Remove @media print blocks that might override colors for printing
@@ -1033,6 +1049,9 @@
 
             // Extract and apply background color from style to preview container
             applyPreviewBackground(cssText);
+
+            // Apply layout constraints based on toggle setting
+            applyLayoutConstraints();
 
             // Apply minimal structure override (no color changes)
             applySyntaxOverride();
@@ -1202,6 +1221,20 @@
         // Change style
         async function changeStyle(styleName) {
             if (!styleName) return;
+
+            // Handle toggle option
+            if (styleName === 'Respect Style Layout') {
+                respectStyleLayout = !respectStyleLayout;
+                localStorage.setItem('respect-style-layout', respectStyleLayout);
+                applyLayoutConstraints();
+                // Refresh dropdown to update checkmark, then restore previous selection
+                const currentStyle = localStorage.getItem('markdown-style') || 'Clean';
+                await initStyleSelector();
+                styleSelector.value = currentStyle;
+                showStatus(respectStyleLayout ? 'Style layout respected' : 'Style layout overridden');
+                return;
+            }
+
             await loadStyle(styleName);
         }
 
@@ -1538,6 +1571,11 @@
                 if (style.source === 'separator') {
                     option.disabled = true;
                     option.textContent = '──────────────────';
+                }
+
+                // Handle toggle with checkmark
+                if (style.source === 'toggle') {
+                    option.textContent = (respectStyleLayout ? '✓ ' : '☐ ') + style.name;
                 }
 
                 styleSelector.appendChild(option);

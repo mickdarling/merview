@@ -66,6 +66,38 @@ test.describe('Dark Mode Preview Background', () => {
     expect(wrapperBg).toMatch(/rgb\(\s*30\s*,\s*30\s*,\s*30\s*\)/);
   });
 
+  test('wrapper should fill full width without artificial gutters', async ({ page }) => {
+    // Select Dark Mode (which has max-width: 850px in its CSS)
+    await page.selectOption('#styleSelector', 'Dark Mode');
+    await page.waitForTimeout(500);
+
+    const wrapper = page.locator('#wrapper');
+    const preview = page.locator('#preview');
+
+    // Get wrapper and preview widths
+    const wrapperWidth = await wrapper.evaluate(el => el.getBoundingClientRect().width);
+    const previewWidth = await preview.evaluate(el => el.getBoundingClientRect().width);
+
+    console.log('Wrapper width:', wrapperWidth, 'Preview width:', previewWidth);
+
+    // Wrapper should fill the preview width (minus padding)
+    // The base CSS sets padding: 20px, so wrapper content area should be close to preview width
+    // We check that wrapper is NOT artificially constrained (e.g., to 850px max-width from loaded style)
+    const wrapperStyle = await wrapper.evaluate(el => ({
+      maxWidth: globalThis.getComputedStyle(el).maxWidth,
+      margin: globalThis.getComputedStyle(el).margin,
+      width: globalThis.getComputedStyle(el).width
+    }));
+
+    console.log('Wrapper computed styles:', wrapperStyle);
+
+    // max-width should be 'none' (not constrained by loaded style's 850px)
+    expect(wrapperStyle.maxWidth).toBe('none');
+
+    // margin should be 0px (not centered with auto margins)
+    expect(wrapperStyle.margin).toBe('0px');
+  });
+
   test('text should be readable in Dark Mode', async ({ page }) => {
     // Select Dark Mode
     await page.selectOption('#styleSelector', 'Dark Mode');
