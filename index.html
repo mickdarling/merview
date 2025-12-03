@@ -818,11 +818,11 @@
             });
 
             // Expose global helper functions
-            window.getEditorContent = function() {
+            globalThis.getEditorContent = function() {
                 return cmEditor.getValue();
             };
 
-            window.setEditorContent = function(content) {
+            globalThis.setEditorContent = function(content) {
                 cmEditor.setValue(content);
             };
 
@@ -1047,43 +1047,60 @@
             }
         }
 
+        // Helper: Check if current position starts a print media query
+        function isPrintMediaStart(css, i) {
+            const startsWithPrint = css.substring(i, i + 12) === '@media print';
+            const startsWithScreen = css.substring(i, i + 13) === '@media screen';
+            // Handle indexOf returning -1 (not found) by treating as "no print before brace"
+            const printIndex = css.indexOf('print', i);
+            const braceIndex = css.indexOf('{', i);
+            const hasPrintBeforeBrace = printIndex !== -1 && braceIndex !== -1 && printIndex < braceIndex;
+            return startsWithPrint || (startsWithScreen && hasPrintBeforeBrace);
+        }
+
+        // Helper: Skip to the opening brace of a media query
+        function skipToOpeningBrace(css, startIndex) {
+            let i = startIndex;
+            while (i < css.length && css[i] !== '{') {
+                i++;
+            }
+            return i;
+        }
+
+        // Helper: Process a character when inside a print media block
+        function processInsidePrintMedia(css, i, depth) {
+            if (css[i] === '{') {
+                return { newDepth: depth + 1, stillInPrintMedia: true };
+            }
+            if (css[i] === '}') {
+                const newDepth = depth - 1;
+                return { newDepth, stillInPrintMedia: newDepth > 0 };
+            }
+            return { newDepth: depth, stillInPrintMedia: true };
+        }
+
         // Strip @media print blocks from CSS to preserve screen colors in PDF
         function stripPrintMediaQueries(css) {
-            // Remove @media print { ... } blocks (including nested braces)
-            // This regex handles nested braces properly
             let depth = 0;
             let inPrintMedia = false;
             let result = '';
             let i = 0;
 
             while (i < css.length) {
-                // Check for @media print
-                if (css.substr(i, 12) === '@media print' ||
-                    css.substr(i, 13) === '@media screen' && css.indexOf('print', i) < css.indexOf('{', i)) {
-                    // Look ahead to see if this is a print media query
+                if (!inPrintMedia && isPrintMediaStart(css, i)) {
                     const restOfLine = css.substring(i, css.indexOf('{', i) + 1);
                     if (restOfLine.includes('print')) {
                         inPrintMedia = true;
                         depth = 0;
-                        // Skip to the opening brace
-                        while (i < css.length && css[i] !== '{') {
-                            i++;
-                        }
+                        i = skipToOpeningBrace(css, i);
                         continue;
                     }
                 }
 
                 if (inPrintMedia) {
-                    if (css[i] === '{') {
-                        depth++;
-                    } else if (css[i] === '}') {
-                        depth--;
-                        if (depth === 0) {
-                            inPrintMedia = false;
-                            i++;
-                            continue;
-                        }
-                    }
+                    const { newDepth, stillInPrintMedia } = processInsidePrintMedia(css, i, depth);
+                    depth = newDepth;
+                    inPrintMedia = stillInPrintMedia;
                     i++;
                 } else {
                     result += css[i];
@@ -1655,7 +1672,7 @@
         }
 
         // Expose renderMarkdown globally
-        window.renderMarkdown = renderMarkdown;
+        globalThis.renderMarkdown = renderMarkdown;
 
         // Sync highlighting removed
         function initSync() {
@@ -1676,7 +1693,7 @@
 
             // Small delay to allow status message to show
             setTimeout(() => {
-                window.print();
+                globalThis.print();
             }, 100);
         }
 
@@ -1732,7 +1749,7 @@
         ${customStyleCSS}
 
         /* Minimal fallback styles if no custom style loaded */
-        ${!customStyleCSS ? `
+        ${customStyleCSS ? '' : `
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             max-width: 800px;
@@ -1747,7 +1764,7 @@
         h3 { font-size: 14pt; margin-top: 12px; margin-bottom: 8px; page-break-after: avoid; }
         pre { background: #f5f5f5; padding: 12px; page-break-inside: avoid; }
         code { background: #f5f5f5; padding: 2px 4px; }
-        ` : ''}
+        `}
 
         /* Ensure print compatibility */
         .mermaid {
@@ -2105,7 +2122,7 @@ classDiagram
         }
 
         // Expose loadSample globally
-        window.loadSample = loadSample;
+        globalThis.loadSample = loadSample;
 
         // Track current filename for "Save" functionality
         let currentFilename = null;
@@ -2198,7 +2215,7 @@ classDiagram
         }
 
         // Expose saveFile globally for CodeMirror Ctrl+S binding
-        window.saveFile = saveFile;
+        globalThis.saveFile = saveFile;
 
         // Download the markdown content as a file
         function downloadFile(filename) {
@@ -2539,7 +2556,7 @@ classDiagram
         }
 
         // Initialize the application
-        window.addEventListener('DOMContentLoaded', function() {
+        globalThis.addEventListener('DOMContentLoaded', function() {
             // Set dynamic copyright year
             document.getElementById('copyright-year').textContent = new Date().getFullYear();
 

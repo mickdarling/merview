@@ -305,7 +305,7 @@ test.describe('Save Functionality', () => {
       // Wait for editor to be cleared (content should be empty or have sample)
       await page.waitForFunction(() => {
         const editor = document.querySelector('.CodeMirror');
-        if (editor && editor.CodeMirror) {
+        if (editor?.CodeMirror) {
           const content = editor.CodeMirror.getValue();
           // After clear, content will be empty or reset to sample
           return content === '' || content.startsWith('# ');
