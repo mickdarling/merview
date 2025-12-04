@@ -115,18 +115,18 @@ test.describe('URL Loading', () => {
     });
   });
 
-  test.describe('URL Parameter Clearing', () => {
+  test.describe('URL Parameter Behavior', () => {
     // Common test URL used across multiple tests
     const TEST_README_URL = 'https://raw.githubusercontent.com/mickdarling/merview/main/README.md';
 
-    test('should clear URL parameter after successful load', async ({ page }) => {
+    test('should retain URL parameter after successful load for sharing/bookmarking', async ({ page }) => {
       await page.goto(`/?url=${encodeURIComponent(TEST_README_URL)}`);
       await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+      await waitForStatusContaining(page, 'Loaded', 15000);
 
-      // Wait for the async load to complete and URL to be cleared
-      await page.waitForFunction(() => !globalThis.location.search.includes('url='), { timeout: 10000 });
-
-      expect(page.url()).not.toContain('url=');
+      // URL should still contain the parameter for sharing/bookmarking
+      expect(page.url()).toContain('url=');
+      expect(page.url()).toContain(encodeURIComponent(TEST_README_URL));
     });
 
     test('should load content from URL parameter', async ({ page }) => {

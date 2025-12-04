@@ -2780,12 +2780,8 @@ classDiagram
 
             if (remoteURL) {
                 // Load from URL parameter
-                loadMarkdownFromURL(remoteURL).then(success => {
-                    if (success) {
-                        // Clear URL param so refresh uses localStorage (their edited version)
-                        globalThis.history.replaceState({}, '', globalThis.location.pathname);
-                    }
-                });
+                // URL is kept in browser bar so users can share/bookmark the link
+                loadMarkdownFromURL(remoteURL);
             } else {
                 // Load saved content or sample
                 const saved = localStorage.getItem('markdown-content');
