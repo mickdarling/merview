@@ -1673,14 +1673,34 @@
         // Configure marked to handle mermaid code blocks
         marked.setOptions({
             breaks: true,
-            gfm: true,
-            headerIds: true,
-            mangle: false
+            gfm: true
         });
 
-        // Custom renderer to handle mermaid blocks and syntax highlighting
+        /**
+         * Generate a URL-friendly slug from heading text.
+         * Converts to lowercase, replaces spaces with hyphens, removes special chars.
+         * @param {string} text - The heading text to slugify
+         * @returns {string} URL-friendly slug
+         */
+        function slugify(text) {
+            return text
+                .toLowerCase()
+                .trim()
+                .replace(/[^\w\s-]/g, '')   // Remove special chars (keeps letters, numbers, underscore, hyphen, space)
+                .replace(/[\s_]+/g, '-')    // Replace spaces and underscores with hyphens
+                .replace(/-+/g, '-')        // Collapse multiple hyphens
+                .replace(/^-|-$/g, '');     // Trim leading/trailing hyphens
+        }
+
+        // Custom renderer to handle mermaid blocks, syntax highlighting, and heading IDs
         const renderer = new marked.Renderer();
         const originalCodeRenderer = renderer.code;
+
+        // Add heading renderer to generate IDs for anchor links
+        renderer.heading = function(text, level) {
+            const slug = slugify(text);
+            return `<h${level} id="${slug}">${text}</h${level}>\n`;
+        };
 
         renderer.code = function(code, language) {
             if (language === 'mermaid') {
