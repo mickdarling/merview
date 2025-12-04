@@ -637,6 +637,10 @@
             opacity: 1;
         }
 
+        .status.warning {
+            background: #e67e22;
+        }
+
         .lint-panel {
             position: fixed;
             bottom: -300px;
@@ -1526,6 +1530,25 @@
         }
         // Expose for testing
         globalThis.isAllowedMarkdownURL = isAllowedMarkdownURL;
+
+        // Security: Strip sensitive tokens from GitHub URLs
+        // Private repo raw URLs contain ?token=XXX which should not be shared
+        // Returns { cleanUrl, hadToken } where cleanUrl has token removed
+        function stripGitHubToken(url) {
+            try {
+                const parsed = new URL(url);
+                // Check for token parameter on GitHub raw URLs
+                if (parsed.hostname === 'raw.githubusercontent.com' && parsed.searchParams.has('token')) {
+                    parsed.searchParams.delete('token');
+                    return { cleanUrl: parsed.toString(), hadToken: true };
+                }
+                return { cleanUrl: url, hadToken: false };
+            } catch {
+                return { cleanUrl: url, hadToken: false };
+            }
+        }
+        // Expose for testing
+        globalThis.stripGitHubToken = stripGitHubToken;
 
         // Load markdown from URL (with domain validation)
         async function loadMarkdownFromURL(url) {
@@ -3100,13 +3123,23 @@ classDiagram
         }
 
         // Show status message
-        function showStatus(message) {
+        // type: 'success' (default) or 'warning'
+        function showStatus(message, type = 'success') {
             statusDiv.textContent = message;
+            statusDiv.classList.remove('warning');
+            if (type === 'warning') {
+                statusDiv.classList.add('warning');
+            }
             statusDiv.classList.add('show');
+            // Warnings show longer (6s) than success messages (3s)
+            const duration = type === 'warning' ? 6000 : 3000;
             setTimeout(() => {
                 statusDiv.classList.remove('show');
-            }, 3000);
+                statusDiv.classList.remove('warning');
+            }, duration);
         }
+        // Expose for testing
+        globalThis.showStatus = showStatus;
 
         // Toggle lint panel
         function toggleLintPanel() {
@@ -3425,8 +3458,20 @@ classDiagram
             const remoteURL = urlParams.get('url');
 
             if (remoteURL) {
-                // Load from URL parameter
-                // URL is kept in browser bar so users can share/bookmark the link
+                // Security: Check for and strip GitHub private repo tokens
+                const { cleanUrl, hadToken } = stripGitHubToken(remoteURL);
+
+                if (hadToken) {
+                    // Update browser URL to remove the token (security)
+                    const newBrowserUrl = new URL(globalThis.location.href);
+                    newBrowserUrl.searchParams.set('url', cleanUrl);
+                    globalThis.history.replaceState(null, '', newBrowserUrl.toString());
+
+                    // Warn user about the token removal
+                    showStatus('⚠️ Private repo token removed from URL for security', 'warning');
+                }
+
+                // Load from URL parameter (use original URL with token for fetch, clean URL is in browser)
                 loadMarkdownFromURL(remoteURL);
             } else {
                 // Load saved content or sample

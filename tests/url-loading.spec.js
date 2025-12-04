@@ -221,4 +221,94 @@ test.describe('URL Loading', () => {
       expect(editorContent.toLowerCase()).toContain('mermaid');
     });
   });
+
+  test.describe('GitHub Token Security (Private Repo URLs)', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.goto('/');
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+    });
+
+    test('stripGitHubToken should remove token from raw.githubusercontent.com URLs', async ({ page }) => {
+      const result = await page.evaluate(() => {
+        // @ts-ignore - stripGitHubToken is defined in the app
+        return globalThis.stripGitHubToken('https://raw.githubusercontent.com/user/private-repo/main/file.md?token=ABC123XYZ');
+      });
+
+      expect(result.hadToken).toBe(true);
+      expect(result.cleanUrl).toBe('https://raw.githubusercontent.com/user/private-repo/main/file.md');
+      expect(result.cleanUrl).not.toContain('token');
+    });
+
+    test('stripGitHubToken should preserve URLs without tokens', async ({ page }) => {
+      const result = await page.evaluate(() => {
+        // @ts-ignore - stripGitHubToken is defined in the app
+        return globalThis.stripGitHubToken('https://raw.githubusercontent.com/user/public-repo/main/file.md');
+      });
+
+      expect(result.hadToken).toBe(false);
+      expect(result.cleanUrl).toBe('https://raw.githubusercontent.com/user/public-repo/main/file.md');
+    });
+
+    test('stripGitHubToken should preserve other query parameters', async ({ page }) => {
+      const result = await page.evaluate(() => {
+        // @ts-ignore - stripGitHubToken is defined in the app
+        return globalThis.stripGitHubToken('https://raw.githubusercontent.com/user/repo/main/file.md?token=ABC123&ref=main');
+      });
+
+      expect(result.hadToken).toBe(true);
+      expect(result.cleanUrl).toContain('ref=main');
+      expect(result.cleanUrl).not.toContain('token=');
+    });
+
+    test('stripGitHubToken should not affect non-GitHub URLs with token param', async ({ page }) => {
+      const result = await page.evaluate(() => {
+        // @ts-ignore - stripGitHubToken is defined in the app
+        return globalThis.stripGitHubToken('https://gist.githubusercontent.com/user/abc/raw/file.md?token=XYZ');
+      });
+
+      // Should not strip from gist URLs (different domain)
+      expect(result.hadToken).toBe(false);
+      expect(result.cleanUrl).toContain('token=XYZ');
+    });
+
+    test('stripGitHubToken should handle invalid URLs gracefully', async ({ page }) => {
+      const result = await page.evaluate(() => {
+        // @ts-ignore - stripGitHubToken is defined in the app
+        return globalThis.stripGitHubToken('not-a-valid-url');
+      });
+
+      expect(result.hadToken).toBe(false);
+      expect(result.cleanUrl).toBe('not-a-valid-url');
+    });
+
+    test('should strip token from browser URL when loading private repo URL', async ({ page }) => {
+      // Construct a URL with a fake token (will 404, but we're testing URL stripping)
+      const privateRepoUrl = 'https://raw.githubusercontent.com/user/repo/main/file.md?token=GHSAT_FAKE_TOKEN_12345';
+
+      await page.goto(`/?url=${encodeURIComponent(privateRepoUrl)}`);
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+
+      // Wait for the URL to be updated
+      await page.waitForTimeout(500);
+
+      // Browser URL should have token stripped
+      const currentUrl = page.url();
+      expect(currentUrl).not.toContain('token=');
+      expect(currentUrl).toContain('url=');
+      expect(currentUrl).toContain('raw.githubusercontent.com');
+    });
+
+    test('showStatus should support warning type with appropriate styling', async ({ page }) => {
+      // Test that showStatus('message', 'warning') applies the warning class
+      await page.evaluate(() => {
+        // @ts-ignore - showStatus is defined in the app
+        globalThis.showStatus('Test warning message', 'warning');
+      });
+
+      // Check that warning class is applied
+      await page.waitForSelector('#status.show.warning', { timeout: 2000 });
+      const statusText = await page.locator('#status').textContent();
+      expect(statusText).toBe('Test warning message');
+    });
+  });
 });
