@@ -307,22 +307,19 @@
         #editor-container {
             flex: 1;
             overflow: hidden;
-            background: #282c34;
+            /* Background controlled by editor theme CSS */
         }
 
-        /* CodeMirror 5 styling */
+        /* CodeMirror 5 styling - structure only, colors from theme */
         #editor-container .CodeMirror {
             height: 100%;
             font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
             font-size: 14px;
             line-height: 1.6;
-            background: #282c34;
+            /* Background controlled by editor theme CSS */
         }
 
-        #editor-container .CodeMirror-gutters {
-            background: #21252b;
-            border-right: 1px solid #3a3f4b;
-        }
+        /* Gutters styling controlled by editor theme CSS */
 
         #editor-container.drag-over {
             outline: 2px dashed #3498db;
@@ -337,11 +334,17 @@
             position: relative;
         }
 
-        /* Preview container - maintain layout, prevent style leaking */
+        /*
+         * Preview container - maintain layout, prevent style leaking.
+         * IMPORTANT PATTERN: Most properties use !important to override loaded styles and
+         * prevent layout/style leakage. However, 'background' deliberately does NOT use
+         * !important to allow JavaScript (applyPreviewBackground) to apply dark theme
+         * backgrounds dynamically when dark mode CSS is loaded.
+         */
         #preview {
             flex: 1 !important;
             overflow-y: auto !important;
-            background: white !important;
+            background: white; /* No !important - see comment above */
             display: block !important;
             position: relative !important;
             /* Prevent styles from affecting the container */
@@ -354,13 +357,12 @@
             color: initial !important;
         }
 
-        /* Wrapper for Marked2 styles - completely isolated */
-        #preview #wrapper {
-            /* Reset everything to prevent inheritance */
-            all: initial;
+        /* Wrapper for Marked2 styles - base structure only */
+        /* Note: Background/color come from loaded styles */
+        /* Layout constraints (max-width, margin) controlled via JS based on toggle */
+        #wrapper {
             display: block;
             padding: 20px;
-            background: white;
         }
 
         /* Mermaid diagram styling */
@@ -788,6 +790,8 @@
         const editorThemeSelector = document.getElementById('editorThemeSelector');
 
         let renderTimeout;
+        let respectStyleLayout = localStorage.getItem('respect-style-layout') === 'true';
+        let layoutToggleOption = null; // Cached reference for performance
         let mermaidCounter = 0;
         let currentStyleLink = null;
         let currentSyntaxThemeLink = null;
@@ -943,6 +947,8 @@
             { name: 'Monospace', file: 'styles/monospace.css', source: 'local' },
             { name: 'Newspaper', file: 'styles/newspaper.css', source: 'local' },
             { name: '---', file: '', source: 'separator' }, // Separator
+            { name: 'Respect Style Layout', file: '', source: 'toggle' },
+            { name: '---', file: '', source: 'separator' }, // Separator
             { name: 'Load from file...', file: '', source: 'file' },
             { name: 'Load from URL...', file: '', source: 'url' },
             { name: '---', file: '', source: 'separator' }, // Separator
@@ -986,6 +992,97 @@
             return false;
         }
 
+        /**
+         * Validate that a CSS value is a safe background color.
+         * Prevents potentially malicious values like javascript: URLs.
+         * @param {string} value - The CSS background value to validate
+         * @returns {boolean} True if the value is a safe color format
+         */
+        function isValidBackgroundColor(value) {
+            const trimmed = value.trim().toLowerCase();
+            // Block dangerous patterns first
+            if (trimmed.includes('javascript:') || trimmed.includes('url(')) {
+                return false;
+            }
+            // Allow safe color formats:
+            // - Hex: #fff, #ffffff, #ffffffff (with alpha)
+            // - RGB/RGBA: rgb(0,0,0), rgba(0,0,0,0.5)
+            // - HSL/HSLA: hsl(0,0%,0%), hsla(0,0%,0%,0.5)
+            // - Named colors: white, black, transparent, etc.
+            const safePatterns = [
+                /^#[0-9a-f]{3,8}$/,                    // hex colors
+                /^rgba?\s*\([^)]+\)$/,                 // rgb/rgba
+                /^hsla?\s*\([^)]+\)$/,                 // hsl/hsla
+                /^[a-z]+$/                             // named colors (no special chars)
+            ];
+            return safePatterns.some(pattern => pattern.test(trimmed));
+        }
+
+        /**
+         * Extract background color from loaded CSS and apply to preview container.
+         * Parses the #wrapper rule to find background or background-color values.
+         *
+         * SUPPORTED background types:
+         * - Hex colors: #1e1e1e, #fff, #ffffff
+         * - Named colors: white, black, darkgray, transparent
+         * - RGB/RGBA values: rgb(30, 30, 30), rgba(0, 0, 0, 0.9)
+         * - HSL/HSLA values: hsl(0, 0%, 12%), hsla(0, 0%, 12%, 0.95)
+         *
+         * NOT SUPPORTED (will fall back to white):
+         * - CSS variables: var(--bg-color), var(--theme-background)
+         * - Gradients: linear-gradient(...), radial-gradient(...)
+         * - Complex multi-value backgrounds: url(...) #fff, image-set(...)
+         *
+         * This limitation is due to regex-based CSS parsing. For dark themes,
+         * always use simple color values on #wrapper background property.
+         *
+         * @param {string} cssText - The loaded CSS text to parse
+         */
+        function applyPreviewBackground(cssText) {
+            if (!preview) return; // Guard against missing element
+
+            // Look for #wrapper background in the CSS
+            // Match patterns like: #wrapper { ... background: #1e1e1e; ... }
+            // or: #wrapper { ... background-color: #1e1e1e; ... }
+            const wrapperMatch = cssText.match(/#wrapper\s*\{[^}]*\}/);
+            if (wrapperMatch) {
+                const wrapperRule = wrapperMatch[0];
+                // Extract background or background-color value
+                const bgMatch = wrapperRule.match(/background(?:-color)?\s*:\s*([^;}\s]+(?:\s+[^;}\s]+)*)/);
+                if (bgMatch) {
+                    const bgValue = bgMatch[1].trim();
+                    // Validate the color value for security before applying
+                    if (isValidBackgroundColor(bgValue)) {
+                        preview.style.background = bgValue;
+                        return;
+                    }
+                }
+            }
+            // Default to white if no valid background found
+            preview.style.background = 'white';
+        }
+
+        /**
+         * Apply or remove layout constraint overrides based on the "Respect Style Layout" toggle.
+         * When OFF (default): Forces full-width layout, user controls width via drag handle.
+         * When ON: Allows loaded styles to apply their own max-width, margins, and gutters.
+         */
+        function applyLayoutConstraints() {
+            if (!wrapper) return; // Guard against missing element
+
+            if (respectStyleLayout) {
+                // Remove overrides - let loaded style control layout
+                wrapper.style.maxWidth = '';
+                wrapper.style.margin = '';
+                wrapper.style.width = '';
+            } else {
+                // Apply overrides - user controls width via drag handle
+                wrapper.style.maxWidth = 'none';
+                wrapper.style.margin = '0';
+                wrapper.style.width = 'auto';
+            }
+        }
+
         // Apply loaded CSS to the page
         async function applyStyleToPage(cssText, styleName, style) {
             // Remove @media print blocks that might override colors for printing
@@ -995,9 +1092,6 @@
             if (style.source !== 'local' && !cssText.includes('#wrapper')) {
                 cssText = scopeCSSToPreview(cssText);
             }
-
-            // Debug: Log first 500 chars of scoped CSS
-            console.log('Scoped CSS preview:', cssText.substring(0, 500));
 
             // Remove previous style if exists
             if (currentStyleLink) {
@@ -1011,6 +1105,12 @@
             document.head.appendChild(styleElement);
 
             currentStyleLink = styleElement;
+
+            // Extract and apply background color from style to preview container
+            applyPreviewBackground(cssText);
+
+            // Apply layout constraints based on toggle setting
+            applyLayoutConstraints();
 
             // Apply minimal structure override (no color changes)
             applySyntaxOverride();
@@ -1177,9 +1277,31 @@
             `;
         }
 
+        // Update just the checkbox state for the layout toggle option (uses cached reference)
+        function updateLayoutToggleCheckbox() {
+            if (layoutToggleOption) {
+                layoutToggleOption.textContent = (respectStyleLayout ? '✓ ' : '☐ ') + 'Respect Style Layout';
+            }
+        }
+
         // Change style
         async function changeStyle(styleName) {
             if (!styleName) return;
+
+            // Handle toggle option
+            if (styleName === 'Respect Style Layout') {
+                respectStyleLayout = !respectStyleLayout;
+                localStorage.setItem('respect-style-layout', respectStyleLayout);
+                applyLayoutConstraints();
+                // Update just the checkbox without rebuilding the entire dropdown
+                updateLayoutToggleCheckbox();
+                // Restore previous selection
+                const currentStyle = localStorage.getItem('markdown-style') || 'Clean';
+                styleSelector.value = currentStyle;
+                showStatus(respectStyleLayout ? 'Style layout respected' : 'Style layout overridden');
+                return;
+            }
+
             await loadStyle(styleName);
         }
 
@@ -1516,6 +1638,12 @@
                 if (style.source === 'separator') {
                     option.disabled = true;
                     option.textContent = '──────────────────';
+                }
+
+                // Handle toggle with checkmark and cache reference for performance
+                if (style.source === 'toggle') {
+                    option.textContent = (respectStyleLayout ? '✓ ' : '☐ ') + style.name;
+                    layoutToggleOption = option;
                 }
 
                 styleSelector.appendChild(option);
