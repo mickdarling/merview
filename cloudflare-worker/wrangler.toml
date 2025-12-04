@@ -3,9 +3,9 @@ main = "src/index.js"
 compatibility_date = "2024-12-04"
 
 # Allowed origins for CORS (comma-separated)
-# Update this after deployment to restrict to your domain
+# Production only - localhost origins are in .dev.vars for local development
 [vars]
-ALLOWED_ORIGINS = "https://merview.com,https://www.merview.com,http://localhost:8081,http://127.0.0.1:8081"
+ALLOWED_ORIGINS = "https://merview.com,https://www.merview.com"
 
 # Secrets (set via CLI, never commit):
 # wrangler secret put GITHUB_CLIENT_ID
