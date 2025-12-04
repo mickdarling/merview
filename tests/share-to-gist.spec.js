@@ -221,7 +221,7 @@ test.describe('Share to Gist', () => {
       await mockDeviceCodeEndpoint(page);
       await page.click('button:has-text("Share to Gist")');
 
-      const modal = page.locator('dialog.gist-modal-overlay');
+      const modal = page.locator('#gistModal');
       await expect(modal).toHaveAttribute('open', '');
     });
 
@@ -238,10 +238,10 @@ test.describe('Share to Gist', () => {
       await setupDeviceFlowMocks(page);
       await page.click('button:has-text("Share to Gist")');
 
-      const modal = page.locator('dialog.gist-modal-overlay');
+      const modal = page.locator('#gistModal');
       await expect(modal).toHaveAttribute('open', '');
 
-      await page.click('.gist-modal button:has-text("Cancel")');
+      await page.click('#gistModal .gist-modal button:has-text("Cancel")');
       await expect(modal).not.toHaveAttribute('open');
     });
 
@@ -249,7 +249,7 @@ test.describe('Share to Gist', () => {
       await setupDeviceFlowMocks(page);
       await page.click('button:has-text("Share to Gist")');
 
-      const modal = page.locator('dialog.gist-modal-overlay');
+      const modal = page.locator('#gistModal');
       await expect(modal).toHaveAttribute('open', '');
 
       // Native dialog closes when clicking ::backdrop, but Playwright can't click that directly
@@ -264,7 +264,7 @@ test.describe('Share to Gist', () => {
       await setupDeviceFlowMocks(page);
       await page.click('button:has-text("Share to Gist")');
 
-      const githubButton = page.locator('.gist-modal button:has-text("Open GitHub")');
+      const githubButton = page.locator('#gistModal .gist-modal button:has-text("Open GitHub")');
       await expect(githubButton).toBeVisible({ timeout: 10000 });
     });
   });
@@ -308,9 +308,9 @@ test.describe('Share to Gist', () => {
 
       await page.click('button:has-text("Share to Gist")');
 
-      const modal = page.locator('dialog.gist-modal-overlay');
+      const modal = page.locator('#gistModal');
       await expect(modal).toHaveAttribute('open', '');
-      await expect(page.locator('.device-code')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('#gistModal .device-code')).toBeVisible({ timeout: 10000 });
     });
 
     test('should disconnect GitHub when disconnectGitHub is called', async ({ page }) => {
@@ -351,7 +351,7 @@ test.describe('Share to Gist', () => {
       await mockDeviceCodeError(page, 'unauthorized', 'Device Flow is not enabled for this OAuth App');
       await page.click('button:has-text("Share to Gist")');
 
-      const modal = page.locator('.gist-modal');
+      const modal = page.locator('#gistModal .gist-modal');
       await expect(modal).toContainText('Device Flow is not enabled');
     });
 
@@ -361,7 +361,7 @@ test.describe('Share to Gist', () => {
 
       await page.click('button:has-text("Share to Gist")');
 
-      const modal = page.locator('.gist-modal');
+      const modal = page.locator('#gistModal .gist-modal');
       await expect(modal).toContainText('denied', { timeout: 10000 });
     });
 
@@ -371,7 +371,7 @@ test.describe('Share to Gist', () => {
 
       await page.click('button:has-text("Share to Gist")');
 
-      const modal = page.locator('.gist-modal');
+      const modal = page.locator('#gistModal .gist-modal');
       await expect(modal).toContainText('expired', { timeout: 10000 });
     });
   });
@@ -389,7 +389,7 @@ test.describe('Share to Gist', () => {
       await mockGistCreation(page, (body) => { requestBody = body; });
 
       await page.click('button:has-text("Share to Gist")');
-      await expect(page.locator('.gist-modal')).toContainText('Gist Created', { timeout: 10000 });
+      await expect(page.locator('#gistModal .gist-modal')).toContainText('Gist Created', { timeout: 10000 });
 
       expect(requestBody).not.toBeNull();
       expect(requestBody.public).toBe(false);
@@ -401,7 +401,7 @@ test.describe('Share to Gist', () => {
       await mockGistCreation(page, (body) => { requestBody = body; });
 
       await page.click('button:has-text("Share to Gist")');
-      await expect(page.locator('.gist-modal')).toContainText('Gist Created', { timeout: 10000 });
+      await expect(page.locator('#gistModal .gist-modal')).toContainText('Gist Created', { timeout: 10000 });
 
       expect(requestBody.description).toBe('My Test Document');
     });
@@ -422,15 +422,15 @@ test.describe('Share to Gist', () => {
       await mockGistCreation(page);
       await page.click('button:has-text("Share to Gist")');
 
-      await expect(page.locator('.gist-modal button:has-text("Copy Link")')).toBeVisible({ timeout: 10000 });
-      await expect(page.locator('.gist-modal button:has-text("View on GitHub")')).toBeVisible();
+      await expect(page.locator('#gistModal .gist-modal button:has-text("Copy Link")')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('#gistModal .gist-modal button:has-text("View on GitHub")')).toBeVisible();
     });
 
     test('should handle 401 unauthorized and prompt re-auth', async ({ page }) => {
       await mockGistError(page, 401, 'Bad credentials');
       await page.click('button:has-text("Share to Gist")');
 
-      const modal = page.locator('.gist-modal');
+      const modal = page.locator('#gistModal .gist-modal');
       await expect(modal).toContainText('authorization expired', { timeout: 10000 });
 
       const token = await page.evaluate(() => localStorage.getItem('github_gist_token'));
@@ -442,7 +442,7 @@ test.describe('Share to Gist', () => {
       await mockGistCreation(page, (body) => { requestBody = body; });
 
       await page.click('button:has-text("Share to Gist")');
-      await expect(page.locator('.gist-modal')).toContainText('Gist Created', { timeout: 10000 });
+      await expect(page.locator('#gistModal .gist-modal')).toContainText('Gist Created', { timeout: 10000 });
 
       expect(Object.keys(requestBody.files).length).toBeGreaterThan(0);
       expect(requestBody.files['document.md']).toBeDefined();
@@ -485,7 +485,7 @@ test.describe('Share to Gist', () => {
       await mockGistCreation(page);
       await page.click('button:has-text("Share to Gist")');
 
-      await expect(page.locator('.gist-modal')).toContainText('Gist Created', { timeout: 15000 });
+      await expect(page.locator('#gistModal .gist-modal')).toContainText('Gist Created', { timeout: 15000 });
       expect(pollCount).toBeGreaterThanOrEqual(3);
     });
 
@@ -518,7 +518,7 @@ test.describe('Share to Gist', () => {
       await mockGistCreation(page);
       await page.click('button:has-text("Share to Gist")');
 
-      await expect(page.locator('.gist-modal')).toContainText('Gist Created', { timeout: 20000 });
+      await expect(page.locator('#gistModal .gist-modal')).toContainText('Gist Created', { timeout: 20000 });
       expect(pollCount).toBeGreaterThanOrEqual(2);
     });
   });
@@ -540,7 +540,7 @@ test.describe('Share to Gist', () => {
 
       await page.click('button:has-text("Share to Gist")');
 
-      const heading = page.locator('.gist-modal h2');
+      const heading = page.locator('#gistModal .gist-modal h2');
       await expect(heading).toBeVisible();
     });
 

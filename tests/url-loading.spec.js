@@ -221,4 +221,156 @@ test.describe('URL Loading', () => {
       expect(editorContent.toLowerCase()).toContain('mermaid');
     });
   });
+
+  test.describe('GitHub Token Security (Private Repo URLs)', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.goto('/');
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+    });
+
+    test('stripGitHubToken should remove token from raw.githubusercontent.com URLs', async ({ page }) => {
+      const result = await page.evaluate(() => {
+        // @ts-ignore - stripGitHubToken is defined in the app
+        return globalThis.stripGitHubToken('https://raw.githubusercontent.com/user/private-repo/main/file.md?token=ABC123XYZ');
+      });
+
+      expect(result.hadToken).toBe(true);
+      expect(result.cleanUrl).toBe('https://raw.githubusercontent.com/user/private-repo/main/file.md');
+      expect(result.cleanUrl).not.toContain('token');
+    });
+
+    test('stripGitHubToken should preserve URLs without tokens', async ({ page }) => {
+      const result = await page.evaluate(() => {
+        // @ts-ignore - stripGitHubToken is defined in the app
+        return globalThis.stripGitHubToken('https://raw.githubusercontent.com/user/public-repo/main/file.md');
+      });
+
+      expect(result.hadToken).toBe(false);
+      expect(result.cleanUrl).toBe('https://raw.githubusercontent.com/user/public-repo/main/file.md');
+    });
+
+    test('stripGitHubToken should preserve other query parameters', async ({ page }) => {
+      const result = await page.evaluate(() => {
+        // @ts-ignore - stripGitHubToken is defined in the app
+        return globalThis.stripGitHubToken('https://raw.githubusercontent.com/user/repo/main/file.md?token=ABC123&ref=main');
+      });
+
+      expect(result.hadToken).toBe(true);
+      expect(result.cleanUrl).toContain('ref=main');
+      expect(result.cleanUrl).not.toContain('token=');
+    });
+
+    test('stripGitHubToken should not affect non-GitHub URLs with token param', async ({ page }) => {
+      const result = await page.evaluate(() => {
+        // @ts-ignore - stripGitHubToken is defined in the app
+        return globalThis.stripGitHubToken('https://gist.githubusercontent.com/user/abc/raw/file.md?token=XYZ');
+      });
+
+      // Should not strip from gist URLs (different domain)
+      expect(result.hadToken).toBe(false);
+      expect(result.cleanUrl).toContain('token=XYZ');
+    });
+
+    test('stripGitHubToken should handle invalid URLs gracefully', async ({ page }) => {
+      const result = await page.evaluate(() => {
+        // @ts-ignore - stripGitHubToken is defined in the app
+        return globalThis.stripGitHubToken('not-a-valid-url');
+      });
+
+      expect(result.hadToken).toBe(false);
+      expect(result.cleanUrl).toBe('not-a-valid-url');
+    });
+
+    test('should show security modal when loading private repo URL with token', async ({ page }) => {
+      const privateRepoUrl = 'https://raw.githubusercontent.com/user/repo/main/file.md?token=GHSAT_FAKE_TOKEN_12345';
+
+      await page.goto(`/?url=${encodeURIComponent(privateRepoUrl)}`);
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+
+      // Modal should appear
+      await page.waitForSelector('#privateUrlModal[open]', { timeout: 5000 });
+
+      // Check modal content
+      const modalTitle = await page.locator('#privateUrlModalTitle').textContent();
+      expect(modalTitle).toContain('Private Repository Detected');
+
+      // Should have two option buttons
+      const viewLocalBtn = page.locator('[data-action="view-local"]');
+      const shareGistBtn = page.locator('[data-action="share-gist"]');
+      await expect(viewLocalBtn).toBeVisible();
+      await expect(shareGistBtn).toBeVisible();
+    });
+
+    test('View Locally Only option should strip entire URL parameter', async ({ page }) => {
+      const privateRepoUrl = 'https://raw.githubusercontent.com/user/repo/main/file.md?token=GHSAT_FAKE_TOKEN_12345';
+
+      await page.goto(`/?url=${encodeURIComponent(privateRepoUrl)}`);
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+      await page.waitForSelector('#privateUrlModal[open]', { timeout: 5000 });
+
+      // Click "View Locally Only"
+      await page.click('[data-action="view-local"]');
+
+      // Wait for modal to be hidden (display: none when closed)
+      await expect(page.locator('#privateUrlModal')).toBeHidden({ timeout: 2000 });
+
+      // URL should have NO url parameter at all (completely stripped)
+      const currentUrl = page.url();
+      expect(currentUrl).not.toContain('url=');
+      expect(currentUrl).not.toContain('token=');
+
+      // Should just be the base path
+      const parsedUrl = new URL(currentUrl);
+      expect(parsedUrl.search).toBe('');
+    });
+
+    test('closing modal by clicking backdrop should load locally', async ({ page }) => {
+      const privateRepoUrl = 'https://raw.githubusercontent.com/user/repo/main/file.md?token=GHSAT_FAKE_TOKEN_12345';
+
+      await page.goto(`/?url=${encodeURIComponent(privateRepoUrl)}`);
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+      await page.waitForSelector('#privateUrlModal[open]', { timeout: 5000 });
+
+      // Click on the backdrop (the dialog element itself, not the inner content)
+      await page.click('#privateUrlModal', { position: { x: 10, y: 10 } });
+
+      // Wait for modal to be hidden
+      await expect(page.locator('#privateUrlModal')).toBeHidden({ timeout: 2000 });
+
+      // URL should be stripped
+      const currentUrl = page.url();
+      expect(currentUrl).not.toContain('url=');
+    });
+
+    test('showStatus should support warning type with appropriate styling', async ({ page }) => {
+      // Test that showStatus('message', 'warning') applies the warning class
+      await page.evaluate(() => {
+        // @ts-ignore - showStatus is defined in the app
+        globalThis.showStatus('Test warning message', 'warning');
+      });
+
+      // Check that warning class is applied
+      await page.waitForSelector('#status.show.warning', { timeout: 2000 });
+      const statusText = await page.locator('#status').textContent();
+      expect(statusText).toBe('Test warning message');
+    });
+
+    test('should NOT show modal for public repo URLs (no token)', async ({ page }) => {
+      const publicRepoUrl = 'https://raw.githubusercontent.com/mickdarling/merview/main/README.md';
+
+      await page.goto(`/?url=${encodeURIComponent(publicRepoUrl)}`);
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+
+      // Wait a bit
+      await page.waitForTimeout(500);
+
+      // Modal should NOT appear
+      const isModalOpen = await page.locator('#privateUrlModal[open]').isVisible().catch(() => false);
+      expect(isModalOpen).toBe(false);
+
+      // URL should remain intact
+      const currentUrl = page.url();
+      expect(currentUrl).toContain('url=');
+    });
+  });
 });

@@ -144,6 +144,26 @@ The CSP includes `'unsafe-inline'` for both `script-src` and `style-src`. This i
 - Cloudflare provides DDoS protection
 - Rate limiting recommended
 
+**5. Private Repository Token Protection**
+
+When users paste raw URLs from private GitHub repositories, those URLs contain temporary access tokens (`?token=...`). If users share Merview links containing these tokens, they accidentally expose private repo access.
+
+- **Protection measures:**
+  - Merview detects GitHub raw URLs with `?token=` parameters
+  - A security modal immediately appears, stripping the token from the browser URL bar
+  - Users choose: "View Locally Only" (no shareable URL) or "Share Securely via Gist" (creates safe copy)
+  - The token is never included in shareable Merview URLs
+
+- **What this protects against:**
+  - Accidental URL sharing with embedded tokens
+  - Token exposure in browser history (URL stripped immediately)
+  - Copy/paste of tokenized URLs (modal educates users)
+
+- **Limitations (expected behavior):**
+  - Token is still used in the fetch request (required for access, encrypted via HTTPS)
+  - Users can manually copy the token before the modal appears (edge case)
+  - Only protects `raw.githubusercontent.com` URLs (where GitHub puts tokens)
+
 ## Security Levels
 
 ### Level 1: Basic (Current - Default)

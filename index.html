@@ -224,7 +224,7 @@
             right: 0;
             bottom: 0;
             background: rgba(0, 0, 0, 0.7);
-            display: flex;
+            display: none; /* Hidden by default */
             align-items: center;
             justify-content: center;
             z-index: 2000;
@@ -232,6 +232,10 @@
             padding: 0;
             max-width: 100%;
             max-height: 100%;
+        }
+
+        .gist-modal-overlay[open] {
+            display: flex;
         }
 
         .gist-modal-overlay::backdrop {
@@ -334,6 +338,56 @@
             font-size: 12px;
             color: #3498db;
             user-select: all;
+        }
+
+        /* Private URL Security Modal - reuses gist-modal styles */
+        .private-url-modal .security-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .private-url-modal .option-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .private-url-modal .option-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            background: #1a252f;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .private-url-modal .option-btn:hover {
+            background: #2c3e50;
+            border-color: #5dade2;
+        }
+
+        .private-url-modal .option-btn .option-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .private-url-modal .option-btn .option-desc {
+            font-size: 12px;
+            color: #95a5a6;
+        }
+
+        .private-url-modal .option-btn.primary {
+            border-color: #27ae60;
+        }
+
+        .private-url-modal .option-btn.primary:hover {
+            border-color: #2ecc71;
         }
 
         .container {
@@ -637,6 +691,10 @@
             opacity: 1;
         }
 
+        .status.warning {
+            background: #e67e22;
+        }
+
         .lint-panel {
             position: fixed;
             bottom: -300px;
@@ -854,6 +912,24 @@
             <h2 id="gistModalTitle">Share to Gist</h2>
             <div id="gistModalContent">
                 <!-- Content dynamically updated by JavaScript -->
+            </div>
+        </div>
+    </dialog>
+
+    <dialog class="gist-modal-overlay" id="privateUrlModal" aria-labelledby="privateUrlModalTitle" aria-describedby="privateUrlModalDesc">
+        <div class="gist-modal private-url-modal">
+            <div class="security-icon" aria-hidden="true">🔒</div>
+            <h2 id="privateUrlModalTitle">Private Repository Detected</h2>
+            <p id="privateUrlModalDesc">This URL contains a private access token. To protect your security, choose how you'd like to proceed:</p>
+            <div class="option-buttons">
+                <button class="option-btn" data-action="view-local" type="button" aria-label="View Locally Only - Render content without a shareable URL">
+                    <span class="option-title">View Locally Only</span>
+                    <span class="option-desc">Render content without a shareable URL</span>
+                </button>
+                <button class="option-btn primary" data-action="share-gist" type="button" aria-label="Share Securely via Gist - Create a safe, shareable copy">
+                    <span class="option-title">Share Securely via Gist</span>
+                    <span class="option-desc">Create a safe, shareable copy</span>
+                </button>
             </div>
         </div>
     </dialog>
@@ -1526,6 +1602,25 @@
         }
         // Expose for testing
         globalThis.isAllowedMarkdownURL = isAllowedMarkdownURL;
+
+        // Security: Strip sensitive tokens from GitHub URLs
+        // Private repo raw URLs contain ?token=XXX which should not be shared
+        // Returns { cleanUrl, hadToken } where cleanUrl has token removed
+        function stripGitHubToken(url) {
+            try {
+                const parsed = new URL(url);
+                // Check for token parameter on GitHub raw URLs
+                if (parsed.hostname === 'raw.githubusercontent.com' && parsed.searchParams.has('token')) {
+                    parsed.searchParams.delete('token');
+                    return { cleanUrl: parsed.toString(), hadToken: true };
+                }
+                return { cleanUrl: url, hadToken: false };
+            } catch {
+                return { cleanUrl: url, hadToken: false };
+            }
+        }
+        // Expose for testing
+        globalThis.stripGitHubToken = stripGitHubToken;
 
         // Load markdown from URL (with domain validation)
         async function loadMarkdownFromURL(url) {
@@ -2686,6 +2781,86 @@ classDiagram
             };
         }
 
+        // Private URL modal state
+        let privateUrlState = {
+            originalUrl: null,  // URL with token (for fetching)
+            resolve: null       // Promise resolver for modal choice
+        };
+
+        // Show the private URL security modal
+        function showPrivateUrlModal(originalUrl) {
+            // Security: Strip URL from browser immediately when modal shows
+            // This prevents users from copying the token-containing URL before choosing
+            globalThis.history.replaceState(null, '', globalThis.location.pathname);
+
+            return new Promise((resolve) => {
+                privateUrlState = { originalUrl, resolve };
+                const modal = document.getElementById('privateUrlModal');
+                modal.showModal();
+            });
+        }
+
+        // Hide the private URL modal
+        function hidePrivateUrlModal() {
+            const modal = document.getElementById('privateUrlModal');
+            modal.close();
+        }
+
+        // Reset private URL state to prevent memory leaks
+        function resetPrivateUrlState() {
+            privateUrlState = { originalUrl: null, resolve: null };
+        }
+
+        // Handle private URL modal button clicks
+        document.addEventListener('DOMContentLoaded', function() {
+            const privateModal = document.getElementById('privateUrlModal');
+            if (privateModal) {
+                // Handle option button clicks
+                privateModal.addEventListener('click', async function(e) {
+                    const btn = e.target.closest('[data-action]');
+                    if (!btn) return;
+
+                    const action = btn.dataset.action;
+                    // Capture state before hiding modal (in case of race conditions)
+                    const { originalUrl, resolve } = privateUrlState;
+                    hidePrivateUrlModal();
+
+                    if (action === 'view-local') {
+                        // Load the content (URL already stripped when modal was shown)
+                        await loadMarkdownFromURL(originalUrl);
+                        showStatus('Content loaded locally (URL not shareable)', 'warning');
+
+                        if (resolve) resolve('view-local');
+                        resetPrivateUrlState();
+                    } else if (action === 'share-gist') {
+                        // Load content then trigger gist flow (URL already stripped)
+                        await loadMarkdownFromURL(originalUrl);
+                        shareToGist();
+
+                        if (resolve) resolve('share-gist');
+                        resetPrivateUrlState();
+                    }
+                });
+
+                // Close on backdrop click
+                privateModal.addEventListener('click', function(e) {
+                    if (e.target === privateModal) {
+                        // Capture state before hiding modal
+                        const { originalUrl, resolve } = privateUrlState;
+                        hidePrivateUrlModal();
+
+                        // If user dismisses, just load locally (URL already stripped)
+                        if (originalUrl) {
+                            loadMarkdownFromURL(originalUrl);
+                            showStatus('Content loaded locally (URL not shareable)', 'warning');
+                        }
+                        if (resolve) resolve('dismissed');
+                        resetPrivateUrlState();
+                    }
+                });
+            }
+        });
+
         // Close modal when clicking backdrop (outside modal content)
         document.addEventListener('DOMContentLoaded', function() {
             const modal = document.getElementById('gistModal');
@@ -3100,13 +3275,22 @@ classDiagram
         }
 
         // Show status message
-        function showStatus(message) {
+        // type: 'success' (default) or 'warning'
+        function showStatus(message, type = 'success') {
             statusDiv.textContent = message;
+            statusDiv.classList.remove('warning');
+            if (type === 'warning') {
+                statusDiv.classList.add('warning');
+            }
             statusDiv.classList.add('show');
+            // Warnings show longer (6s) than success messages (3s)
+            const duration = type === 'warning' ? 6000 : 3000;
             setTimeout(() => {
-                statusDiv.classList.remove('show');
-            }, 3000);
+                statusDiv.classList.remove('show', 'warning');
+            }, duration);
         }
+        // Expose for testing
+        globalThis.showStatus = showStatus;
 
         // Toggle lint panel
         function toggleLintPanel() {
@@ -3425,9 +3609,17 @@ classDiagram
             const remoteURL = urlParams.get('url');
 
             if (remoteURL) {
-                // Load from URL parameter
-                // URL is kept in browser bar so users can share/bookmark the link
-                loadMarkdownFromURL(remoteURL);
+                // Security: Check for GitHub private repo tokens
+                const { hadToken } = stripGitHubToken(remoteURL);
+
+                if (hadToken) {
+                    // Show modal to let user choose how to handle private repo content
+                    showPrivateUrlModal(remoteURL);
+                    // Modal handlers will load the content and update URL
+                } else {
+                    // No token - load normally with shareable URL
+                    loadMarkdownFromURL(remoteURL);
+                }
             } else {
                 // Load saved content or sample
                 const saved = localStorage.getItem('markdown-content');
