@@ -69,7 +69,7 @@ test.describe('URL Loading', () => {
 
       const isAllowed = await page.evaluate(() => {
         // @ts-ignore
-        return globalThis.isAllowedMarkdownURL('http://raw.githubusercontent.com/user/repo/main/README.md');
+        return globalThis.isAllowedMarkdownURL('http://raw.githubusercontent.com/user/repo/main/README.md'); // NOSONAR - intentionally testing insecure protocol rejection
       });
       expect(isAllowed).toBe(false);
     });
@@ -93,7 +93,7 @@ test.describe('URL Loading', () => {
 
       const invalidUrls = [
         'not-a-url',
-        'ftp://raw.githubusercontent.com/file.md',
+        'ftp://raw.githubusercontent.com/file.md', // NOSONAR - intentionally testing insecure protocol rejection
         '//raw.githubusercontent.com/file.md',
         ''
       ];
@@ -141,7 +141,7 @@ test.describe('URL Loading', () => {
       // Wait for status to show "Loaded" which indicates content was loaded
       await page.waitForFunction(() => {
         const status = document.getElementById('status');
-        return status && status.textContent.includes('Loaded');
+        return status?.textContent?.includes('Loaded');
       }, { timeout: 15000 });
 
       // Give a moment for editor to sync
@@ -168,7 +168,7 @@ test.describe('URL Loading', () => {
       // Wait for status to show loaded message
       await page.waitForFunction(() => {
         const status = document.getElementById('status');
-        return status && status.textContent.includes('Loaded');
+        return status?.textContent?.includes('Loaded');
       }, { timeout: 10000 });
 
       const statusText = await page.locator('#status').textContent();
@@ -212,7 +212,7 @@ test.describe('URL Loading', () => {
       // Wait for error to appear in status
       await page.waitForFunction(() => {
         const status = document.getElementById('status');
-        return status && status.textContent.includes('Error');
+        return status?.textContent?.includes('Error');
       }, { timeout: 10000 });
 
       const statusText = await page.locator('#status').textContent();
