@@ -656,14 +656,19 @@ classDiagram
 
 /**
  * Initialize file input handlers
- * Sets up event listeners for the hidden file input element
+ * Creates the hidden file input element and sets up event listeners
  * Should be called once during app initialization
  */
 export function initFileInputHandlers() {
-    const mdFileInput = document.getElementById('mdFileInput');
+    // Create the hidden file input if it doesn't exist
+    let mdFileInput = document.getElementById('mdFileInput');
     if (!mdFileInput) {
-        console.warn('Markdown file input not found in DOM');
-        return;
+        mdFileInput = document.createElement('input');
+        mdFileInput.type = 'file';
+        mdFileInput.id = 'mdFileInput';
+        mdFileInput.accept = '.md,.markdown,.txt,.text';
+        mdFileInput.style.display = 'none';
+        document.body.appendChild(mdFileInput);
     }
 
     // Handle file selection from file picker
