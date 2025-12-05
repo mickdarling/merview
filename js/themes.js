@@ -65,11 +65,13 @@ function applyPreviewBackground(cssText) {
     // Look for #wrapper background in the CSS
     // Match patterns like: #wrapper { ... background: #1e1e1e; ... }
     // or: #wrapper { ... background-color: #1e1e1e; ... }
-    const wrapperMatch = cssText.match(/#wrapper\s*\{[^}]*\}/);
+    const wrapperRegex = /#wrapper\s*\{[^}]*\}/;
+    const wrapperMatch = wrapperRegex.exec(cssText);
     if (wrapperMatch) {
         const wrapperRule = wrapperMatch[0];
         // Extract background or background-color value
-        const bgMatch = wrapperRule.match(/background(?:-color)?\s*:\s*([^;}\s]+(?:\s+[^;}\s]+)*)/);
+        const bgRegex = /background(?:-color)?\s*:\s*([^;}\s]+(?:\s+[^;}\s]+)*)/;
+        const bgMatch = bgRegex.exec(wrapperRule);
         if (bgMatch) {
             const bgValue = bgMatch[1].trim();
             // Validate the color value for security before applying
@@ -294,13 +296,13 @@ function parseSelectorAndBlock(css, i, result) {
     const selectorText = css.substring(selectorStart, i);
     const selectors = selectorText.split(',');
     const scopedSelectors = selectors.map(scopeSelector).join(', ');
-    result.push(scopedSelectors);
 
     // Copy the opening brace
-    result.push(css[i]);
+    const openBrace = css[i];
     i++;
 
-    // Copy rule body until closing brace (handle nested braces for @-rules)
+    // Collect rule body until closing brace (handle nested braces for @-rules)
+    const ruleBodyChars = [];
     let depth = 1;
     while (i < len && depth > 0) {
         if (css[i] === '{') {
@@ -308,9 +310,12 @@ function parseSelectorAndBlock(css, i, result) {
         } else if (css[i] === '}') {
             depth--;
         }
-        result.push(css[i]);
+        ruleBodyChars.push(css[i]);
         i++;
     }
+
+    // Push all parts at once to avoid multiple push calls
+    result.push(scopedSelectors, openBrace, ruleBodyChars.join(''));
 
     return i;
 }
@@ -492,7 +497,7 @@ async function loadStyle(styleName) {
  * @param {File} file - CSS file to load
  */
 async function loadCSSFromFile(file) {
-    if (!file || !file.name.endsWith('.css')) {
+    if (!file?.name?.endsWith('.css')) {
         showStatus('Please select a valid CSS file');
         return;
     }

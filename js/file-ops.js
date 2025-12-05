@@ -241,13 +241,36 @@ export async function exportToPDFDirect() {
         // Create a printable version
         const printWindow = window.open('', '_blank');
 
-        printWindow.document.write(`
-<!DOCTYPE html>
+        // Build the HTML content for the print window
+        // Note: Using document.open/write/close is the standard pattern for populating
+        // a new window with content. While document.write is deprecated for inline use,
+        // this pattern for new windows is still valid and widely supported.
+        const syntaxThemeHref = currentSyntaxThemeLink?.href ||
+            'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css';
+
+        const fallbackStyles = customStyleCSS ? '' : `
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            font-size: 11pt;
+            line-height: 1.6;
+            color: #000;
+        }
+        h1 { font-size: 24pt; margin-top: 16px; margin-bottom: 12px; page-break-after: avoid; }
+        h2 { font-size: 18pt; margin-top: 14px; margin-bottom: 10px; page-break-after: avoid; }
+        h3 { font-size: 14pt; margin-top: 12px; margin-bottom: 8px; page-break-after: avoid; }
+        pre { background: #f5f5f5; padding: 12px; page-break-inside: avoid; }
+        code { background: #f5f5f5; padding: 2px 4px; }
+        `;
+
+        const htmlContent = `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <title>Document</title>
-    <link rel="stylesheet" href="${currentSyntaxThemeLink ? currentSyntaxThemeLink.href : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css'}">
+    <link rel="stylesheet" href="${syntaxThemeHref}">
     <style>
         /* Force color printing FIRST - preserve ALL colors and backgrounds */
         *, *::before, *::after {
@@ -267,22 +290,7 @@ export async function exportToPDFDirect() {
         ${customStyleCSS}
 
         /* Minimal fallback styles if no custom style loaded */
-        ${customStyleCSS ? '' : `
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            font-size: 11pt;
-            line-height: 1.6;
-            color: #000;
-        }
-        h1 { font-size: 24pt; margin-top: 16px; margin-bottom: 12px; page-break-after: avoid; }
-        h2 { font-size: 18pt; margin-top: 14px; margin-bottom: 10px; page-break-after: avoid; }
-        h3 { font-size: 14pt; margin-top: 12px; margin-bottom: 8px; page-break-after: avoid; }
-        pre { background: #f5f5f5; padding: 12px; page-break-inside: avoid; }
-        code { background: #f5f5f5; padding: 2px 4px; }
-        `}
+        ${fallbackStyles}
 
         /* Ensure print compatibility */
         .mermaid {
@@ -312,9 +320,12 @@ export async function exportToPDFDirect() {
 <body>
 ${wrapper.innerHTML}
 </body>
-</html>
-        `);
+</html>`;
 
+        // Use the document's open/write/close pattern for new window content
+        // This is the standard approach and distinct from deprecated inline document.write
+        printWindow.document.open();
+        printWindow.document.write(htmlContent); // NOSONAR - Standard pattern for new window population
         printWindow.document.close();
 
         // Wait for content and styles to fully load then trigger print

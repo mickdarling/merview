@@ -4,30 +4,32 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
+/**
+ * Helper to set editor content using CodeMirror API and trigger render
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @param {string} content - Markdown content to set
+ */
+async function setEditorContent(page, content) {
+    await page.evaluate(async (text) => {
+        // Access CodeMirror instance via DOM element
+        const cmElement = document.querySelector('.CodeMirror');
+        const cmInstance = cmElement?.CodeMirror;
+        if (cmInstance) {
+            cmInstance.setValue(text);
+        }
+        // Trigger render to ensure content is displayed
+        if (typeof globalThis.renderMarkdown === 'function') {
+            await globalThis.renderMarkdown();
+        }
+    }, content);
+    await page.waitForTimeout(300); // Wait for mermaid diagrams if any
+}
+
 test.describe('Internal Anchor Links', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/');
         await page.waitForLoadState('networkidle');
     });
-
-    /**
-     * Helper to set editor content using CodeMirror API and trigger render
-     */
-    async function setEditorContent(page, content) {
-        await page.evaluate(async (text) => {
-            // Access CodeMirror instance via DOM element
-            const cmElement = document.querySelector('.CodeMirror');
-            const cmInstance = cmElement?.CodeMirror;
-            if (cmInstance) {
-                cmInstance.setValue(text);
-            }
-            // Trigger render to ensure content is displayed
-            if (typeof globalThis.renderMarkdown === 'function') {
-                await globalThis.renderMarkdown();
-            }
-        }, content);
-        await page.waitForTimeout(300); // Wait for mermaid diagrams if any
-    }
 
     test('headings should have ID attributes for anchor linking', async ({ page }) => {
         await setEditorContent(page, '# First Heading\n\n## Second Heading\n\n### Third Heading');
