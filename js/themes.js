@@ -7,7 +7,7 @@
 import { state } from './state.js';
 import { getElements } from './dom.js';
 import { syntaxThemes, syntaxThemeSRI, editorThemes, availableStyles } from './config.js';
-import { getMarkdownStyle, saveMarkdownStyle, getSyntaxTheme, saveSyntaxTheme, getEditorTheme, saveEditorTheme, getRespectStyleLayout, saveRespectStyleLayout } from './storage.js';
+import { getMarkdownStyle, saveMarkdownStyle, getSyntaxTheme, saveSyntaxTheme, getEditorTheme, saveEditorTheme, saveRespectStyleLayout } from './storage.js';
 import { showStatus } from './utils.js';
 import { isAllowedCSSURL, isValidBackgroundColor } from './security.js';
 
@@ -174,47 +174,113 @@ function stripPrintMediaQueries(css) {
 }
 
 /**
- * Scope CSS to only affect #wrapper using a more robust approach
+ * Scope a single CSS selector by adding #wrapper prefix
+ * @param {string} selector - Single CSS selector to scope
+ * @returns {string} Scoped selector
+ */
+function scopeSelector(selector) {
+    const trimmed = selector.trim();
+    // Skip empty, @-rules, comments, or already scoped
+    if (!trimmed ||
+        trimmed.startsWith('@') ||
+        trimmed.startsWith('/*') ||
+        trimmed.includes('#wrapper') ||
+        trimmed.includes('#preview')) {
+        return trimmed;
+    }
+    // Replace body/html with #wrapper
+    if (trimmed === 'body' || trimmed === 'html') {
+        return '#wrapper';
+    }
+    // Prefix with #wrapper
+    return '#wrapper ' + trimmed;
+}
+
+/**
+ * Scope CSS to only affect #wrapper using a character-by-character parser
+ * This avoids regex backtracking vulnerabilities (DoS prevention)
  * @param {string} css - CSS text to scope
  * @returns {string} Scoped CSS
  */
 function scopeCSSToPreview(css) {
-    // Much simpler approach: just scope every selector we find
-    // Use regex to find all CSS rules and scope their selectors
+    const result = [];
+    let i = 0;
+    const len = css.length;
 
-    // First, replace body/html with #wrapper at the start of selectors
-    // Note: replaceAll() with regex requires the global (g) flag
-    css = css.replaceAll(/(^|[,\s])(body|html)(\s*[,{:])/gm, '$1#wrapper$3');
+    while (i < len) {
+        // Skip whitespace
+        while (i < len && /\s/.test(css[i])) {
+            result.push(css[i]);
+            i++;
+        }
+        if (i >= len) break;
 
-    // Then scope all other selectors by adding #wrapper prefix
-    // This regex finds selectors (text before {) and prefixes them
-    css = css.replaceAll(/([^\r\n,{}]+)(,(?=[^}]*{)|\s*{)/g, function(match, selector, separator) {
-        selector = selector.trim();
-
-        // Skip if it's a comment, @-rule, or already scoped
-        if (selector.startsWith('/*') ||
-            selector.startsWith('@') ||
-            selector.includes('#wrapper') ||
-            selector.includes('#preview')) {
-            return match;
+        // Check for @-rule (pass through unchanged until matching brace)
+        if (css[i] === '@') {
+            const atStart = i;
+            // Find the opening brace or semicolon
+            while (i < len && css[i] !== '{' && css[i] !== ';') {
+                i++;
+            }
+            if (i < len && css[i] === '{') {
+                // Find matching closing brace (handle nested braces)
+                let depth = 1;
+                i++;
+                while (i < len && depth > 0) {
+                    if (css[i] === '{') depth++;
+                    else if (css[i] === '}') depth--;
+                    i++;
+                }
+            } else if (i < len) {
+                i++; // Skip the semicolon
+            }
+            result.push(css.substring(atStart, i));
+            continue;
         }
 
-        // Handle multiple selectors separated by commas
-        const selectors = selector.split(',').map(s => {
-            s = s.trim();
-            if (!s || s.startsWith('@')) return s;
-
-            // If it doesn't start with #wrapper, add it
-            if (!s.startsWith('#wrapper')) {
-                return '#wrapper ' + s;
+        // Check for comment
+        if (css[i] === '/' && css[i + 1] === '*') {
+            const commentStart = i;
+            i += 2;
+            while (i < len - 1 && !(css[i] === '*' && css[i + 1] === '/')) {
+                i++;
             }
-            return s;
-        }).join(', ');
+            i += 2; // Skip closing */
+            result.push(css.substring(commentStart, i));
+            continue;
+        }
 
-        return selectors + separator;
-    });
+        // Read selector(s) until opening brace
+        const selectorStart = i;
+        while (i < len && css[i] !== '{') {
+            i++;
+        }
+        if (i >= len) {
+            result.push(css.substring(selectorStart));
+            break;
+        }
 
-    return css;
+        // Extract and scope selectors
+        const selectorText = css.substring(selectorStart, i);
+        const selectors = selectorText.split(',');
+        const scopedSelectors = selectors.map(scopeSelector).join(', ');
+        result.push(scopedSelectors);
+
+        // Copy the opening brace
+        result.push(css[i]);
+        i++;
+
+        // Copy rule body until closing brace (handle nested braces for @-rules)
+        let depth = 1;
+        while (i < len && depth > 0) {
+            if (css[i] === '{') depth++;
+            else if (css[i] === '}') depth--;
+            result.push(css[i]);
+            i++;
+        }
+    }
+
+    return result.join('');
 }
 
 /**
@@ -720,11 +786,56 @@ async function initStyleSelector() {
     await loadStyle(styleToLoad);
 }
 
+/**
+ * Initialize drag-and-drop functionality for the preview panel
+ * Allows users to drag CSS files onto the preview to load custom styles
+ */
+function initPreviewDragDrop() {
+    const { preview } = getElements();
+    if (!preview) return;
+
+    // Handle dragover event - show visual feedback for CSS files
+    preview.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        // Check if dragged item is a file
+        if (e.dataTransfer.types.includes('Files')) {
+            preview.style.outline = '3px dashed #3498db';
+        }
+    });
+
+    // Handle dragleave event - remove visual feedback
+    preview.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        preview.style.outline = '';
+    });
+
+    // Handle drop event - load CSS file if valid
+    preview.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        preview.style.outline = '';
+
+        const files = e.dataTransfer.files;
+        if (files.length === 0) return;
+
+        const file = files[0];
+
+        // Check if file is a CSS file
+        if (!file.name.endsWith('.css')) {
+            showStatus('Please drop a CSS file to change styles');
+            return;
+        }
+
+        // Load the CSS file
+        await loadCSSFromFile(file);
+    });
+}
+
 // Export public API
 export {
     initStyleSelector,
     initSyntaxThemeSelector,
     initEditorThemeSelector,
+    initPreviewDragDrop,
     changeStyle,
     changeSyntaxTheme,
     changeEditorTheme,

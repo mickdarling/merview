@@ -5,6 +5,7 @@
 
 import { state } from './state.js';
 import { getElements } from './dom.js';
+import { handleFileDrop } from './file-ops.js';
 
 /**
  * Initialize CodeMirror 5 editor
@@ -45,6 +46,29 @@ export function initCodeMirror(onChangeCallback) {
         if (onChangeCallback) {
             onChangeCallback();
         }
+    });
+
+    // Set up drag-and-drop handlers for markdown files
+    const { editorContainer } = getElements();
+    const editorWrapper = state.cmEditor.getWrapperElement();
+
+    editorWrapper.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        editorContainer.classList.add('drag-over');
+    });
+
+    editorWrapper.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        editorContainer.classList.remove('drag-over');
+    });
+
+    editorWrapper.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        editorContainer.classList.remove('drag-over');
+        await handleFileDrop(e);
     });
 
     return state.cmEditor;

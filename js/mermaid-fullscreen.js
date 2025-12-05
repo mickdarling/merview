@@ -6,7 +6,6 @@
  */
 
 import { state } from './state.js';
-import { getElements } from './dom.js';
 
 /**
  * Open a Mermaid diagram in fullscreen mode with zoom/pan controls

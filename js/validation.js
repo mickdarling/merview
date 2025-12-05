@@ -102,7 +102,8 @@ function validateHTML(code, blockIndex) {
     const issues = [];
 
     // Unclosed tags
-    const openTags = code.match(/<(\w+)[^>]*>/g) || [];
+    // Use non-greedy quantifier to prevent catastrophic backtracking
+    const openTags = code.match(/<(\w+)(?:\s[^>]*?)?>/g) || [];
     const closeTags = code.match(/<\/(\w+)>/g) || [];
 
     if (openTags.length !== closeTags.length) {

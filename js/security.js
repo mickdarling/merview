@@ -10,7 +10,6 @@
 
 import { ALLOWED_CSS_DOMAINS, ALLOWED_MARKDOWN_DOMAINS } from './config.js';
 import { state } from './state.js';
-import { getElements } from './dom.js';
 
 /**
  * Validate URL against allowlist (HTTPS only, case-insensitive)
@@ -88,6 +87,8 @@ export function stripGitHubToken(url) {
 export function isValidBackgroundColor(value) {
     const trimmed = value.trim().toLowerCase();
     // Block dangerous patterns first
+    // NOSONAR: javascript:S1523 - False positive: This code BLOCKS javascript: URLs for security,
+    // it does not execute them. The string literal is used to detect and reject malicious input.
     if (trimmed.includes('javascript:') || trimmed.includes('url(')) {
         return false;
     }

@@ -25,10 +25,10 @@ export function slugify(text) {
     return text
         .toLowerCase()
         .trim()
-        .replace(/[^\w\s-]/g, '')   // Remove special chars (keeps letters, numbers, underscore, hyphen, space)
-        .replace(/[\s_]+/g, '-')    // Replace spaces and underscores with hyphens
-        .replace(/-+/g, '-')        // Collapse multiple hyphens
-        .replace(/^-|-$/g, '');     // Trim leading/trailing hyphens
+        .replaceAll(/[^\w\s-]/g, '')   // Remove special chars (keeps letters, numbers, underscore, hyphen, space)
+        .replaceAll(/[\s_]+/g, '-')    // Replace spaces and underscores with hyphens
+        .replaceAll(/-+/g, '-')        // Collapse multiple hyphens
+        .replaceAll(/(^-)|(-$)/g, '');     // Trim leading/trailing hyphens
 }
 
 /**

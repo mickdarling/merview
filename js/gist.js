@@ -6,7 +6,6 @@
  */
 
 import { state } from './state.js';
-import { getElements } from './dom.js';
 import { getGitHubToken, saveGitHubToken, clearGitHubToken } from './storage.js';
 import { getOAuthProxyUrl } from './config.js';
 import { escapeHtml, showStatus } from './utils.js';

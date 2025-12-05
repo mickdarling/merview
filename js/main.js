@@ -5,17 +5,17 @@
  */
 
 import { state } from './state.js';
-import { getElements } from './dom.js';
 import { initCodeMirror, getEditorContent, setEditorContent } from './editor.js';
 import { renderMarkdown, scheduleRender } from './renderer.js';
-import { initStyleSelector, initSyntaxThemeSelector, initEditorThemeSelector, changeStyle, applyPreviewBackground } from './themes.js';
-import { loadMarkdownFromURL, loadSample, openFile, saveFile, saveFileAs, handleFileDrop, isValidMarkdownFile, exportToPDF, exportToPDFDirect, initFileInputHandlers } from './file-ops.js';
+import { initStyleSelector, initSyntaxThemeSelector, initEditorThemeSelector, initPreviewDragDrop, changeStyle, changeSyntaxTheme, changeEditorTheme, applyPreviewBackground } from './themes.js';
+import { loadMarkdownFromURL, loadSample, openFile, saveFile, saveFileAs, isValidMarkdownFile, exportToPDF, exportToPDFDirect, initFileInputHandlers } from './file-ops.js';
 import { shareToGist, hideGistModal, openGitHubAuth, startDeviceFlow, copyGistUrl, disconnectGitHub } from './gist.js';
 import { toggleLintPanel, validateCode } from './validation.js';
 import { initMermaidFullscreen } from './mermaid-fullscreen.js';
 import { isAllowedMarkdownURL, stripGitHubToken, showPrivateUrlModal, initPrivateUrlModalHandlers } from './security.js';
 import { getMarkdownContent } from './storage.js';
 import { showStatus } from './utils.js';
+import { initResizeHandle } from './resize.js';
 
 /**
  * Clear the editor content
@@ -71,6 +71,8 @@ function exposeGlobalFunctions() {
     // Utility functions
     globalThis.showStatus = showStatus;
     globalThis.changeStyle = changeStyle;
+    globalThis.changeSyntaxTheme = changeSyntaxTheme;
+    globalThis.changeEditorTheme = changeEditorTheme;
     globalThis.applyPreviewBackground = applyPreviewBackground;
 }
 
@@ -109,7 +111,7 @@ function setupKeyboardShortcuts() {
  * Handle URL parameters to load content or apply styles
  */
 function handleURLParameters() {
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new URLSearchParams(globalThis.location.search);
 
     // Check for remote URL parameter
     const remoteURL = urlParams.get('url');
@@ -186,6 +188,9 @@ function initializeApp() {
     initSyntaxThemeSelector();
     initEditorThemeSelector();
 
+    // Initialize preview drag-and-drop for CSS files
+    initPreviewDragDrop();
+
     // Initialize file input handlers
     initFileInputHandlers();
 
@@ -194,6 +199,9 @@ function initializeApp() {
 
     // Initialize mermaid fullscreen handlers (exposes global functions)
     initMermaidFullscreen();
+
+    // Initialize panel resize handle
+    initResizeHandle();
 
     // Expose global functions for onclick handlers
     exposeGlobalFunctions();

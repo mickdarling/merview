@@ -13,7 +13,7 @@
 import { state } from './state.js';
 import { getElements } from './dom.js';
 import { showStatus } from './utils.js';
-import { isAllowedMarkdownURL, stripGitHubToken, showPrivateUrlModal } from './security.js';
+import { isAllowedMarkdownURL } from './security.js';
 import { renderMarkdown } from './renderer.js';
 
 /**
