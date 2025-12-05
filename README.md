@@ -1,6 +1,10 @@
 # Merview
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=mickdarling_merview&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=mickdarling_merview)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=mickdarling_merview&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=mickdarling_merview)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=mickdarling_merview&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=mickdarling_merview)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=mickdarling_merview&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=mickdarling_merview)
 
 A client-side markdown editor with live Mermaid diagram rendering. No logins, no payments, completely free and open source.
 
