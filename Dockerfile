@@ -17,6 +17,9 @@ COPY --chmod=755 styles/ ./styles/
 # Copy images directory
 COPY --chmod=755 images/ ./images/
 
+# Copy JavaScript modules directory
+COPY --chmod=755 js/ ./js/
+
 # Copy custom nginx configuration
 COPY --chmod=644 nginx.conf /etc/nginx/conf.d/default.conf
 
