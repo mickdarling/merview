@@ -8,12 +8,30 @@ import { getElements } from './dom.js';
 import { saveMarkdownContent } from './storage.js';
 import { escapeHtml, slugify } from './utils.js';
 
-// Initialize Mermaid with security settings
+// Initialize Mermaid with security settings (theme set dynamically)
 mermaid.initialize({
     startOnLoad: false,
-    theme: 'default',
+    theme: state.mermaidTheme,
     securityLevel: 'strict',  // Security: Prevents XSS attacks through malicious diagrams
 });
+
+/**
+ * Update Mermaid theme based on preview background
+ * Called when preview style changes to sync diagram colors with background
+ * @param {boolean} isDark - Whether the preview background is dark
+ */
+export function updateMermaidTheme(isDark) {
+    const newTheme = isDark ? 'dark' : 'default';
+    if (state.mermaidTheme !== newTheme) {
+        state.mermaidTheme = newTheme;
+        // Reinitialize Mermaid with new theme
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: newTheme,
+            securityLevel: 'strict',
+        });
+    }
+}
 
 // Configure marked with GitHub Flavored Markdown settings
 marked.setOptions({

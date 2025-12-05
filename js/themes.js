@@ -8,8 +8,9 @@ import { state } from './state.js';
 import { getElements } from './dom.js';
 import { syntaxThemes, syntaxThemeSRI, editorThemes, availableStyles } from './config.js';
 import { getMarkdownStyle, saveMarkdownStyle, getSyntaxTheme, saveSyntaxTheme, getEditorTheme, saveEditorTheme, saveRespectStyleLayout } from './storage.js';
-import { showStatus } from './utils.js';
+import { showStatus, isDarkColor } from './utils.js';
 import { isAllowedCSSURL, isValidBackgroundColor } from './security.js';
+import { updateMermaidTheme } from './renderer.js';
 
 // Local state for theme management
 let layoutToggleOption = null; // Cached reference for performance
@@ -39,8 +40,32 @@ function initFileInput() {
 }
 
 /**
+ * Extract background color from CSS text
+ * @param {string} cssText - CSS text to parse
+ * @returns {string|null} Background color value or null
+ */
+function extractBackgroundColor(cssText) {
+    // Look for #wrapper background in the CSS
+    const wrapperRegex = /#wrapper\s*\{[^}]*\}/;
+    const wrapperMatch = wrapperRegex.exec(cssText);
+    if (wrapperMatch) {
+        const wrapperRule = wrapperMatch[0];
+        const bgRegex = /background(?:-color)?\s*:\s*([^;}\s]+(?:\s+[^;}\s]+)*)/;
+        const bgMatch = bgRegex.exec(wrapperRule);
+        if (bgMatch) {
+            const bgValue = bgMatch[1].trim();
+            if (isValidBackgroundColor(bgValue)) {
+                return bgValue;
+            }
+        }
+    }
+    return null;
+}
+
+/**
  * Extract background color from loaded CSS and apply to preview container.
  * Parses the #wrapper rule to find background or background-color values.
+ * Also updates Mermaid theme based on background brightness.
  *
  * SUPPORTED background types:
  * - Hex colors: #1e1e1e, #fff, #ffffff
@@ -57,32 +82,24 @@ function initFileInput() {
  * always use simple color values on #wrapper background property.
  *
  * @param {string} cssText - The loaded CSS text to parse
+ * @returns {string} The background color applied ('white' if none found)
  */
 function applyPreviewBackground(cssText) {
     const { preview } = getElements();
-    if (!preview) return; // Guard against missing element
+    if (!preview) return 'white'; // Guard against missing element
 
-    // Look for #wrapper background in the CSS
-    // Match patterns like: #wrapper { ... background: #1e1e1e; ... }
-    // or: #wrapper { ... background-color: #1e1e1e; ... }
-    const wrapperRegex = /#wrapper\s*\{[^}]*\}/;
-    const wrapperMatch = wrapperRegex.exec(cssText);
-    if (wrapperMatch) {
-        const wrapperRule = wrapperMatch[0];
-        // Extract background or background-color value
-        const bgRegex = /background(?:-color)?\s*:\s*([^;}\s]+(?:\s+[^;}\s]+)*)/;
-        const bgMatch = bgRegex.exec(wrapperRule);
-        if (bgMatch) {
-            const bgValue = bgMatch[1].trim();
-            // Validate the color value for security before applying
-            if (isValidBackgroundColor(bgValue)) {
-                preview.style.background = bgValue;
-                return;
-            }
-        }
+    const bgColor = extractBackgroundColor(cssText);
+    if (bgColor) {
+        preview.style.background = bgColor;
+        // Update Mermaid theme based on background brightness (#109 fix)
+        updateMermaidTheme(isDarkColor(bgColor));
+        return bgColor;
     }
+
     // Default to white if no valid background found
     preview.style.background = 'white';
+    updateMermaidTheme(false); // White background = light theme
+    return 'white';
 }
 
 /**
@@ -385,6 +402,7 @@ function applySyntaxOverride() {
 
 /**
  * Apply loaded CSS to the page
+ * Preloads background color before removing old CSS to prevent white flash (#110 fix)
  * @param {string} cssText - CSS text to apply
  * @param {string} styleName - Name of the style for saving preference
  * @param {object} style - Style config object
@@ -398,7 +416,19 @@ async function applyStyleToPage(cssText, styleName, style) {
         cssText = scopeCSSToPreview(cssText);
     }
 
-    // Remove previous style if exists
+    // PRELOAD: Extract and apply background BEFORE removing old CSS (#110 fix)
+    // This prevents the white flash by setting background early
+    const bgColor = extractBackgroundColor(cssText);
+    if (bgColor) {
+        const { preview } = getElements();
+        if (preview) {
+            preview.style.background = bgColor;
+            // Also update Mermaid theme early (#109 fix)
+            updateMermaidTheme(isDarkColor(bgColor));
+        }
+    }
+
+    // NOW remove previous style (preview already has new background color)
     if (state.currentStyleLink) {
         state.currentStyleLink.remove();
     }
@@ -411,7 +441,7 @@ async function applyStyleToPage(cssText, styleName, style) {
 
     state.currentStyleLink = styleElement;
 
-    // Extract and apply background color from style to preview container
+    // Apply full background with Mermaid theme update (handles null bgColor case)
     applyPreviewBackground(cssText);
 
     // Apply layout constraints based on toggle setting
@@ -432,7 +462,7 @@ async function applyStyleToPage(cssText, styleName, style) {
 /**
  * Handle special style source types (none, file, url, repository)
  * @param {object} style - Style config object
- * @returns {Promise<boolean>} True if handled, false otherwise
+ * @returns {Promise<{handled: boolean, success: boolean}>} Result object
  */
 async function handleSpecialStyleSource(style) {
     if (style.source === 'none') {
@@ -441,38 +471,45 @@ async function handleSpecialStyleSource(style) {
             state.currentStyleLink.remove();
             state.currentStyleLink = null;
         }
+        // Reset Mermaid to default (light) theme
+        updateMermaidTheme(false);
         showStatus('CSS removed');
         if (state.renderMarkdown) {
             await state.renderMarkdown();
         }
-        return true;
+        return { handled: true, success: true };
     }
     if (style.source === 'file') {
         initFileInput();
         fileInput.click();
-        return true;
+        // File picker is async - success determined later, but user may cancel
+        return { handled: true, success: false };
     }
     if (style.source === 'url') {
-        promptForURL();
-        return true;
+        const success = await promptForURLWithResult();
+        return { handled: true, success };
     }
     if (style.source === 'repository') {
-        promptForRepositoryStyle(style);
-        return true;
+        const success = await promptForRepositoryStyleWithResult(style);
+        return { handled: true, success };
     }
-    return false;
+    return { handled: false, success: false };
 }
 
 /**
  * Load a style by name
  * @param {string} styleName - Name of the style to load
+ * @returns {Promise<boolean>} True if style loaded successfully, false otherwise
  */
 async function loadStyle(styleName) {
     const style = availableStyles.find(s => s.name === styleName);
-    if (!style || style.source === 'separator') return;
+    if (!style || style.source === 'separator') return false;
 
     // Handle special actions (file picker, URL prompt, etc.)
-    if (await handleSpecialStyleSource(style)) return;
+    const specialResult = await handleSpecialStyleSource(style);
+    if (specialResult.handled) {
+        return specialResult.success;
+    }
 
     showStatus(`Loading style: ${style.name}...`);
 
@@ -486,9 +523,11 @@ async function loadStyle(styleName) {
 
         await applyStyleToPage(cssText, styleName, style);
         showStatus(`Style loaded: ${style.name}`);
+        return true;
     } catch (error) {
         showStatus(`Error loading style: ${style.name}`);
         console.error(`Failed to load style:`, error);
+        return false;
     }
 }
 
@@ -514,9 +553,10 @@ async function loadCSSFromFile(file) {
 }
 
 /**
- * Prompt user for URL to load CSS from
+ * Prompt user for URL to load CSS from (with result tracking for #108 fix)
+ * @returns {Promise<boolean>} True if URL was provided and loading initiated
  */
-function promptForURL() {
+async function promptForURLWithResult() {
     const url = prompt('Enter CSS file URL:\n\n' +
         'Allowed domains (for security):\n' +
         '• raw.githubusercontent.com\n' +
@@ -526,9 +566,19 @@ function promptForURL() {
         '• unpkg.com\n\n' +
         'Example:\nhttps://raw.githubusercontent.com/user/repo/main/style.css');
 
-    if (url) {
-        loadCSSFromURL(url);
+    if (!url) {
+        return false; // User cancelled or tab switch dismissed prompt
     }
+
+    await loadCSSFromURL(url);
+    return true;
+}
+
+/**
+ * Prompt user for URL to load CSS from (legacy, for backwards compatibility)
+ */
+function promptForURL() {
+    promptForURLWithResult();
 }
 
 /**
@@ -565,23 +615,36 @@ async function loadCSSFromURL(url) {
 }
 
 /**
- * Prompt for repository-based style (like MarkedCustomStyles)
+ * Prompt for repository-based style with result tracking (#108 fix)
  * @param {object} repoConfig - Repository configuration
+ * @returns {Promise<boolean>} True if filename was provided
  */
-async function promptForRepositoryStyle(repoConfig) {
+async function promptForRepositoryStyleWithResult(repoConfig) {
     const fileName = prompt(`Enter CSS filename from ${repoConfig.name}:\n\n` +
         `Repository: ${repoConfig.url}\n\n` +
         `${repoConfig.note || ''}\n\n` +
         `Example: Academia.css`);
 
-    if (fileName) {
-        const fullURL = repoConfig.url + encodeURIComponent(fileName);
-        await loadCSSFromURL(fullURL);
+    if (!fileName) {
+        return false; // User cancelled
     }
+
+    const fullURL = repoConfig.url + encodeURIComponent(fileName);
+    await loadCSSFromURL(fullURL);
+    return true;
+}
+
+/**
+ * Prompt for repository-based style (legacy, for backwards compatibility)
+ * @param {object} repoConfig - Repository configuration
+ */
+async function promptForRepositoryStyle(repoConfig) {
+    await promptForRepositoryStyleWithResult(repoConfig);
 }
 
 /**
  * Apply CSS directly without scope processing (for already-scoped files)
+ * Preloads background color before removing old CSS to prevent white flash (#110 fix)
  * @param {string} cssText - CSS text to apply
  * @param {string} sourceName - Source name for saving preference
  */
@@ -594,7 +657,17 @@ async function applyCSSDirectly(cssText, sourceName) {
         cssText = scopeCSSToPreview(cssText);
     }
 
-    // Remove previous style
+    // PRELOAD: Extract and apply background BEFORE removing old CSS (#110 fix)
+    const bgColor = extractBackgroundColor(cssText);
+    if (bgColor) {
+        const { preview } = getElements();
+        if (preview) {
+            preview.style.background = bgColor;
+            updateMermaidTheme(isDarkColor(bgColor));
+        }
+    }
+
+    // NOW remove previous style (preview already has new background color)
     if (state.currentStyleLink) {
         state.currentStyleLink.remove();
     }
@@ -606,6 +679,9 @@ async function applyCSSDirectly(cssText, sourceName) {
     document.head.appendChild(styleElement);
 
     state.currentStyleLink = styleElement;
+
+    // Apply full background with Mermaid theme update
+    applyPreviewBackground(cssText);
 
     // Apply minimal structure override
     applySyntaxOverride();
@@ -632,10 +708,13 @@ function updateLayoutToggleCheckbox() {
 
 /**
  * Change the current style
+ * Reverts dropdown selection if style loading fails or is cancelled (#108 fix)
  * @param {string} styleName - Name of the style to change to
  */
 async function changeStyle(styleName) {
     if (!styleName) return;
+
+    const { styleSelector } = getElements();
 
     // Handle toggle option
     if (styleName === 'Respect Style Layout') {
@@ -645,7 +724,6 @@ async function changeStyle(styleName) {
         // Update just the checkbox without rebuilding the entire dropdown
         updateLayoutToggleCheckbox();
         // Restore previous selection
-        const { styleSelector } = getElements();
         const currentStyle = getMarkdownStyle() || 'Clean';
         if (styleSelector) {
             styleSelector.value = currentStyle;
@@ -654,7 +732,16 @@ async function changeStyle(styleName) {
         return;
     }
 
-    await loadStyle(styleName);
+    // Save previous selection for revert on failure (#108 fix)
+    const previousStyle = getMarkdownStyle() || 'Clean';
+
+    // Try to load the style
+    const success = await loadStyle(styleName);
+
+    // If loading failed or was cancelled, revert dropdown to previous selection
+    if (!success && styleSelector) {
+        styleSelector.value = previousStyle;
+    }
 }
 
 /**
