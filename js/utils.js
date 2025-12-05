@@ -5,6 +5,9 @@
 
 import { getElements } from './dom.js';
 
+/** Brightness threshold for dark/light detection (0-255 scale, 127.5 = middle) */
+const DARK_THEME_BRIGHTNESS_THRESHOLD = 127.5;
+
 /**
  * Escape HTML entities to prevent XSS attacks
  * @param {string} text - Text to escape
@@ -60,26 +63,26 @@ export function parseColorToRGB(colorString) {
     }
 
     // Hex color (#fff or #ffffff)
-    const hexMatch = color.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/);
+    const hexMatch = /^#([0-9a-f]{3}|[0-9a-f]{6})$/.exec(color);
     if (hexMatch) {
         let hex = hexMatch[1];
         if (hex.length === 3) {
             hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
         }
         return {
-            r: parseInt(hex.substring(0, 2), 16),
-            g: parseInt(hex.substring(2, 4), 16),
-            b: parseInt(hex.substring(4, 6), 16)
+            r: Number.parseInt(hex.substring(0, 2), 16),
+            g: Number.parseInt(hex.substring(2, 4), 16),
+            b: Number.parseInt(hex.substring(4, 6), 16)
         };
     }
 
     // RGB/RGBA color
-    const rgbMatch = color.match(/rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    const rgbMatch = /rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(color);
     if (rgbMatch) {
         return {
-            r: parseInt(rgbMatch[1], 10),
-            g: parseInt(rgbMatch[2], 10),
-            b: parseInt(rgbMatch[3], 10)
+            r: Number.parseInt(rgbMatch[1], 10),
+            g: Number.parseInt(rgbMatch[2], 10),
+            b: Number.parseInt(rgbMatch[3], 10)
         };
     }
 
@@ -94,7 +97,7 @@ export function parseColorToRGB(colorString) {
  */
 export function getBrightness(colorString) {
     const rgb = parseColorToRGB(colorString);
-    if (!rgb) return 127.5; // Default to medium if parse fails
+    if (!rgb) return DARK_THEME_BRIGHTNESS_THRESHOLD; // Default to medium if parse fails
 
     // WCAG relative luminance formula (weighted for human perception)
     return 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
@@ -106,7 +109,7 @@ export function getBrightness(colorString) {
  * @returns {boolean} True if dark, false if light or unparseable
  */
 export function isDarkColor(colorString) {
-    return getBrightness(colorString) < 127.5;
+    return getBrightness(colorString) < DARK_THEME_BRIGHTNESS_THRESHOLD;
 }
 
 /**

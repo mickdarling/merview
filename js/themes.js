@@ -432,8 +432,14 @@ async function applyCSSCore(cssText) {
 
     state.currentStyleLink = styleElement;
 
-    // Apply full background with Mermaid theme update (handles null bgColor case)
-    applyPreviewBackground(cssText);
+    // If background wasn't found during preload, set default (white)
+    if (!bgColor) {
+        const { preview } = getElements();
+        if (preview) {
+            preview.style.background = 'white';
+            updateMermaidTheme(false); // White background = light theme
+        }
+    }
 
     // Apply minimal structure override (no color changes)
     applySyntaxOverride();
@@ -715,11 +721,16 @@ async function changeStyle(styleName) {
     // Save previous selection for revert on failure (#108 fix)
     const previousStyle = getMarkdownStyle() || 'Clean';
 
+    // Check if this style uses file picker (async, handled by file input)
+    const style = availableStyles.find(s => s.name === styleName);
+    const isFilePicker = style?.source === 'file';
+
     // Try to load the style
     const success = await loadStyle(styleName);
 
     // If loading failed or was cancelled, revert dropdown to previous selection
-    if (!success && styleSelector) {
+    // EXCEPT for file picker - it handles its own success/failure through file input handler
+    if (!success && !isFilePicker && styleSelector) {
         styleSelector.value = previousStyle;
     }
 }
