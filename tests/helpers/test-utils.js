@@ -17,19 +17,19 @@
  * Standard timeout values for consistent wait times across tests
  */
 const WAIT_TIMES = {
-  SHORT: 100,        // UI responses, event handlers
-  MEDIUM: 300,       // CSS transitions (lint panel = 300ms)
-  LONG: 500,         // Content rendering, async operations
-  EXTRA_LONG: 1000,  // Heavy async ops, mermaid rendering
-  CONTENT_LOAD: 2000 // Full content loading with diagrams
+  SHORT: 100,         // UI responses, event handlers
+  MEDIUM: 300,        // CSS transitions (lint panel = 300ms)
+  LONG: 500,          // Content rendering, async operations
+  EXTRA_LONG: 1000,   // Heavy async ops, mermaid rendering
+  CONTENT_LOAD: 2000  // Full content loading with diagrams
 };
 
 /**
  * Standard timeout values for page initialization
  */
 const INIT_TIMEOUTS = {
-  CODEMIRROR: 15000,    // CodeMirror initialization
-  FUNCTION_READY: 5000  // Global function availability
+  CODEMIRROR: 15000,     // CodeMirror initialization
+  FUNCTION_READY: 5000   // Global function availability
 };
 
 /**
@@ -220,18 +220,26 @@ async function elementHasClass(page, selector, className) {
 }
 
 /**
+ * Wrapper population timeout
+ */
+const WRAPPER_POPULATION_TIMEOUT_MS = 5000;
+
+/**
  * Load sample content and wait for render
  * @param {import('@playwright/test').Page} page - Playwright page object
  * @param {number} [waitTime=500] - Time to wait after loading
  * @returns {Promise<void>}
  */
 async function loadSampleContent(page, waitTime = WAIT_TIMES.LONG) {
+  const MIN_WRAPPER_LENGTH = 0;
+
   await page.evaluate(() => globalThis.loadSample());
   // Use waitForFunction instead of arbitrary timeout where possible
   await page.waitForFunction(() => {
+    const minLength = 0;
     const wrapper = document.getElementById('wrapper');
-    return wrapper && wrapper.innerHTML.trim().length > 0;
-  }, { timeout: 5000 }).catch(() => {
+    return wrapper && wrapper.innerHTML.trim().length > minLength;
+  }, { timeout: WRAPPER_POPULATION_TIMEOUT_MS }).catch(() => {
     // Fallback to timeout if wrapper doesn't populate quickly
   });
   if (waitTime > 0) {
@@ -257,13 +265,23 @@ async function renderMarkdownAndWait(page, waitTime = WAIT_TIMES.LONG) {
 }
 
 /**
+ * Default transition buffer time
+ */
+const DEFAULT_TRANSITION_BUFFER_MS = 50;
+
+/**
+ * Default status observation timeout
+ */
+const DEFAULT_STATUS_OBSERVATION_TIMEOUT_MS = 200;
+
+/**
  * Click an element and wait for CSS transition
  * @param {import('@playwright/test').Page} page - Playwright page object
  * @param {string} selector - CSS selector of element to click
  * @param {number} [transitionTime=350] - CSS transition duration + buffer
  * @returns {Promise<void>}
  */
-async function clickAndWaitForTransition(page, selector, transitionTime = WAIT_TIMES.MEDIUM + 50) {
+async function clickAndWaitForTransition(page, selector, transitionTime = WAIT_TIMES.MEDIUM + DEFAULT_TRANSITION_BUFFER_MS) {
   await page.click(selector);
   await page.waitForTimeout(transitionTime);
 }
@@ -275,7 +293,7 @@ async function clickAndWaitForTransition(page, selector, transitionTime = WAIT_T
  * @param {number} [timeout=200] - Timeout for observation
  * @returns {string} Browser-executable function string
  */
-function createStatusObserverScript(searchText, timeout = 200) {
+function createStatusObserverScript(searchText, timeout = DEFAULT_STATUS_OBSERVATION_TIMEOUT_MS) {
   return `
     return new Promise(function(resolve) {
       let statusMessage = null;

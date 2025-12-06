@@ -11,6 +11,11 @@ const {
 } = require('./helpers/test-utils');
 
 /**
+ * Timeout for checking export results
+ */
+const EXPORT_CHECK_TIMEOUT_MS = 200;
+
+/**
  * Browser-side helper: Test export function with mock
  * @param {Object} opts - Configuration
  * @param {'print'|'open'} opts.mockType - Which global to mock
@@ -18,6 +23,7 @@ const {
  * @param {boolean} opts.clearContent - Whether to clear wrapper first
  */
 function browserTestExport({ mockType, exportFn, clearContent }) {
+  const checkTimeout = 200; // Must be defined in browser context
   return new Promise(function resolveAfterTest(resolve) {
     let functionCalled = false;
     let errorStatus = null;
@@ -53,7 +59,7 @@ function browserTestExport({ mockType, exportFn, clearContent }) {
       globalThis[mockType] = originalFn;
       if (clearContent && originalContent !== null) wrapper.innerHTML = originalContent;
       resolve({ functionCalled, errorStatus });
-    }, 200);
+    }, checkTimeout);
   });
 }
 
@@ -207,9 +213,12 @@ test.describe('Export PDF Functionality', () => {
   });
 
   test.describe('Status Messages', () => {
+    const STATUS_CHECK_TIMEOUT_MS = 200;
+
     test('exportToPDF should show status message before opening print dialog', async ({ page }) => {
       await loadSampleContent(page);
       const statusShown = await page.evaluate(() => {
+        const checkTimeout = 200; // Must be in browser context
         return new Promise(function resolveAfterStatus(resolve) {
           let statusMessage = null;
           const statusElement = document.getElementById('status');
@@ -227,16 +236,17 @@ test.describe('Export PDF Functionality', () => {
             observer.disconnect();
             globalThis.print = originalPrint;
             resolve(statusMessage);
-          }, 200);
+          }, checkTimeout);
         });
       });
-      expect(statusShown).toBeTruthy();
+      expect(statusShown).not.toBeNull();
       expect(statusShown.toLowerCase()).toContain('print');
     });
 
     test('exportToPDFDirect should show status message when generating PDF', async ({ page }) => {
       await loadSampleContent(page);
       const statusShown = await page.evaluate(() => {
+        const checkTimeout = 200; // Must be in browser context
         return new Promise(function resolveAfterStatus(resolve) {
           let statusMessage = null;
           const statusElement = document.getElementById('status');
@@ -256,10 +266,10 @@ test.describe('Export PDF Functionality', () => {
             observer.disconnect();
             globalThis.open = originalOpen;
             resolve(statusMessage);
-          }, 200);
+          }, checkTimeout);
         });
       });
-      expect(statusShown).toBeTruthy();
+      expect(statusShown).not.toBeNull();
     });
   });
 });

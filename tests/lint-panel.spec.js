@@ -15,11 +15,17 @@ const {
 } = require('./helpers/test-utils');
 
 /**
+ * Transition wait time for lint panel animations
+ */
+const LINT_PANEL_TRANSITION_MS = 350;
+
+/**
  * Browser-side helper: Toggle lint panel and wait for transition
  * Extracted to avoid deep function nesting (SonarCloud S2004)
  * @returns {Promise<boolean>} True if panel has 'show' class after toggle
  */
 function browserToggleLintPanel() {
+  const transitionTime = 350; // Must be defined inside browser context
   return new Promise(function resolveAfterToggle(resolve) {
     const lintPanel = document.getElementById('lintPanel');
     if (!lintPanel) {
@@ -33,7 +39,7 @@ function browserToggleLintPanel() {
 
     setTimeout(function checkAfterTransition() {
       resolve(lintPanel.classList.contains('show'));
-    }, 350);
+    }, transitionTime);
   });
 }
 
@@ -97,12 +103,16 @@ test.describe('Lint Panel Toggle', () => {
   });
 
   test.describe('Panel Visibility Toggle', () => {
+    const FIRST_CLICK = 1;
+    const SECOND_CLICK = 2;
+    const EVEN_CLICK_INDEX = 0;
+
     /**
      * Test sequence for panel visibility
      */
     const TOGGLE_SEQUENCES = [
-      { clicks: 1, expectedState: true, description: 'clicking toggle button should show the lint panel' },
-      { clicks: 2, expectedState: false, description: 'clicking toggle button twice should hide the lint panel again' }
+      { clicks: FIRST_CLICK, expectedState: true, description: 'clicking toggle button should show the lint panel' },
+      { clicks: SECOND_CLICK, expectedState: false, description: 'clicking toggle button twice should hide the lint panel again' }
     ];
 
     test('lint panel should be hidden by default', async ({ page }) => {
@@ -120,7 +130,7 @@ test.describe('Lint Panel Toggle', () => {
         for (let i = 0; i < sequence.clicks; i++) {
           await page.click('#lintToggle');
 
-          if (i % 2 === 0) {
+          if (i % 2 === EVEN_CLICK_INDEX) {
             await waitForElementClass(page, '#lintPanel', 'show');
           } else {
             await waitForElementClassRemoved(page, '#lintPanel', 'show');
@@ -207,9 +217,12 @@ test.describe('Lint Panel Toggle', () => {
   });
 
   test.describe('Panel Styling and Layout', () => {
+    const EXPECTED_PANEL_HEIGHT = '300px';
+    const EXPECTED_EDGE_POSITION = '0px';
+
     const EXPECTED_STYLES = [
       { property: 'position', value: 'fixed', description: 'correct CSS positioning' },
-      { property: 'height', value: '300px', description: 'correct height' }
+      { property: 'height', value: EXPECTED_PANEL_HEIGHT, description: 'correct height' }
     ];
 
     for (const style of EXPECTED_STYLES) {
@@ -225,8 +238,8 @@ test.describe('Lint Panel Toggle', () => {
         page.$eval('#lintPanel', el => getComputedStyle(el).right)
       ]);
 
-      expect(left).toBe('0px');
-      expect(right).toBe('0px');
+      expect(left).toBe(EXPECTED_EDGE_POSITION);
+      expect(right).toBe(EXPECTED_EDGE_POSITION);
     });
   });
 

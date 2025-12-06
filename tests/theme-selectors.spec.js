@@ -12,6 +12,12 @@ const {
 } = require('./helpers/test-utils');
 
 /**
+ * Minimum expected number of theme options
+ */
+const MIN_THEME_OPTIONS = 1;
+const MIN_AVAILABLE_OPTIONS = 1;
+
+/**
  * Configuration for each theme selector to enable data-driven tests
  */
 const THEME_SELECTORS = [
@@ -78,7 +84,7 @@ test.describe('Theme Selectors', () => {
 
       test('should have options populated', async ({ page }) => {
         const optionCount = await page.$$eval(`#${selector.id} option`, options => options.length);
-        expect(optionCount).toBeGreaterThan(1);
+        expect(optionCount).toBeGreaterThan(MIN_THEME_OPTIONS);
       });
 
       test('should have specific option available', async ({ page }) => {
@@ -165,7 +171,7 @@ test.describe('Theme Selectors', () => {
             // Check attribute if specified
             if (selector.verifyAttribute) {
               const attrValue = await getElementAttribute(page, selector.verifyElement, selector.verifyAttribute);
-              expect(attrValue).toBeTruthy();
+              expect(attrValue).not.toBeNull();
               expect(attrValue).toContain('sha');
             }
           }
@@ -175,12 +181,14 @@ test.describe('Theme Selectors', () => {
       // Special test for editor theme style content
       if (selector.verifyElement === '#editor-theme') {
         test('theme element should contain CSS rules', async ({ page }) => {
+          const MIN_CSS_LENGTH = 0;
+
           await page.waitForTimeout(WAIT_TIMES.LONG);
           const editorThemeStyle = await page.$(selector.verifyElement);
           if (editorThemeStyle) {
             const cssContent = await page.$eval(selector.verifyElement, style => style.textContent);
-            expect(cssContent).toBeTruthy();
-            expect(cssContent.length).toBeGreaterThan(0);
+            expect(cssContent).not.toBeNull();
+            expect(cssContent.length).toBeGreaterThan(MIN_CSS_LENGTH);
           }
         });
       }
@@ -198,7 +206,7 @@ test.describe('Theme Selectors', () => {
               .map(opt => opt.value)
           );
 
-          if (availableOptions.length > 1) {
+          if (availableOptions.length > MIN_AVAILABLE_OPTIONS) {
             const currentValue = await page.$eval(`#${selector.id}`, select => select.value);
             const newValue = availableOptions.find(opt => opt !== currentValue);
 
@@ -210,7 +218,7 @@ test.describe('Theme Selectors', () => {
                 el => getComputedStyle(el).backgroundColor
               );
 
-              expect(newBackground).toBeTruthy();
+              expect(newBackground).not.toBeNull();
             }
           }
         });
@@ -226,9 +234,9 @@ test.describe('Theme Selectors', () => {
         page.$$eval('#editorThemeSelector option', opts => opts.length)
       ]);
 
-      expect(styleOptions).toBeGreaterThan(1);
-      expect(syntaxOptions).toBeGreaterThan(1);
-      expect(editorOptions).toBeGreaterThan(1);
+      expect(styleOptions).toBeGreaterThan(MIN_THEME_OPTIONS);
+      expect(syntaxOptions).toBeGreaterThan(MIN_THEME_OPTIONS);
+      expect(editorOptions).toBeGreaterThan(MIN_THEME_OPTIONS);
     });
 
     test('theme selectors should not interfere with each other', async ({ page }) => {

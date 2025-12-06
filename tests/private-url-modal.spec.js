@@ -38,6 +38,11 @@ function browserCheckModalOpen() {
 }
 
 /**
+ * Backdrop click check timeout
+ */
+const BACKDROP_CHECK_TIMEOUT_MS = 100;
+
+/**
  * Browser-side helper: Test modal close via backdrop click
  * Extracted to avoid deep function nesting (SonarCloud S2004)
  * @returns {Promise<boolean>} True if backdrop click closed modal
@@ -46,6 +51,7 @@ function browserCheckBackdropClose() {
   const modal = document.getElementById('privateUrlModal');
   if (!modal) return Promise.resolve(false);
 
+  const checkTimeout = 100; // Must be in browser context
   return new Promise(function resolveOnClose(resolve) {
     try {
       modal.showModal();
@@ -70,7 +76,7 @@ function browserCheckBackdropClose() {
 
       setTimeout(function checkClosed() {
         resolve(!modal.open);
-      }, 100);
+      }, checkTimeout);
     } catch (error) {
       resolve(false);
     }
@@ -372,9 +378,12 @@ test.describe('Private URL Modal', () => {
   });
 
   test.describe('Modal Styling', () => {
+    const MIN_MODAL_Z_INDEX = 2000;
+    const RADIX_DECIMAL = 10;
+
     test('modal should have proper z-index for overlay', async ({ page }) => {
       const zIndex = await page.$eval('#privateUrlModal', el => getComputedStyle(el).zIndex);
-      expect(parseInt(zIndex, 10)).toBeGreaterThanOrEqual(2000);
+      expect(parseInt(zIndex, RADIX_DECIMAL)).toBeGreaterThanOrEqual(MIN_MODAL_Z_INDEX);
     });
 
     test('modal overlay should have flex display when open', async ({ page }) => {
@@ -396,6 +405,8 @@ test.describe('Private URL Modal', () => {
     });
 
     test('modal buttons should have hover states', async ({ page }) => {
+      const EXPECTED_BUTTON_COUNT = 2;
+
       const buttonsExist = await page.evaluate(() => {
         const buttons = document.querySelectorAll('#privateUrlModal .option-btn');
         return buttons.length === 2;

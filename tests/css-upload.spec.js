@@ -32,6 +32,8 @@ test.describe('CSS File Upload', () => {
   });
 
   test.describe('Global Functions', () => {
+    const MIN_STYLE_OPTIONS = 5;
+
     test('changeStyle() function should be globally available', async ({ page }) => {
       const isFunction = await isGlobalFunctionAvailable(page, 'changeStyle');
       expect(isFunction).toBe(true);
@@ -41,11 +43,13 @@ test.describe('CSS File Upload', () => {
       // The function is internal to the module, but we can test the capability exists
       // by checking that the style selector has multiple options including styles that load from URLs
       const optionCount = await page.$$eval('#styleSelector option', opts => opts.length);
-      expect(optionCount).toBeGreaterThan(5); // Should have many style options
+      expect(optionCount).toBeGreaterThan(MIN_STYLE_OPTIONS); // Should have many style options
     });
   });
 
   test.describe('Drag and Drop Visual Feedback', () => {
+    const DRAG_SETTLE_TIMEOUT_MS = 50;
+
     test('preview should show visual feedback on dragover', async ({ page }) => {
       const preview = await page.$('#preview');
 
@@ -69,7 +73,7 @@ test.describe('CSS File Upload', () => {
 
       // Simulate dragover then dragleave
       await preview.dispatchEvent('dragover');
-      await page.waitForTimeout(50);
+      await page.waitForTimeout(DRAG_SETTLE_TIMEOUT_MS);
       await preview.dispatchEvent('dragleave');
       await page.waitForTimeout(WAIT_TIMES.SHORT);
 
@@ -80,11 +84,16 @@ test.describe('CSS File Upload', () => {
         return style.outlineStyle === 'dashed';
       });
 
-      expect(hasOutline).toBeFalsy();
+      expect(hasOutline).toBe(false);
     });
   });
 
   test.describe('CSS Application', () => {
+    const FIRST_STYLE_INDEX = 1;
+    const SECOND_STYLE_INDEX = 2;
+    const MIN_OPTIONS_FOR_FIRST = 1;
+    const MIN_OPTIONS_FOR_SECOND = 2;
+
     test('style selector should have changeStyle function available', async ({ page }) => {
       const hasChangeStyle = await isGlobalFunctionAvailable(page, 'changeStyle');
       expect(hasChangeStyle).toBe(true);
@@ -93,10 +102,12 @@ test.describe('CSS File Upload', () => {
     test('selecting different styles should not cause errors', async ({ page }) => {
       // Select first style
       const firstResult = await page.evaluate(async () => {
+        const minOptions = 1;
+        const firstIndex = 1;
         try {
           const selector = document.getElementById('styleSelector');
-          if (selector && selector.options.length > 1) {
-            selector.selectedIndex = 1;
+          if (selector && selector.options.length > minOptions) {
+            selector.selectedIndex = firstIndex;
             selector.dispatchEvent(new Event('change'));
           }
           return { success: true };
@@ -110,10 +121,12 @@ test.describe('CSS File Upload', () => {
 
       // Select second style
       const secondResult = await page.evaluate(async () => {
+        const minOptions = 2;
+        const secondIndex = 2;
         try {
           const selector = document.getElementById('styleSelector');
-          if (selector && selector.options.length > 2) {
-            selector.selectedIndex = 2;
+          if (selector && selector.options.length > minOptions) {
+            selector.selectedIndex = secondIndex;
             selector.dispatchEvent(new Event('change'));
           }
           return { success: true };
@@ -159,15 +172,20 @@ test.describe('CSS File Upload', () => {
   });
 
   test.describe('Error Handling', () => {
+    const MIN_STYLES_FOR_CYCLING = 3;
+    const RAPID_CYCLE_COUNT = 3;
+
     test('style selector should handle rapid changes without errors', async ({ page }) => {
       // Rapidly change styles to verify no race conditions or crashes
       const result = await page.evaluate(async () => {
+        const minStyles = 3;
+        const cycleCount = 3;
         try {
           const selector = document.getElementById('styleSelector');
-          if (!selector || selector.options.length < 3) return { success: true };
+          if (!selector || selector.options.length < minStyles) return { success: true };
 
           // Rapidly cycle through 3 styles
-          for (let i = 0; i < 3; i++) {
+          for (let i = 0; i < cycleCount; i++) {
             selector.selectedIndex = i;
             selector.dispatchEvent(new Event('change'));
           }
@@ -182,14 +200,17 @@ test.describe('CSS File Upload', () => {
   });
 
   test.describe('Style Selector', () => {
+    const MIN_STYLE_OPTIONS = 5;
+    const TEST_STYLE_INDEX = 3;
+
     test('style selector should have multiple style options', async ({ page }) => {
       const optionCount = await page.$$eval('#styleSelector option', opts => opts.length);
-      expect(optionCount).toBeGreaterThan(5);
+      expect(optionCount).toBeGreaterThan(MIN_STYLE_OPTIONS);
     });
 
     test('style selector should preserve selection after CSS load', async ({ page }) => {
       // Select a specific style
-      await page.selectOption('#styleSelector', { index: 3 });
+      await page.selectOption('#styleSelector', { index: TEST_STYLE_INDEX });
       const selectedBefore = await page.$eval('#styleSelector', el => el.selectedIndex);
 
       await page.waitForTimeout(WAIT_TIMES.LONG);

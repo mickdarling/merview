@@ -41,7 +41,9 @@ async function browserLoadSampleAndGetContent(waitTime) {
     globalThis.loadSample();
   }
 
-  await new Promise(resolve => setTimeout(resolve, waitTime));
+  await new Promise(function resolveAfterWait(resolve) {
+    setTimeout(resolve, waitTime);
+  });
 
   const cmElement = document.querySelector('.CodeMirror');
   const cmEditor = cmElement?.CodeMirror;
@@ -107,6 +109,9 @@ test.describe('Load Sample Functionality', () => {
   });
 
   test.describe('Sample Content Loading', () => {
+    const MIN_LOADED_CONTENT_LENGTH = 0;
+    const MIN_SAMPLE_CONTENT_LENGTH = 100;
+
     test('clicking Load Sample should populate the editor with content', async ({ page }) => {
       await clearCodeMirrorContent(page);
       await page.waitForTimeout(WAIT_TIMES.SHORT);
@@ -118,14 +123,14 @@ test.describe('Load Sample Functionality', () => {
       await page.waitForTimeout(WAIT_TIMES.MEDIUM);
 
       const loadedContent = await getCodeMirrorContent(page);
-      expect(loadedContent.length).toBeGreaterThan(0);
+      expect(loadedContent.length).toBeGreaterThan(MIN_LOADED_CONTENT_LENGTH);
     });
 
     test('editor should not be empty after loading sample', async ({ page }) => {
       const content = await page.evaluate(browserLoadSampleAndGetContent, WAIT_TIMES.MEDIUM);
 
       expect(content).not.toBe('');
-      expect(content.trim().length).toBeGreaterThan(100);
+      expect(content.trim().length).toBeGreaterThan(MIN_SAMPLE_CONTENT_LENGTH);
     });
 
     // Data-driven test for expected content elements
@@ -167,6 +172,11 @@ test.describe('Load Sample Functionality', () => {
   });
 
   test.describe('Preview Rendering', () => {
+    const MIN_PREVIEW_LENGTH = 0;
+    const MIN_CODE_BLOCKS = 0;
+    const MIN_MERMAID_DIAGRAMS = 0;
+    const MIN_TABLES = 0;
+
     const RENDERED_ELEMENTS = [
       { selector: 'h1', description: 'headings (h1)' },
       { selector: 'h2', description: 'headings (h2)' },
@@ -179,7 +189,7 @@ test.describe('Load Sample Functionality', () => {
       await page.waitForTimeout(WAIT_TIMES.EXTRA_LONG);
 
       const previewHTML = await page.$eval('#wrapper', el => el.innerHTML);
-      expect(previewHTML.length).toBeGreaterThan(0);
+      expect(previewHTML.length).toBeGreaterThan(MIN_PREVIEW_LENGTH);
 
       // Check all expected elements exist
       for (const element of RENDERED_ELEMENTS) {
@@ -223,8 +233,9 @@ test.describe('Load Sample Functionality', () => {
       await page.waitForTimeout(WAIT_TIMES.CONTENT_LOAD);
 
       const hasMermaidDiagrams = await page.evaluate(() => {
+        const minDiagrams = 0;
         const mermaidElements = document.querySelectorAll('#wrapper .mermaid svg');
-        return mermaidElements.length > 0;
+        return mermaidElements.length > minDiagrams;
       });
       expect(hasMermaidDiagrams).toBe(true);
     });
@@ -234,14 +245,18 @@ test.describe('Load Sample Functionality', () => {
       await page.waitForTimeout(WAIT_TIMES.EXTRA_LONG);
 
       const hasTables = await page.evaluate(() => {
+        const minTables = 0;
         const tables = document.querySelectorAll('#wrapper table');
-        return tables.length > 0;
+        return tables.length > minTables;
       });
       expect(hasTables).toBe(true);
     });
   });
 
   test.describe('Edge Cases', () => {
+    const MIN_CONTENT_LENGTH = 0;
+    const MIN_PREVIEW_LENGTH = 100;
+
     test('loading sample when editor already has content should replace it', async ({ page }) => {
       await setCodeMirrorContent(page, '# Initial Content\n\nThis is some initial content.');
       await page.waitForTimeout(WAIT_TIMES.SHORT);
@@ -261,7 +276,7 @@ test.describe('Load Sample Functionality', () => {
       const [firstLoad, secondLoad] = await Promise.all([
         page.evaluate(async (waitTime) => {
           if (typeof globalThis.loadSample === 'function') globalThis.loadSample();
-          await new Promise(r => setTimeout(r, waitTime));
+          await new Promise(function waitForLoad(r) { setTimeout(r, waitTime); });
           const cm = document.querySelector('.CodeMirror');
           return cm?.CodeMirror?.getValue() || '';
         }, WAIT_TIMES.MEDIUM),
@@ -276,7 +291,7 @@ test.describe('Load Sample Functionality', () => {
       ]);
 
       expect(firstLoad).toBe(secondLoad);
-      expect(firstLoad.length).toBeGreaterThan(0);
+      expect(firstLoad.length).toBeGreaterThan(MIN_CONTENT_LENGTH);
     });
 
     test('loading sample should trigger re-render of preview', async ({ page }) => {
@@ -291,10 +306,12 @@ test.describe('Load Sample Functionality', () => {
       const newPreview = await page.$eval('#wrapper', el => el.innerHTML.trim());
 
       expect(initialPreview.length).toBeLessThan(newPreview.length);
-      expect(newPreview.length).toBeGreaterThan(100);
+      expect(newPreview.length).toBeGreaterThan(MIN_PREVIEW_LENGTH);
     });
 
     test('sample content should be valid markdown', async ({ page }) => {
+      const EVEN_BACKTICK_COUNT_DIVISOR = 2;
+
       const content = await page.evaluate(browserLoadSampleAndGetContent, WAIT_TIMES.MEDIUM);
 
       // Basic markdown validation checks
@@ -303,7 +320,7 @@ test.describe('Load Sample Functionality', () => {
       // Code blocks should be properly closed
       const backtickMatches = content.match(/```/g);
       expect(backtickMatches).not.toBeNull();
-      expect(backtickMatches.length % 2).toBe(0);
+      expect(backtickMatches.length % EVEN_BACKTICK_COUNT_DIVISOR).toBe(0);
 
       // Should have proper list syntax
       expect(content).toMatch(/^[-*]\s/m);
