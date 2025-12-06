@@ -49,10 +49,10 @@ test.describe('Mermaid Fullscreen and Zoom', () => {
       await renderMarkdownAndWait(page, WAIT_TIMES.EXTRA_LONG);
 
       // Wait for mermaid to render the SVG
-      await page.waitForSelector('.mermaid svg', { timeout: 10000 });
+      const mermaidEl = page.locator('.mermaid');
+      await expect(mermaidEl.locator('svg')).toBeVisible({ timeout: 10000 });
 
       // Double-click on the mermaid diagram
-      const mermaidEl = await page.$('.mermaid');
       await mermaidEl.dblclick();
 
       // Verify fullscreen overlay appears
@@ -65,11 +65,10 @@ test.describe('Mermaid Fullscreen and Zoom', () => {
       await renderMarkdownAndWait(page, WAIT_TIMES.EXTRA_LONG);
 
       // Wait for mermaid to render the SVG
-      await page.waitForSelector('.mermaid svg', { timeout: 10000 });
+      await expect(page.locator('.mermaid svg')).toBeVisible({ timeout: 10000 });
 
       // Click the expand button
-      const expandBtn = await page.$('.mermaid-expand-btn');
-      await expandBtn.click();
+      await page.locator('.mermaid-expand-btn').click();
 
       // Verify fullscreen overlay appears
       await expect(page.locator('#mermaid-fullscreen-overlay')).toBeVisible({ timeout: 5000 });
