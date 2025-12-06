@@ -58,7 +58,7 @@ test.describe('XSS Prevention', () => {
     test('blocks event handlers', async ({ page }) => {
       const listener = setupDialogListener(page);
       await renderAndGetHtml(page, '<img src="x" onerror="alert(1)">');
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(WAIT_TIMES.LONG);
       expect(listener.wasTriggered()).toBe(false);
     });
 
@@ -67,7 +67,7 @@ test.describe('XSS Prevention', () => {
       await renderAndGetHtml(page, '<a href="javascript:void(0)">x</a>');
       const link = await page.$('#wrapper a');
       if (link) await link.click().catch(() => {});
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(WAIT_TIMES.LONG);
       expect(listener.wasTriggered()).toBe(false);
     });
   });
@@ -99,6 +99,28 @@ test.describe('XSS Prevention', () => {
       await renderAndGetHtml(page, '# Heading');
       const hasId = await page.$eval('#wrapper h1', el => el.hasAttribute('id'));
       expect(hasId).toBe(true);
+    });
+  });
+
+  test.describe('Mermaid diagram sanitization', () => {
+    test('blocks XSS in mermaid node labels', async ({ page }) => {
+      // Attempt XSS via mermaid node label with img onerror
+      const maliciousMermaid = '```mermaid\ngraph TD\nA[<img src=x onerror=alert(1)>]\n```';
+      const listener = setupDialogListener(page);
+      await setCodeMirrorContent(page, maliciousMermaid);
+      await renderMarkdownAndWait(page, WAIT_TIMES.EXTRA_LONG);
+      await page.waitForTimeout(WAIT_TIMES.LONG);
+      expect(listener.wasTriggered()).toBe(false);
+    });
+
+    test('blocks script tags in mermaid diagrams', async ({ page }) => {
+      // Attempt XSS via script tag in mermaid
+      const maliciousMermaid = '```mermaid\ngraph TD\nA[<script>alert(1)</script>]\n```';
+      const listener = setupDialogListener(page);
+      await setCodeMirrorContent(page, maliciousMermaid);
+      await renderMarkdownAndWait(page, WAIT_TIMES.EXTRA_LONG);
+      await page.waitForTimeout(WAIT_TIMES.LONG);
+      expect(listener.wasTriggered()).toBe(false);
     });
   });
 });
