@@ -103,7 +103,7 @@ async function waitForElementClass(page, selector, className, timeout = INIT_TIM
   await page.waitForFunction(
     ({ sel, cls }) => {
       const el = document.querySelector(sel);
-      return el && el.classList.contains(cls);
+      return el?.classList.contains(cls);
     },
     { sel: selector, cls: className },
     { timeout }
@@ -231,8 +231,6 @@ const WRAPPER_POPULATION_TIMEOUT_MS = 5000;
  * @returns {Promise<void>}
  */
 async function loadSampleContent(page, waitTime = WAIT_TIMES.LONG) {
-  const MIN_WRAPPER_LENGTH = 0;
-
   await page.evaluate(() => globalThis.loadSample());
   // Use waitForFunction instead of arbitrary timeout where possible
   await page.waitForFunction(() => {

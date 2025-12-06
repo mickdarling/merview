@@ -32,6 +32,7 @@ function browserCheckModalOpen() {
       modal.close();
       resolve(isOpen);
     } catch (error) {
+      // Intentionally empty - modal may not support showModal/close methods
       resolve(false);
     }
   });
@@ -63,7 +64,7 @@ function browserCheckBackdropClose() {
       const clickEvent = new MouseEvent('click', {
         bubbles: true,
         cancelable: true,
-        view: window,
+        view: globalThis,
         target: modal
       });
 
@@ -78,6 +79,7 @@ function browserCheckBackdropClose() {
         resolve(!modal.open);
       }, checkTimeout);
     } catch (error) {
+      // Intentionally empty - backdrop click handler may not be available
       resolve(false);
     }
   });
@@ -199,18 +201,18 @@ test.describe('Private URL Modal', () => {
         });
 
         test('should have correct title text', async ({ page }) => {
-          const title = await page.$eval(
-            `#privateUrlModal ${button.selector} .option-title`,
-            el => el.textContent
-          );
+          const title = await page.evaluate((selector) => {
+            const element = document.querySelector('#privateUrlModal ' + selector + ' .option-title');
+            return element ? element.textContent : null;
+          }, button.selector);
           expect(title).toBe(button.title);
         });
 
         test('should have description', async ({ page }) => {
-          const desc = await page.$eval(
-            `#privateUrlModal ${button.selector} .option-desc`,
-            el => el.textContent
-          );
+          const desc = await page.evaluate((selector) => {
+            const element = document.querySelector('#privateUrlModal ' + selector + ' .option-desc');
+            return element ? element.textContent : null;
+          }, button.selector);
           expect(desc).toContain(button.descriptionContains);
         });
 
@@ -233,10 +235,10 @@ test.describe('Private URL Modal', () => {
         });
 
         test('should have correct data-action attribute', async ({ page }) => {
-          const action = await page.$eval(
-            `#privateUrlModal ${button.selector}`,
-            el => el.dataset.action
-          );
+          const action = await page.evaluate((selector) => {
+            const element = document.querySelector('#privateUrlModal ' + selector);
+            return element ? element.dataset.action : null;
+          }, button.selector);
           expect(action).toBe(button.dataAction);
         });
 
@@ -329,6 +331,7 @@ test.describe('Private URL Modal', () => {
           modal.close();
           return !modal.open;
         } catch (error) {
+          // Intentionally empty - modal may not support these methods
           return false;
         }
       });
@@ -361,6 +364,7 @@ test.describe('Private URL Modal', () => {
 
           return wasOpen && isClosed && canReopenAfterClose;
         } catch (error) {
+          // Intentionally empty - modal state manipulation may fail
           return false;
         }
       });
@@ -383,7 +387,7 @@ test.describe('Private URL Modal', () => {
 
     test('modal should have proper z-index for overlay', async ({ page }) => {
       const zIndex = await page.$eval('#privateUrlModal', el => getComputedStyle(el).zIndex);
-      expect(parseInt(zIndex, RADIX_DECIMAL)).toBeGreaterThanOrEqual(MIN_MODAL_Z_INDEX);
+      expect(Number.parseInt(zIndex, RADIX_DECIMAL)).toBeGreaterThanOrEqual(MIN_MODAL_Z_INDEX);
     });
 
     test('modal overlay should have flex display when open', async ({ page }) => {
@@ -397,6 +401,7 @@ test.describe('Private URL Modal', () => {
           modal.close();
           return display;
         } catch (error) {
+          // Intentionally empty - getComputedStyle may not be available
           return '';
         }
       });
@@ -405,8 +410,6 @@ test.describe('Private URL Modal', () => {
     });
 
     test('modal buttons should have hover states', async ({ page }) => {
-      const EXPECTED_BUTTON_COUNT = 2;
-
       const buttonsExist = await page.evaluate(() => {
         const buttons = document.querySelectorAll('#privateUrlModal .option-btn');
         return buttons.length === 2;

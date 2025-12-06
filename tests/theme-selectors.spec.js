@@ -18,6 +18,64 @@ const MIN_THEME_OPTIONS = 1;
 const MIN_AVAILABLE_OPTIONS = 1;
 
 /**
+ * Browser-side helper functions to reduce nesting in page.evaluate() calls
+ */
+
+/**
+ * Check if a select element has an option with the given value
+ * @param {HTMLSelectElement} select - The select element
+ * @param {string} optValue - The option value to search for
+ * @returns {boolean} True if the option exists
+ */
+function hasOptionWithValue(select, optValue) {
+  return Array.from(select.options).some(opt => opt.value === optValue);
+}
+
+/**
+ * Filter and map select options based on criteria
+ * @param {HTMLOptionElement[]} options - Array of option elements
+ * @param {string|null} excluded - Value to exclude from results
+ * @returns {string[]} Array of option values
+ */
+function filterAvailableOptions(options, excluded) {
+  return options
+    .filter(opt => opt.value && opt.value !== '' && !opt.disabled && opt.value !== excluded)
+    .map(opt => opt.value);
+}
+
+/**
+ * Filter and map select options (simple version without exclusion)
+ * @param {HTMLOptionElement[]} options - Array of option elements
+ * @returns {string[]} Array of option values
+ */
+function filterNonEmptyOptions(options) {
+  return options
+    .filter(opt => opt.value && opt.value !== '')
+    .map(opt => opt.value);
+}
+
+/**
+ * Check if a select has an option with text containing the given string
+ * @param {HTMLSelectElement} select - The select element
+ * @param {string} toggleText - The text to search for
+ * @returns {boolean} True if an option contains the text
+ */
+function hasOptionWithText(select, toggleText) {
+  return Array.from(select.options).some(opt =>
+    opt.textContent?.includes(toggleText)
+  );
+}
+
+/**
+ * Filter select options by value and disabled state
+ * @param {HTMLOptionElement[]} opts - Array of option elements
+ * @returns {string[]} Array of enabled option values
+ */
+function filterEnabledOptions(opts) {
+  return opts.filter(o => o.value && !o.disabled).map(o => o.value);
+}
+
+/**
  * Configuration for each theme selector to enable data-driven tests
  */
 const THEME_SELECTORS = [
@@ -89,7 +147,7 @@ test.describe('Theme Selectors', () => {
 
       test('should have specific option available', async ({ page }) => {
         const hasOption = await page.$eval(`#${selector.id}`,
-          (select, optValue) => Array.from(select.options).some(opt => opt.value === optValue),
+          hasOptionWithValue,
           selector.expectedOption
         );
         expect(hasOption).toBe(true);
@@ -109,9 +167,7 @@ test.describe('Theme Selectors', () => {
         const initialValue = await page.$eval(`#${selector.id}`, select => select.value);
 
         const availableOptions = await page.$$eval(`#${selector.id} option`,
-          (options, excluded) => options
-            .filter(opt => opt.value && opt.value !== '' && !opt.disabled && opt.value !== excluded)
-            .map(opt => opt.value),
+          filterAvailableOptions,
           selector.excludeFromSelection
         );
 
@@ -130,9 +186,7 @@ test.describe('Theme Selectors', () => {
       if (selector.hasToggleOption) {
         test('should display toggle option', async ({ page }) => {
           const hasToggle = await page.$eval(`#${selector.id}`,
-            (select, toggleText) => Array.from(select.options).some(opt =>
-              opt.textContent && opt.textContent.includes(toggleText)
-            ),
+            hasOptionWithText,
             selector.toggleOptionText
           );
           expect(hasToggle).toBe(true);
@@ -154,9 +208,7 @@ test.describe('Theme Selectors', () => {
           const initialValue = await page.$eval(`#${selector.id}`, select => select.value);
 
           const availableOptions = await page.$$eval(`#${selector.id} option`,
-            options => options
-              .filter(opt => opt.value && opt.value !== '')
-              .map(opt => opt.value)
+            filterNonEmptyOptions
           );
 
           const newValue = availableOptions.find(opt => opt !== initialValue);
@@ -196,14 +248,8 @@ test.describe('Theme Selectors', () => {
       // Special test for CodeMirror background changes
       if (selector.checkCodeMirrorBackground) {
         test('CodeMirror editor should reflect theme changes', async ({ page }) => {
-          const initialBackground = await page.$eval('.CodeMirror',
-            el => getComputedStyle(el).backgroundColor
-          );
-
           const availableOptions = await page.$$eval(`#${selector.id} option`,
-            options => options
-              .filter(opt => opt.value && opt.value !== '')
-              .map(opt => opt.value)
+            filterNonEmptyOptions
           );
 
           if (availableOptions.length > MIN_AVAILABLE_OPTIONS) {
@@ -247,7 +293,7 @@ test.describe('Theme Selectors', () => {
       ]);
 
       const styleOptions = await page.$$eval('#styleSelector option',
-        opts => opts.filter(o => o.value && !o.disabled).map(o => o.value)
+        filterEnabledOptions
       );
       const newStyle = styleOptions.find(o => o !== initialStyle && o !== 'Respect Style Layout');
 

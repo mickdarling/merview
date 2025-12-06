@@ -13,6 +13,47 @@ const {
 } = require('./helpers/test-utils');
 
 /**
+ * Browser-side helper: Select a style by index
+ * @param {Object} opts - Configuration
+ * @param {number} opts.styleIndex - The index to select
+ * @param {number} opts.minOptions - Minimum options required
+ */
+function browserSelectStyle({ styleIndex, minOptions }) {
+  try {
+    const selector = document.getElementById('styleSelector');
+    if (selector && selector.options.length > minOptions) {
+      selector.selectedIndex = styleIndex;
+      selector.dispatchEvent(new Event('change'));
+    }
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+/**
+ * Browser-side helper: Rapidly cycle through styles
+ * @param {Object} opts - Configuration
+ * @param {number} opts.minStyles - Minimum styles required for test
+ * @param {number} opts.cycleCount - Number of styles to cycle through
+ */
+function browserRapidCycleStyles({ minStyles, cycleCount }) {
+  try {
+    const selector = document.getElementById('styleSelector');
+    if (!selector || selector.options.length < minStyles) return { success: true };
+
+    // Rapidly cycle through styles
+    for (let i = 0; i < cycleCount; i++) {
+      selector.selectedIndex = i;
+      selector.dispatchEvent(new Event('change'));
+    }
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+/**
  * Tests for CSS file upload and custom style functionality
  *
  * These tests verify the CSS styling features including:
@@ -89,11 +130,6 @@ test.describe('CSS File Upload', () => {
   });
 
   test.describe('CSS Application', () => {
-    const FIRST_STYLE_INDEX = 1;
-    const SECOND_STYLE_INDEX = 2;
-    const MIN_OPTIONS_FOR_FIRST = 1;
-    const MIN_OPTIONS_FOR_SECOND = 2;
-
     test('style selector should have changeStyle function available', async ({ page }) => {
       const hasChangeStyle = await isGlobalFunctionAvailable(page, 'changeStyle');
       expect(hasChangeStyle).toBe(true);
@@ -101,39 +137,13 @@ test.describe('CSS File Upload', () => {
 
     test('selecting different styles should not cause errors', async ({ page }) => {
       // Select first style
-      const firstResult = await page.evaluate(async () => {
-        const minOptions = 1;
-        const firstIndex = 1;
-        try {
-          const selector = document.getElementById('styleSelector');
-          if (selector && selector.options.length > minOptions) {
-            selector.selectedIndex = firstIndex;
-            selector.dispatchEvent(new Event('change'));
-          }
-          return { success: true };
-        } catch (e) {
-          return { success: false, error: e.message };
-        }
-      });
+      const firstResult = await page.evaluate(browserSelectStyle, { styleIndex: 1, minOptions: 1 });
       expect(firstResult.success).toBe(true);
 
       await page.waitForTimeout(WAIT_TIMES.LONG);
 
       // Select second style
-      const secondResult = await page.evaluate(async () => {
-        const minOptions = 2;
-        const secondIndex = 2;
-        try {
-          const selector = document.getElementById('styleSelector');
-          if (selector && selector.options.length > minOptions) {
-            selector.selectedIndex = secondIndex;
-            selector.dispatchEvent(new Event('change'));
-          }
-          return { success: true };
-        } catch (e) {
-          return { success: false, error: e.message };
-        }
-      });
+      const secondResult = await page.evaluate(browserSelectStyle, { styleIndex: 2, minOptions: 2 });
       expect(secondResult.success).toBe(true);
     });
 
@@ -172,28 +182,9 @@ test.describe('CSS File Upload', () => {
   });
 
   test.describe('Error Handling', () => {
-    const MIN_STYLES_FOR_CYCLING = 3;
-    const RAPID_CYCLE_COUNT = 3;
-
     test('style selector should handle rapid changes without errors', async ({ page }) => {
       // Rapidly change styles to verify no race conditions or crashes
-      const result = await page.evaluate(async () => {
-        const minStyles = 3;
-        const cycleCount = 3;
-        try {
-          const selector = document.getElementById('styleSelector');
-          if (!selector || selector.options.length < minStyles) return { success: true };
-
-          // Rapidly cycle through 3 styles
-          for (let i = 0; i < cycleCount; i++) {
-            selector.selectedIndex = i;
-            selector.dispatchEvent(new Event('change'));
-          }
-          return { success: true };
-        } catch (e) {
-          return { success: false, error: e.message };
-        }
-      });
+      const result = await page.evaluate(browserRapidCycleStyles, { minStyles: 3, cycleCount: 3 });
 
       expect(result.success).toBe(true);
     });

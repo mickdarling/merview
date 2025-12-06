@@ -51,6 +51,29 @@ async function browserLoadSampleAndGetContent(waitTime) {
 }
 
 /**
+ * Browser-side helper: Load sample with timeout helper
+ * @param {number} waitTime - Time to wait after loading
+ * @returns {Promise<string>} Editor content after loading
+ */
+async function browserLoadSampleWithTimeout(waitTime) {
+  if (typeof globalThis.loadSample === 'function') {
+    globalThis.loadSample();
+  }
+
+  function createTimeout(resolve, timeout) {
+    setTimeout(resolve, timeout);
+  }
+
+  await new Promise(function waitForLoad(resolve) {
+    createTimeout(resolve, waitTime);
+  });
+
+  const cmElement = document.querySelector('.CodeMirror');
+  const cmEditor = cmElement?.CodeMirror;
+  return cmEditor ? cmEditor.getValue() : '';
+}
+
+/**
  * Tests for Load Sample functionality
  *
  * These tests ensure the Load Sample button and loadSample() function work correctly
@@ -173,9 +196,6 @@ test.describe('Load Sample Functionality', () => {
 
   test.describe('Preview Rendering', () => {
     const MIN_PREVIEW_LENGTH = 0;
-    const MIN_CODE_BLOCKS = 0;
-    const MIN_MERMAID_DIAGRAMS = 0;
-    const MIN_TABLES = 0;
 
     const RENDERED_ELEMENTS = [
       { selector: 'h1', description: 'headings (h1)' },
@@ -274,12 +294,7 @@ test.describe('Load Sample Functionality', () => {
 
     test('loading sample multiple times should work consistently', async ({ page }) => {
       const [firstLoad, secondLoad] = await Promise.all([
-        page.evaluate(async (waitTime) => {
-          if (typeof globalThis.loadSample === 'function') globalThis.loadSample();
-          await new Promise(function waitForLoad(r) { setTimeout(r, waitTime); });
-          const cm = document.querySelector('.CodeMirror');
-          return cm?.CodeMirror?.getValue() || '';
-        }, WAIT_TIMES.MEDIUM),
+        page.evaluate(browserLoadSampleWithTimeout, WAIT_TIMES.MEDIUM),
         (async () => {
           await page.waitForTimeout(WAIT_TIMES.MEDIUM + WAIT_TIMES.SHORT);
           if (typeof globalThis.loadSample === 'function') {
