@@ -125,9 +125,12 @@ export async function renderMarkdown() {
         // Reset mermaid counter for consistent diagram IDs
         state.mermaidCounter = 0;
 
-        // Convert markdown to HTML
+        // Convert markdown to HTML and sanitize to prevent XSS attacks
+        // DOMPurify removes dangerous elements like <script>, event handlers, and javascript: URLs
+        // Using DOMPurify defaults (intentional) - they provide comprehensive protection while
+        // preserving all safe HTML elements, classes (for syntax highlighting), and IDs (for anchors)
         const html = marked.parse(markdown);
-        wrapper.innerHTML = html;
+        wrapper.innerHTML = DOMPurify.sanitize(html);
 
         // Render mermaid diagrams
         const mermaidElements = wrapper.querySelectorAll('.mermaid');
