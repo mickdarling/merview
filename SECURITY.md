@@ -32,7 +32,7 @@ To help us understand and address the issue quickly, please include:
 ### What Constitutes a Security Issue?
 
 **Security vulnerabilities** include:
-- Cross-Site Scripting (XSS) that could affect other users
+- Cross-Site Scripting (XSS) bypasses that evade DOMPurify sanitization
 - Content Security Policy (CSP) bypasses that enable malicious code execution
 - Dependency vulnerabilities in critical libraries (Mermaid.js, CodeMirror, etc.)
 - Authentication/authorization issues (if auth features are added)
@@ -108,6 +108,37 @@ This application is **relatively safe** to expose via Cloudflare Tunnel because:
    - No forms submitted to server
    - No API endpoints
    - Just static file serving
+
+### ✅ XSS Protection via DOMPurify
+
+All user-provided markdown content is sanitized before rendering using [DOMPurify](https://github.com/cure53/DOMPurify), the industry-standard HTML sanitizer.
+
+**What's Protected:**
+- `<script>` tags are completely removed
+- Event handlers (`onclick`, `onerror`, `onload`, etc.) are stripped
+- `javascript:` URLs are neutralized
+- Dangerous elements (`<iframe>`, `<object>`, `<embed>`, `<base>`, `<meta>`, `<link>`) are removed
+- SVG-based XSS vectors are blocked
+
+**What's Preserved:**
+- All standard markdown elements (headings, paragraphs, lists, etc.)
+- Safe links (`http://`, `https://`, `mailto:`)
+- Images with safe `src` attributes
+- Class and ID attributes (needed for syntax highlighting and anchor links)
+- Tables and blockquotes
+- Code blocks with syntax highlighting
+
+**Implementation:**
+```javascript
+// In renderer.js
+const html = marked.parse(markdown);
+wrapper.innerHTML = DOMPurify.sanitize(html);
+```
+
+This protection applies to:
+- Content typed in the editor
+- Content loaded via `?url=` parameter from GitHub/Gist
+- Any markdown file opened via the Open button
 
 ### ⚠️ Security Considerations
 
