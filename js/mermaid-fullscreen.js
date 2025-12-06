@@ -22,21 +22,29 @@ export function expandMermaid(mermaidId) {
     const svgContent = mermaidElement.innerHTML;
 
     // Create fullscreen overlay
+    // Note: Using data attributes instead of inline onclick for consistency and future-proofing
+    // (in case this content ever goes through sanitization)
     const overlay = document.createElement('div');
     overlay.className = 'mermaid-fullscreen-overlay';
     overlay.id = 'mermaid-fullscreen-overlay';
     overlay.innerHTML = `
-        <button class="mermaid-close-btn" onclick="closeMermaidFullscreen()">✕ Close</button>
+        <button class="mermaid-close-btn" data-action="close">✕ Close</button>
         <div class="mermaid-fullscreen-content" id="mermaid-pan-area">${svgContent}</div>
         <div class="mermaid-zoom-controls">
-            <button class="mermaid-zoom-btn" onclick="mermaidZoomIn()">+</button>
+            <button class="mermaid-zoom-btn" data-action="zoom-in">+</button>
             <span class="mermaid-zoom-level" id="mermaid-zoom-level">100%</span>
-            <button class="mermaid-zoom-btn" onclick="mermaidZoomOut()">−</button>
-            <button class="mermaid-zoom-btn" onclick="mermaidZoomReset()">Reset</button>
+            <button class="mermaid-zoom-btn" data-action="zoom-out">−</button>
+            <button class="mermaid-zoom-btn" data-action="zoom-reset">Reset</button>
         </div>
     `;
 
     document.body.appendChild(overlay);
+
+    // Attach event listeners for overlay controls
+    overlay.querySelector('[data-action="close"]').addEventListener('click', closeMermaidFullscreen);
+    overlay.querySelector('[data-action="zoom-in"]').addEventListener('click', mermaidZoomIn);
+    overlay.querySelector('[data-action="zoom-out"]').addEventListener('click', mermaidZoomOut);
+    overlay.querySelector('[data-action="zoom-reset"]').addEventListener('click', mermaidZoomReset);
 
     // Set up pan area
     const panArea = document.getElementById('mermaid-pan-area');

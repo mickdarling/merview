@@ -59,11 +59,13 @@ renderer.heading = function(text, level) {
  */
 renderer.code = function(code, language) {
     // Handle Mermaid diagrams specially
+    // Note: Using data attributes instead of inline event handlers because DOMPurify strips onclick/ondblclick
+    // Event listeners are attached programmatically after rendering in renderMarkdown()
     if (language === 'mermaid') {
         const id = `mermaid-${state.mermaidCounter++}`;
-        return `<div class="mermaid-container">
-            <button class="mermaid-expand-btn" onclick="expandMermaid('${id}')" title="Expand diagram">⛶</button>
-            <div class="mermaid" id="${id}" ondblclick="expandMermaid('${id}')">${code}</div>
+        return `<div class="mermaid-container" data-mermaid-id="${id}">
+            <button class="mermaid-expand-btn" data-expand-target="${id}" title="Expand diagram">⛶</button>
+            <div class="mermaid" id="${id}">${code}</div>
         </div>`;
     }
 
@@ -146,6 +148,15 @@ export async function renderMarkdown() {
                 </div>`;
             }
         }
+
+        // Attach event listeners for mermaid expand functionality
+        // (DOMPurify strips inline onclick/ondblclick handlers, so we attach programmatically)
+        wrapper.querySelectorAll('.mermaid-expand-btn[data-expand-target]').forEach(btn => {
+            btn.addEventListener('click', () => expandMermaid(btn.dataset.expandTarget));
+        });
+        wrapper.querySelectorAll('.mermaid[id]').forEach(el => {
+            el.addEventListener('dblclick', () => expandMermaid(el.id));
+        });
 
         // Save to localStorage
         saveMarkdownContent(markdown);
