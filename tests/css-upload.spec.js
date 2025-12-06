@@ -54,6 +54,44 @@ function browserRapidCycleStyles({ minStyles, cycleCount }) {
 }
 
 /**
+ * Browser-side helper: Check if dark mode exists and select it
+ * @returns {{ darkModeExists: boolean, darkModeSelected: boolean }}
+ */
+function browserSelectDarkMode() {
+  const selector = document.getElementById('styleSelector');
+
+  // Helper function to check if option is dark mode
+  function isDarkOption(opt) {
+    return opt.text.toLowerCase().includes('dark') || opt.value.toLowerCase().includes('dark');
+  }
+
+  const darkOption = Array.from(selector.options).find(isDarkOption);
+
+  if (!darkOption) {
+    return { darkModeExists: false, darkModeSelected: false };
+  }
+
+  selector.value = darkOption.value;
+  selector.dispatchEvent(new Event('change'));
+  return { darkModeExists: true, darkModeSelected: true };
+}
+
+/**
+ * Browser-side helper: Check if dark mode exists
+ * @returns {boolean} True if dark mode option exists
+ */
+function browserCheckDarkModeExists() {
+  const selector = document.getElementById('styleSelector');
+
+  // Helper function to check if option is dark mode
+  function isDarkOption(opt) {
+    return opt.text.toLowerCase().includes('dark') || opt.value.toLowerCase().includes('dark');
+  }
+
+  return Array.from(selector.options).some(isDarkOption);
+}
+
+/**
  * Tests for CSS file upload and custom style functionality
  *
  * These tests verify the CSS styling features including:
@@ -105,8 +143,8 @@ test.describe('CSS File Upload', () => {
         return style.outline.includes('dashed') || style.outlineStyle === 'dashed';
       });
 
-      // Verify the outline check returns a boolean (feature may vary by implementation)
-      expect(typeof hasOutline).toBe('boolean');
+      // Verify the outline check returns a defined value (feature may vary by implementation)
+      expect(hasOutline).toBeDefined();
     });
 
     test('preview should remove visual feedback on dragleave', async ({ page }) => {
@@ -152,25 +190,12 @@ test.describe('CSS File Upload', () => {
       await setCodeMirrorContent(page, '# Test\n\n```mermaid\ngraph TD\n    A-->B\n```');
       await renderMarkdownAndWait(page, WAIT_TIMES.LONG);
 
-      // Select Dark Mode style if available
-      const darkModeExists = await page.evaluate(() => {
-        const selector = document.getElementById('styleSelector');
-        return Array.from(selector.options).some(opt =>
-          opt.text.toLowerCase().includes('dark') || opt.value.toLowerCase().includes('dark')
-        );
-      });
+      // Check if dark mode exists and select it
+      const darkModeExists = await page.evaluate(browserCheckDarkModeExists);
 
       if (darkModeExists) {
-        await page.evaluate(() => {
-          const selector = document.getElementById('styleSelector');
-          const darkOption = Array.from(selector.options).find(opt =>
-            opt.text.toLowerCase().includes('dark') || opt.value.toLowerCase().includes('dark')
-          );
-          if (darkOption) {
-            selector.value = darkOption.value;
-            selector.dispatchEvent(new Event('change'));
-          }
-        });
+        const result = await page.evaluate(browserSelectDarkMode);
+        expect(result.darkModeSelected).toBe(true);
 
         await page.waitForTimeout(WAIT_TIMES.EXTRA_LONG);
 

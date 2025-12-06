@@ -36,36 +36,13 @@ const EXPECTED_CONTENT = {
  * @param {number} waitTime - Time to wait after loading
  * @returns {Promise<string>} Editor content after loading
  */
-async function browserLoadSampleAndGetContent(waitTime) {
+async function browserLoadSampleAndWait(waitTime) {
   if (typeof globalThis.loadSample === 'function') {
     globalThis.loadSample();
   }
 
   await new Promise(function resolveAfterWait(resolve) {
     setTimeout(resolve, waitTime);
-  });
-
-  const cmElement = document.querySelector('.CodeMirror');
-  const cmEditor = cmElement?.CodeMirror;
-  return cmEditor ? cmEditor.getValue() : '';
-}
-
-/**
- * Browser-side helper: Load sample with timeout helper
- * @param {number} waitTime - Time to wait after loading
- * @returns {Promise<string>} Editor content after loading
- */
-async function browserLoadSampleWithTimeout(waitTime) {
-  if (typeof globalThis.loadSample === 'function') {
-    globalThis.loadSample();
-  }
-
-  function createTimeout(resolve, timeout) {
-    setTimeout(resolve, timeout);
-  }
-
-  await new Promise(function waitForLoad(resolve) {
-    createTimeout(resolve, waitTime);
   });
 
   const cmElement = document.querySelector('.CodeMirror');
@@ -150,7 +127,7 @@ test.describe('Load Sample Functionality', () => {
     });
 
     test('editor should not be empty after loading sample', async ({ page }) => {
-      const content = await page.evaluate(browserLoadSampleAndGetContent, WAIT_TIMES.MEDIUM);
+      const content = await page.evaluate(browserLoadSampleAndWait, WAIT_TIMES.MEDIUM);
 
       expect(content).not.toBe('');
       expect(content.trim().length).toBeGreaterThan(MIN_SAMPLE_CONTENT_LENGTH);
@@ -158,7 +135,7 @@ test.describe('Load Sample Functionality', () => {
 
     // Data-driven test for expected content elements
     test('sample content should include expected elements', async ({ page }) => {
-      const content = await page.evaluate(browserLoadSampleAndGetContent, WAIT_TIMES.MEDIUM);
+      const content = await page.evaluate(browserLoadSampleAndWait, WAIT_TIMES.MEDIUM);
 
       // Check main heading
       expect(content).toContain(EXPECTED_CONTENT.mainHeading);
@@ -170,7 +147,7 @@ test.describe('Load Sample Functionality', () => {
     });
 
     test('sample content should include code blocks with various languages', async ({ page }) => {
-      const content = await page.evaluate(browserLoadSampleAndGetContent, WAIT_TIMES.MEDIUM);
+      const content = await page.evaluate(browserLoadSampleAndWait, WAIT_TIMES.MEDIUM);
 
       for (const codeBlock of EXPECTED_CONTENT.codeBlocks) {
         expect(content).toContain(codeBlock);
@@ -178,7 +155,7 @@ test.describe('Load Sample Functionality', () => {
     });
 
     test('sample content should include mermaid diagram blocks', async ({ page }) => {
-      const content = await page.evaluate(browserLoadSampleAndGetContent, WAIT_TIMES.MEDIUM);
+      const content = await page.evaluate(browserLoadSampleAndWait, WAIT_TIMES.MEDIUM);
 
       for (const mermaidElement of EXPECTED_CONTENT.mermaidElements) {
         expect(content).toContain(mermaidElement);
@@ -186,7 +163,7 @@ test.describe('Load Sample Functionality', () => {
     });
 
     test('sample content should include markdown tables', async ({ page }) => {
-      const content = await page.evaluate(browserLoadSampleAndGetContent, WAIT_TIMES.MEDIUM);
+      const content = await page.evaluate(browserLoadSampleAndWait, WAIT_TIMES.MEDIUM);
 
       for (const tableMarker of EXPECTED_CONTENT.tableMarkers) {
         expect(content).toContain(tableMarker);
@@ -293,17 +270,12 @@ test.describe('Load Sample Functionality', () => {
     });
 
     test('loading sample multiple times should work consistently', async ({ page }) => {
-      const [firstLoad, secondLoad] = await Promise.all([
-        page.evaluate(browserLoadSampleWithTimeout, WAIT_TIMES.MEDIUM),
-        (async () => {
-          await page.waitForTimeout(WAIT_TIMES.MEDIUM + WAIT_TIMES.SHORT);
-          if (typeof globalThis.loadSample === 'function') {
-            await page.evaluate(() => globalThis.loadSample());
-          }
-          await page.waitForTimeout(WAIT_TIMES.MEDIUM);
-          return getCodeMirrorContent(page);
-        })()
-      ]);
+      // First load
+      const firstLoad = await page.evaluate(browserLoadSampleAndWait, WAIT_TIMES.MEDIUM);
+
+      // Wait a bit, then second load
+      await page.waitForTimeout(WAIT_TIMES.SHORT);
+      const secondLoad = await page.evaluate(browserLoadSampleAndWait, WAIT_TIMES.MEDIUM);
 
       expect(firstLoad).toBe(secondLoad);
       expect(firstLoad.length).toBeGreaterThan(MIN_CONTENT_LENGTH);
@@ -327,7 +299,7 @@ test.describe('Load Sample Functionality', () => {
     test('sample content should be valid markdown', async ({ page }) => {
       const EVEN_BACKTICK_COUNT_DIVISOR = 2;
 
-      const content = await page.evaluate(browserLoadSampleAndGetContent, WAIT_TIMES.MEDIUM);
+      const content = await page.evaluate(browserLoadSampleAndWait, WAIT_TIMES.MEDIUM);
 
       // Basic markdown validation checks
       expect(content).toMatch(/^#\s/m);

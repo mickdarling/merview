@@ -32,10 +32,43 @@ function browserCheckModalOpen() {
       modal.close();
       resolve(isOpen);
     } catch (error) {
-      // Intentionally empty - modal may not support showModal/close methods
+      console.debug('Modal operation failed:', error.message);
       resolve(false);
     }
   });
+}
+
+/**
+ * Browser-side helper: Get button title text
+ * Extracted to avoid deep function nesting (SonarCloud S2004)
+ * @param {string} selector - Button selector
+ * @returns {string|null} Title text
+ */
+function browserGetButtonTitle(selector) {
+  const element = document.querySelector('#privateUrlModal ' + selector + ' .option-title');
+  return element ? element.textContent : null;
+}
+
+/**
+ * Browser-side helper: Get button description text
+ * Extracted to avoid deep function nesting (SonarCloud S2004)
+ * @param {string} selector - Button selector
+ * @returns {string|null} Description text
+ */
+function browserGetButtonDesc(selector) {
+  const element = document.querySelector('#privateUrlModal ' + selector + ' .option-desc');
+  return element ? element.textContent : null;
+}
+
+/**
+ * Browser-side helper: Get button data-action attribute
+ * Extracted to avoid deep function nesting (SonarCloud S2004)
+ * @param {string} selector - Button selector
+ * @returns {string|null} Data action value
+ */
+function browserGetButtonAction(selector) {
+  const element = document.querySelector('#privateUrlModal ' + selector);
+  return element ? element.dataset.action : null;
 }
 
 /**
@@ -79,7 +112,7 @@ function browserCheckBackdropClose() {
         resolve(!modal.open);
       }, checkTimeout);
     } catch (error) {
-      // Intentionally empty - backdrop click handler may not be available
+      console.debug('Backdrop click handler failed:', error.message);
       resolve(false);
     }
   });
@@ -201,18 +234,12 @@ test.describe('Private URL Modal', () => {
         });
 
         test('should have correct title text', async ({ page }) => {
-          const title = await page.evaluate((selector) => {
-            const element = document.querySelector('#privateUrlModal ' + selector + ' .option-title');
-            return element ? element.textContent : null;
-          }, button.selector);
+          const title = await page.evaluate(browserGetButtonTitle, button.selector);
           expect(title).toBe(button.title);
         });
 
         test('should have description', async ({ page }) => {
-          const desc = await page.evaluate((selector) => {
-            const element = document.querySelector('#privateUrlModal ' + selector + ' .option-desc');
-            return element ? element.textContent : null;
-          }, button.selector);
+          const desc = await page.evaluate(browserGetButtonDesc, button.selector);
           expect(desc).toContain(button.descriptionContains);
         });
 
@@ -235,10 +262,7 @@ test.describe('Private URL Modal', () => {
         });
 
         test('should have correct data-action attribute', async ({ page }) => {
-          const action = await page.evaluate((selector) => {
-            const element = document.querySelector('#privateUrlModal ' + selector);
-            return element ? element.dataset.action : null;
-          }, button.selector);
+          const action = await page.evaluate(browserGetButtonAction, button.selector);
           expect(action).toBe(button.dataAction);
         });
 
@@ -331,7 +355,7 @@ test.describe('Private URL Modal', () => {
           modal.close();
           return !modal.open;
         } catch (error) {
-          // Intentionally empty - modal may not support these methods
+          console.debug('Modal close operation failed:', error.message);
           return false;
         }
       });
@@ -364,7 +388,7 @@ test.describe('Private URL Modal', () => {
 
           return wasOpen && isClosed && canReopenAfterClose;
         } catch (error) {
-          // Intentionally empty - modal state manipulation may fail
+          console.debug('Modal state manipulation failed:', error.message);
           return false;
         }
       });
@@ -401,7 +425,7 @@ test.describe('Private URL Modal', () => {
           modal.close();
           return display;
         } catch (error) {
-          // Intentionally empty - getComputedStyle may not be available
+          console.debug('getComputedStyle operation failed:', error.message);
           return '';
         }
       });

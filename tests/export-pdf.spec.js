@@ -63,6 +63,126 @@ function browserTestExport({ mockType, exportFn, clearContent }) {
 }
 
 /**
+ * Browser-side helper: Validate content before print export
+ */
+function browserValidatePrintContent() {
+  const wrapper = document.getElementById('wrapper');
+  const originalContent = wrapper.innerHTML;
+  wrapper.innerHTML = '   ';
+
+  const state = { printCalled: false };
+  const originalPrint = globalThis.print;
+
+  function mockPrintValidation() {
+    state.printCalled = true;
+  }
+
+  globalThis.print = mockPrintValidation;
+  globalThis.exportToPDF();
+  globalThis.print = originalPrint;
+  wrapper.innerHTML = originalContent;
+
+  return !state.printCalled;
+}
+
+/**
+ * Browser-side helper: Validate content before open export
+ */
+function browserValidateOpenContent() {
+  const wrapper = document.getElementById('wrapper');
+  const originalContent = wrapper.innerHTML;
+  wrapper.innerHTML = '   ';
+
+  const state = { openCalled: false };
+  const originalOpen = globalThis.open;
+
+  function mockOpenValidation() {
+    state.openCalled = true;
+    return { document: { open() {}, write() {}, close() {} }, onload: null };
+  }
+
+  globalThis.open = mockOpenValidation;
+  globalThis.exportToPDFDirect();
+  globalThis.open = originalOpen;
+  wrapper.innerHTML = originalContent;
+
+  return !state.openCalled;
+}
+
+/**
+ * Browser-side helper: Test style element access during export
+ */
+function browserTestStyleAccess() {
+  globalThis.loadSample();
+
+  try {
+    const wrapper = document.getElementById('wrapper');
+    if (!wrapper?.innerHTML.trim()) {
+      return { success: false, error: 'No content in wrapper' };
+    }
+
+    const originalOpen = globalThis.open;
+
+    function mockOpenStyleTest() {
+      return { document: { open() {}, write() {}, close() {} }, onload: null };
+    }
+
+    globalThis.open = mockOpenStyleTest;
+    globalThis.exportToPDFDirect();
+    globalThis.open = originalOpen;
+
+    return { success: true, error: null };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Browser-side helper: Observe status message during export
+ * @param {Object} opts - Configuration
+ * @param {'print'|'open'} opts.mockType - Which function to mock
+ * @param {string} opts.searchText - Text to search for in status
+ * @param {string} opts.exportFn - Export function to call
+ */
+function browserObserveStatusMessage({ mockType, searchText, exportFn }) {
+  const checkTimeout = 200;
+
+  return new Promise(function resolveAfterStatusCheck(resolve) {
+    const statusRef = { statusMessage: null };
+    const statusElement = document.getElementById('status');
+
+    function observeStatusChange() {
+      const text = statusElement.textContent;
+      if (text?.includes(searchText)) {
+        statusRef.statusMessage = text;
+      }
+    }
+
+    const observer = new MutationObserver(observeStatusChange);
+    observer.observe(statusElement, { childList: true, subtree: true, characterData: true });
+
+    const originalFn = globalThis[mockType];
+
+    function mockGlobalFn() {
+      if (mockType === 'open') {
+        return { document: { open() {}, write() {}, close() {} }, onload: null };
+      }
+    }
+
+    globalThis[mockType] = mockGlobalFn;
+    globalThis[exportFn]();
+
+    function checkStatus() {
+      observer.disconnect();
+      globalThis[mockType] = originalFn;
+      resolve(statusRef.statusMessage);
+    }
+
+    setTimeout(checkStatus, checkTimeout);
+  });
+}
+
+/**
  * Tests for Export to PDF functionality
  */
 test.describe('Export PDF Functionality', () => {
@@ -132,21 +252,7 @@ test.describe('Export PDF Functionality', () => {
     });
 
     test('exportToPDF should validate wrapper content before proceeding', async ({ page }) => {
-      const validatesContent = await page.evaluate(() => {
-        const wrapper = document.getElementById('wrapper');
-        const originalContent = wrapper.innerHTML;
-        wrapper.innerHTML = '   ';
-
-        const state = { printCalled: false };
-        const originalPrint = globalThis.print;
-        globalThis.print = function mockPrintValidation() { state.printCalled = true; };
-
-        globalThis.exportToPDF();
-
-        globalThis.print = originalPrint;
-        wrapper.innerHTML = originalContent;
-        return !state.printCalled;
-      });
+      const validatesContent = await page.evaluate(browserValidatePrintContent);
       expect(validatesContent).toBe(true);
     });
   });
@@ -167,106 +273,34 @@ test.describe('Export PDF Functionality', () => {
     });
 
     test('exportToPDFDirect should validate wrapper content before proceeding', async ({ page }) => {
-      const validatesContent = await page.evaluate(() => {
-        const wrapper = document.getElementById('wrapper');
-        const originalContent = wrapper.innerHTML;
-        wrapper.innerHTML = '   ';
-
-        const state = { openCalled: false };
-        const originalOpen = globalThis.open;
-        globalThis.open = function mockOpenValidation() {
-          state.openCalled = true;
-          return { document: { open() {}, write() {}, close() {} }, onload: null };
-        };
-
-        globalThis.exportToPDFDirect();
-
-        globalThis.open = originalOpen;
-        wrapper.innerHTML = originalContent;
-        return !state.openCalled;
-      });
+      const validatesContent = await page.evaluate(browserValidateOpenContent);
       expect(validatesContent).toBe(true);
     });
 
     test('exportToPDFDirect should access current style and syntax theme elements', async ({ page }) => {
-      const accessesStyleElements = await page.evaluate(() => {
-        globalThis.loadSample();
-        try {
-          const wrapper = document.getElementById('wrapper');
-          if (wrapper?.innerHTML.trim()) {
-            const originalOpen = globalThis.open;
-            globalThis.open = function mockOpenStyleTest() {
-              return { document: { open() {}, write() {}, close() {} }, onload: null };
-            };
-            globalThis.exportToPDFDirect();
-            globalThis.open = originalOpen;
-            return true;
-          }
-          return false;
-        } catch (error) {
-          // Intentionally empty - test passes if export attempt succeeds or wrapper is empty
-          return false;
-        }
-      });
-      expect(accessesStyleElements).toBe(true);
+      const result = await page.evaluate(browserTestStyleAccess);
+      expect(result.success).toBe(true);
+      expect(result.error).toBeNull();
     });
   });
 
   test.describe('Status Messages', () => {
     test('exportToPDF should show status message before opening print dialog', async ({ page }) => {
       await loadSampleContent(page);
-      const statusShown = await page.evaluate(() => {
-        const checkTimeout = 200;
-        return new Promise(function resolveAfterStatus(resolve) {
-          const statusRef = { statusMessage: null };
-          const statusElement = document.getElementById('status');
-          const observer = new MutationObserver(function observePrintStatus() {
-            const text = statusElement.textContent;
-            if (text?.includes('print')) statusRef.statusMessage = text;
-          });
-          observer.observe(statusElement, { childList: true, subtree: true, characterData: true });
-
-          const originalPrint = globalThis.print;
-          globalThis.print = function mockPrint() {};
-          globalThis.exportToPDF();
-
-          setTimeout(function checkStatusPrint() {
-            observer.disconnect();
-            globalThis.print = originalPrint;
-            resolve(statusRef.statusMessage);
-          }, checkTimeout);
-        });
-      });
+      const statusShown = await page.evaluate(
+        browserObserveStatusMessage,
+        { mockType: 'print', searchText: 'print', exportFn: 'exportToPDF' }
+      );
       expect(statusShown).not.toBeNull();
       expect(statusShown.toLowerCase()).toContain('print');
     });
 
     test('exportToPDFDirect should show status message when generating PDF', async ({ page }) => {
       await loadSampleContent(page);
-      const statusShown = await page.evaluate(() => {
-        const checkTimeout = 200;
-        return new Promise(function resolveAfterStatus(resolve) {
-          const statusRef = { statusMessage: null };
-          const statusElement = document.getElementById('status');
-          const observer = new MutationObserver(function observePDFStatus() {
-            const text = statusElement.textContent;
-            if (text && (text.includes('PDF') || text.includes('print'))) statusRef.statusMessage = text;
-          });
-          observer.observe(statusElement, { childList: true, subtree: true, characterData: true });
-
-          const originalOpen = globalThis.open;
-          globalThis.open = function mockOpenDirect() {
-            return { document: { open() {}, write() {}, close() {} }, onload: null };
-          };
-          globalThis.exportToPDFDirect();
-
-          setTimeout(function checkStatusDirect() {
-            observer.disconnect();
-            globalThis.open = originalOpen;
-            resolve(statusRef.statusMessage);
-          }, checkTimeout);
-        });
-      });
+      const statusShown = await page.evaluate(
+        browserObserveStatusMessage,
+        { mockType: 'open', searchText: 'PDF', exportFn: 'exportToPDFDirect' }
+      );
       expect(statusShown).not.toBeNull();
     });
   });
