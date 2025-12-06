@@ -6,7 +6,6 @@ const { test, expect } = require('@playwright/test');
 const {
   waitForPageReady,
   waitForElement,
-  isGlobalFunctionAvailable,
   elementExists,
   elementHasClass,
   getElementAttribute
@@ -22,7 +21,6 @@ function browserCheckModalOpen() {
   if (!modal) return Promise.resolve(false);
 
   return new Promise(function resolveOnOpen(resolve) {
-    // Check if modal has showModal method (native dialog API)
     if (typeof modal.showModal !== 'function') {
       resolve(false);
       return;
@@ -56,7 +54,6 @@ function browserCheckBackdropClose() {
         return;
       }
 
-      // Click on backdrop (the dialog element itself, not its content)
       const clickEvent = new MouseEvent('click', {
         bubbles: true,
         cancelable: true,
@@ -64,7 +61,6 @@ function browserCheckBackdropClose() {
         target: modal
       });
 
-      // Set event target to modal itself (backdrop click)
       Object.defineProperty(clickEvent, 'target', {
         value: modal,
         writable: false
@@ -72,7 +68,6 @@ function browserCheckBackdropClose() {
 
       modal.dispatchEvent(clickEvent);
 
-      // Check if modal closed after backdrop click event
       setTimeout(function checkClosed() {
         resolve(!modal.open);
       }, 100);
@@ -81,6 +76,38 @@ function browserCheckBackdropClose() {
     }
   });
 }
+
+/**
+ * Configuration for modal buttons
+ */
+const MODAL_BUTTONS = [
+  {
+    selector: 'button[data-action="view-local"]',
+    dataAction: 'view-local',
+    title: 'View Locally Only',
+    descriptionContains: 'Render content without',
+    ariaLabelContains: 'View Locally Only',
+    isPrimary: false
+  },
+  {
+    selector: 'button[data-action="share-gist"]',
+    dataAction: 'share-gist',
+    title: 'Share Securely via Gist',
+    descriptionContains: 'safe, shareable copy',
+    ariaLabelContains: 'Share Securely',
+    isPrimary: true
+  }
+];
+
+/**
+ * Configuration for modal content elements
+ */
+const MODAL_CONTENT_ELEMENTS = [
+  { selector: '.security-icon', description: 'security icon' },
+  { selector: '#privateUrlModalTitle', description: 'title' },
+  { selector: '#privateUrlModalDesc', description: 'descriptive text' },
+  { selector: '.option-buttons', description: 'option buttons container' }
+];
 
 /**
  * Tests for Private URL Modal functionality
@@ -92,7 +119,6 @@ function browserCheckBackdropClose() {
 test.describe('Private URL Modal', () => {
   test.beforeEach(async ({ page }) => {
     await waitForPageReady(page);
-    // Wait for the security module to be ready
     await page.waitForFunction(() => {
       return typeof globalThis.initPrivateUrlModalHandlers === 'function' ||
              document.getElementById('privateUrlModal') !== null;
@@ -116,8 +142,10 @@ test.describe('Private URL Modal', () => {
     });
 
     test('privateUrlModal should have proper ARIA attributes', async ({ page }) => {
-      const ariaLabelledBy = await getElementAttribute(page, '#privateUrlModal', 'aria-labelledby');
-      const ariaDescribedBy = await getElementAttribute(page, '#privateUrlModal', 'aria-describedby');
+      const [ariaLabelledBy, ariaDescribedBy] = await Promise.all([
+        getElementAttribute(page, '#privateUrlModal', 'aria-labelledby'),
+        getElementAttribute(page, '#privateUrlModal', 'aria-describedby')
+      ]);
 
       expect(ariaLabelledBy).toBe('privateUrlModalTitle');
       expect(ariaDescribedBy).toBe('privateUrlModalDesc');
@@ -135,10 +163,13 @@ test.describe('Private URL Modal', () => {
   });
 
   test.describe('Modal Content', () => {
-    test('modal should display security icon', async ({ page }) => {
-      const exists = await elementExists(page, '#privateUrlModal .security-icon');
-      expect(exists).toBe(true);
-    });
+    // Data-driven tests for modal content elements
+    for (const element of MODAL_CONTENT_ELEMENTS) {
+      test(`modal should display ${element.description}`, async ({ page }) => {
+        const exists = await elementExists(page, `#privateUrlModal ${element.selector}`);
+        expect(exists).toBe(true);
+      });
+    }
 
     test('modal should have correct title', async ({ page }) => {
       const title = await page.$eval('#privateUrlModalTitle', el => el.textContent);
@@ -150,97 +181,91 @@ test.describe('Private URL Modal', () => {
       expect(description).toContain('private access token');
       expect(description).toContain('security');
     });
-
-    test('modal should have option buttons container', async ({ page }) => {
-      const exists = await elementExists(page, '#privateUrlModal .option-buttons');
-      expect(exists).toBe(true);
-    });
   });
 
   test.describe('Modal Buttons', () => {
-    test('View Locally Only button should exist', async ({ page }) => {
-      const exists = await elementExists(page, '#privateUrlModal button[data-action="view-local"]');
-      expect(exists).toBe(true);
-    });
+    // Data-driven tests for all buttons
+    for (const button of MODAL_BUTTONS) {
+      test.describe(`${button.title} button`, () => {
+        test('should exist', async ({ page }) => {
+          const exists = await elementExists(page, `#privateUrlModal ${button.selector}`);
+          expect(exists).toBe(true);
+        });
 
-    test('View Locally Only button should have correct text', async ({ page }) => {
-      const title = await page.$eval('#privateUrlModal button[data-action="view-local"] .option-title', el => el.textContent);
-      expect(title).toBe('View Locally Only');
-    });
+        test('should have correct title text', async ({ page }) => {
+          const title = await page.$eval(
+            `#privateUrlModal ${button.selector} .option-title`,
+            el => el.textContent
+          );
+          expect(title).toBe(button.title);
+        });
 
-    test('View Locally Only button should have description', async ({ page }) => {
-      const desc = await page.$eval('#privateUrlModal button[data-action="view-local"] .option-desc', el => el.textContent);
-      expect(desc).toContain('Render content without');
-    });
+        test('should have description', async ({ page }) => {
+          const desc = await page.$eval(
+            `#privateUrlModal ${button.selector} .option-desc`,
+            el => el.textContent
+          );
+          expect(desc).toContain(button.descriptionContains);
+        });
 
-    test('View Locally Only button should have proper ARIA label', async ({ page }) => {
-      const ariaLabel = await getElementAttribute(page, '#privateUrlModal button[data-action="view-local"]', 'aria-label');
-      expect(ariaLabel).toContain('View Locally Only');
-    });
+        test('should have proper ARIA label', async ({ page }) => {
+          const ariaLabel = await getElementAttribute(
+            page,
+            `#privateUrlModal ${button.selector}`,
+            'aria-label'
+          );
+          expect(ariaLabel).toContain(button.ariaLabelContains);
+        });
 
-    test('Share Securely via Gist button should exist', async ({ page }) => {
-      const exists = await elementExists(page, '#privateUrlModal button[data-action="share-gist"]');
-      expect(exists).toBe(true);
-    });
+        test('should have type="button" attribute', async ({ page }) => {
+          const type = await getElementAttribute(
+            page,
+            `#privateUrlModal ${button.selector}`,
+            'type'
+          );
+          expect(type).toBe('button');
+        });
 
-    test('Share Securely via Gist button should have correct text', async ({ page }) => {
-      const title = await page.$eval('#privateUrlModal button[data-action="share-gist"] .option-title', el => el.textContent);
-      expect(title).toBe('Share Securely via Gist');
-    });
+        test('should have correct data-action attribute', async ({ page }) => {
+          const action = await page.$eval(
+            `#privateUrlModal ${button.selector}`,
+            el => el.dataset.action
+          );
+          expect(action).toBe(button.dataAction);
+        });
 
-    test('Share Securely via Gist button should have description', async ({ page }) => {
-      const desc = await page.$eval('#privateUrlModal button[data-action="share-gist"] .option-desc', el => el.textContent);
-      expect(desc).toContain('safe, shareable copy');
-    });
-
-    test('Share Securely via Gist button should have primary class', async ({ page }) => {
-      const hasClass = await elementHasClass(page, '#privateUrlModal button[data-action="share-gist"]', 'primary');
-      expect(hasClass).toBe(true);
-    });
-
-    test('both buttons should have type="button" attribute', async ({ page }) => {
-      const viewLocalType = await getElementAttribute(page, '#privateUrlModal button[data-action="view-local"]', 'type');
-      const shareGistType = await getElementAttribute(page, '#privateUrlModal button[data-action="share-gist"]', 'type');
-
-      expect(viewLocalType).toBe('button');
-      expect(shareGistType).toBe('button');
-    });
-
-    test('both buttons should have data-action attributes', async ({ page }) => {
-      const viewLocalAction = await page.$eval('#privateUrlModal button[data-action="view-local"]', el => el.dataset.action);
-      const shareGistAction = await page.$eval('#privateUrlModal button[data-action="share-gist"]', el => el.dataset.action);
-
-      expect(viewLocalAction).toBe('view-local');
-      expect(shareGistAction).toBe('share-gist');
-    });
+        if (button.isPrimary) {
+          test('should have primary class', async ({ page }) => {
+            const hasClass = await elementHasClass(
+              page,
+              `#privateUrlModal ${button.selector}`,
+              'primary'
+            );
+            expect(hasClass).toBe(true);
+          });
+        }
+      });
+    }
   });
 
   test.describe('Modal Functions', () => {
-    test('showPrivateUrlModal function should be available', async ({ page }) => {
-      // The function is exported from security.js module
-      const isAvailable = await page.evaluate(() => {
-        return typeof globalThis.showPrivateUrlModal === 'function' ||
-               // Check if it's in the module scope by trying to import
-               document.getElementById('privateUrlModal') !== null;
-      });
-      expect(isAvailable).toBe(true);
-    });
+    const MODAL_FUNCTIONS = ['showPrivateUrlModal', 'hidePrivateUrlModal'];
 
-    test('hidePrivateUrlModal function should be available', async ({ page }) => {
-      const isAvailable = await page.evaluate(() => {
-        return typeof globalThis.hidePrivateUrlModal === 'function' ||
-               document.getElementById('privateUrlModal') !== null;
+    for (const functionName of MODAL_FUNCTIONS) {
+      test(`${functionName} function should be available`, async ({ page }) => {
+        const isAvailable = await page.evaluate((fnName) => {
+          return typeof globalThis[fnName] === 'function' ||
+                 document.getElementById('privateUrlModal') !== null;
+        }, functionName);
+        expect(isAvailable).toBe(true);
       });
-      expect(isAvailable).toBe(true);
-    });
+    }
 
     test('initPrivateUrlModalHandlers should be called during initialization', async ({ page }) => {
-      // Verify modal has event listeners by checking button setup
       const hasEventListeners = await page.evaluate(() => {
         const modal = document.getElementById('privateUrlModal');
         if (!modal) return false;
 
-        // Check if buttons have proper data-action attributes (set up by event handlers)
         const viewLocalBtn = modal.querySelector('[data-action="view-local"]');
         const shareGistBtn = modal.querySelector('[data-action="share-gist"]');
 
@@ -252,24 +277,22 @@ test.describe('Private URL Modal', () => {
   });
 
   test.describe('Modal State', () => {
-    test('modal should support showModal() method', async ({ page }) => {
-      const supportsShowModal = await page.evaluate(() => {
-        const modal = document.getElementById('privateUrlModal');
-        return modal && typeof modal.showModal === 'function';
-      });
-      expect(supportsShowModal).toBe(true);
-    });
+    const MODAL_METHODS = [
+      { method: 'showModal', description: 'showModal() method' },
+      { method: 'close', description: 'close() method' }
+    ];
 
-    test('modal should support close() method', async ({ page }) => {
-      const supportsClose = await page.evaluate(() => {
-        const modal = document.getElementById('privateUrlModal');
-        return modal && typeof modal.close === 'function';
+    for (const { method, description } of MODAL_METHODS) {
+      test(`modal should support ${description}`, async ({ page }) => {
+        const supportsMethod = await page.evaluate((methodName) => {
+          const modal = document.getElementById('privateUrlModal');
+          return modal && typeof modal[methodName] === 'function';
+        }, method);
+        expect(supportsMethod).toBe(true);
       });
-      expect(supportsClose).toBe(true);
-    });
+    }
 
     test('modal can be opened programmatically', async ({ page }) => {
-      // Uses extracted helper to avoid deep nesting (SonarCloud S2004)
       const canOpen = await page.evaluate(browserCheckModalOpen);
       expect(canOpen).toBe(true);
     });
@@ -308,33 +331,24 @@ test.describe('Private URL Modal', () => {
     });
 
     test('modal backdrop click should trigger close handler', async ({ page }) => {
-      // Note: This tests that the event handler is set up correctly
-      // The actual close behavior depends on the handler implementation
       const backdropClickWorks = await page.evaluate(browserCheckBackdropClose);
-
-      // This may not close the modal immediately due to async operations
-      // but the event handler should be triggered
       expect(typeof backdropClickWorks).toBe('boolean');
     });
   });
 
   test.describe('Modal State Management', () => {
     test('modal state should be cleaned up after closing', async ({ page }) => {
-      // Verify that opening and closing doesn't leave residual state
       const stateIsClean = await page.evaluate(() => {
         const modal = document.getElementById('privateUrlModal');
         if (!modal) return false;
 
         try {
-          // Open modal
           modal.showModal();
           const wasOpen = modal.open;
 
-          // Close modal
           modal.close();
           const isClosed = !modal.open;
 
-          // Check that we can open it again (no state corruption)
           modal.showModal();
           const canReopenAfterClose = modal.open;
           modal.close();
@@ -349,10 +363,8 @@ test.describe('Private URL Modal', () => {
     });
 
     test('resetPrivateUrlState should be available', async ({ page }) => {
-      // Check if the reset function exists (may be module-scoped)
       const hasResetFunction = await page.evaluate(() => {
         return typeof globalThis.resetPrivateUrlState === 'function' ||
-               // Function exists in module scope, just verify modal exists
                document.getElementById('privateUrlModal') !== null;
       });
       expect(hasResetFunction).toBe(true);
@@ -362,7 +374,6 @@ test.describe('Private URL Modal', () => {
   test.describe('Modal Styling', () => {
     test('modal should have proper z-index for overlay', async ({ page }) => {
       const zIndex = await page.$eval('#privateUrlModal', el => getComputedStyle(el).zIndex);
-      // Should have high z-index to appear above other content
       expect(parseInt(zIndex, 10)).toBeGreaterThanOrEqual(2000);
     });
 
@@ -395,8 +406,6 @@ test.describe('Private URL Modal', () => {
 
   test.describe('Security Features', () => {
     test('modal should strip URL from browser when shown', async ({ page }) => {
-      // This is tested indirectly by verifying the modal exists
-      // The actual URL stripping happens in showPrivateUrlModal()
       const exists = await elementExists(page, '#privateUrlModal');
       expect(exists).toBe(true);
     });
@@ -420,7 +429,6 @@ test.describe('Private URL Modal', () => {
 
   test.describe('Accessibility', () => {
     test('modal should have proper role as dialog', async ({ page }) => {
-      // Native <dialog> element has implicit role="dialog"
       const tagName = await page.$eval('#privateUrlModal', el => el.tagName.toLowerCase());
       expect(tagName).toBe('dialog');
     });

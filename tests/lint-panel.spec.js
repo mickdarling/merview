@@ -27,17 +27,24 @@ function browserToggleLintPanel() {
       return;
     }
 
-    // Toggle the panel
     if (typeof globalThis.toggleLintPanel === 'function') {
       globalThis.toggleLintPanel();
     }
 
-    // Wait for CSS transition (300ms as defined in index.html)
     setTimeout(function checkAfterTransition() {
       resolve(lintPanel.classList.contains('show'));
     }, 350);
   });
 }
+
+/**
+ * DOM elements configuration for lint panel
+ */
+const LINT_PANEL_ELEMENTS = [
+  { id: 'lintPanel', description: 'Lint panel container' },
+  { id: 'lintToggle', description: 'Toggle button in toolbar' },
+  { id: 'lintContent', description: 'Content area for lint results' }
+];
 
 /**
  * Tests for Lint Panel Toggle Functionality
@@ -53,31 +60,26 @@ test.describe('Lint Panel Toggle', () => {
   });
 
   test.describe('DOM Elements', () => {
-    test('lintPanel element should exist in DOM after initialization', async ({ page }) => {
-      const lintPanel = await page.$('#lintPanel');
-      expect(lintPanel).not.toBeNull();
-    });
-
-    test('lintToggle button should exist in toolbar', async ({ page }) => {
-      const lintToggle = await page.$('#lintToggle');
-      expect(lintToggle).not.toBeNull();
-    });
+    // Data-driven tests for element existence
+    for (const element of LINT_PANEL_ELEMENTS) {
+      test(`${element.description} should exist in DOM after initialization`, async ({ page }) => {
+        const el = await page.$(`#${element.id}`);
+        expect(el).not.toBeNull();
+      });
+    }
 
     test('lintToggle button should have correct onclick handler', async ({ page }) => {
       const onclick = await getElementAttribute(page, '#lintToggle', 'onclick');
       expect(onclick).toBe('toggleLintPanel()');
     });
 
-    test('lintContent element should exist for displaying lint results', async ({ page }) => {
-      const lintContent = await page.$('#lintContent');
-      expect(lintContent).not.toBeNull();
-    });
-
     test('lintPanel should have lint-header with close button', async ({ page }) => {
-      const lintHeader = await page.$('#lintPanel .lint-header');
-      expect(lintHeader).not.toBeNull();
+      const [lintHeader, closeButton] = await Promise.all([
+        page.$('#lintPanel .lint-header'),
+        page.$('#lintPanel .lint-close')
+      ]);
 
-      const closeButton = await page.$('#lintPanel .lint-close');
+      expect(lintHeader).not.toBeNull();
       expect(closeButton).not.toBeNull();
     });
 
@@ -95,58 +97,54 @@ test.describe('Lint Panel Toggle', () => {
   });
 
   test.describe('Panel Visibility Toggle', () => {
+    /**
+     * Test sequence for panel visibility
+     */
+    const TOGGLE_SEQUENCES = [
+      { clicks: 1, expectedState: true, description: 'clicking toggle button should show the lint panel' },
+      { clicks: 2, expectedState: false, description: 'clicking toggle button twice should hide the lint panel again' }
+    ];
+
     test('lint panel should be hidden by default', async ({ page }) => {
       const hasShowClass = await elementHasClass(page, '#lintPanel', 'show');
       expect(hasShowClass).toBe(false);
     });
 
-    test('clicking toggle button should show the lint panel', async ({ page }) => {
-      // Initial state: panel should be hidden
-      let hasShowClass = await elementHasClass(page, '#lintPanel', 'show');
-      expect(hasShowClass).toBe(false);
+    for (const sequence of TOGGLE_SEQUENCES) {
+      test(sequence.description, async ({ page }) => {
+        // Initial state check
+        let hasShowClass = await elementHasClass(page, '#lintPanel', 'show');
+        expect(hasShowClass).toBe(false);
 
-      // Click the toggle button
-      await page.click('#lintToggle');
+        // Perform clicks
+        for (let i = 0; i < sequence.clicks; i++) {
+          await page.click('#lintToggle');
 
-      // Wait for CSS transition using condition-based wait
-      await waitForElementClass(page, '#lintPanel', 'show');
+          if (i % 2 === 0) {
+            await waitForElementClass(page, '#lintPanel', 'show');
+          } else {
+            await waitForElementClassRemoved(page, '#lintPanel', 'show');
+          }
+        }
 
-      // Panel should now be visible
-      hasShowClass = await elementHasClass(page, '#lintPanel', 'show');
-      expect(hasShowClass).toBe(true);
-    });
-
-    test('clicking toggle button twice should hide the lint panel again', async ({ page }) => {
-      // Show the panel
-      await page.click('#lintToggle');
-      await waitForElementClass(page, '#lintPanel', 'show');
-
-      let hasShowClass = await elementHasClass(page, '#lintPanel', 'show');
-      expect(hasShowClass).toBe(true);
-
-      // Hide the panel
-      await page.click('#lintToggle');
-      await waitForElementClassRemoved(page, '#lintPanel', 'show');
-
-      hasShowClass = await elementHasClass(page, '#lintPanel', 'show');
-      expect(hasShowClass).toBe(false);
-    });
+        // Verify final state
+        hasShowClass = await elementHasClass(page, '#lintPanel', 'show');
+        expect(hasShowClass).toBe(sequence.expectedState);
+      });
+    }
   });
 
   test.describe('Close Button Functionality', () => {
     test('clicking close button (X) should hide the lint panel', async ({ page }) => {
-      // Show the panel first
       await page.click('#lintToggle');
       await waitForElementClass(page, '#lintPanel', 'show');
 
       let hasShowClass = await elementHasClass(page, '#lintPanel', 'show');
       expect(hasShowClass).toBe(true);
 
-      // Click the close button
       await page.click('#lintPanel .lint-close');
       await waitForElementClassRemoved(page, '#lintPanel', 'show');
 
-      // Panel should now be hidden
       hasShowClass = await elementHasClass(page, '#lintPanel', 'show');
       expect(hasShowClass).toBe(false);
     });
@@ -154,49 +152,45 @@ test.describe('Lint Panel Toggle', () => {
 
   test.describe('Panel State Toggle Sequence', () => {
     test('panel state should toggle correctly: visible -> hidden -> visible', async ({ page }) => {
-      // Initial state: hidden
-      let hasShowClass = await elementHasClass(page, '#lintPanel', 'show');
-      expect(hasShowClass).toBe(false);
+      const EXPECTED_STATES = [false, true, false, true];
 
-      // First toggle: show
-      await page.click('#lintToggle');
-      await waitForElementClass(page, '#lintPanel', 'show');
-      hasShowClass = await elementHasClass(page, '#lintPanel', 'show');
-      expect(hasShowClass).toBe(true);
+      for (let i = 0; i < EXPECTED_STATES.length; i++) {
+        const hasShowClass = await elementHasClass(page, '#lintPanel', 'show');
+        expect(hasShowClass).toBe(EXPECTED_STATES[i]);
 
-      // Second toggle: hide
-      await page.click('#lintToggle');
-      await waitForElementClassRemoved(page, '#lintPanel', 'show');
-      hasShowClass = await elementHasClass(page, '#lintPanel', 'show');
-      expect(hasShowClass).toBe(false);
-
-      // Third toggle: show again
-      await page.click('#lintToggle');
-      await waitForElementClass(page, '#lintPanel', 'show');
-      hasShowClass = await elementHasClass(page, '#lintPanel', 'show');
-      expect(hasShowClass).toBe(true);
+        if (i < EXPECTED_STATES.length - 1) {
+          await page.click('#lintToggle');
+          if (EXPECTED_STATES[i + 1]) {
+            await waitForElementClass(page, '#lintPanel', 'show');
+          } else {
+            await waitForElementClassRemoved(page, '#lintPanel', 'show');
+          }
+        }
+      }
     });
 
     test('toggle button should have active class when panel is shown', async ({ page }) => {
-      // Initial state: button should not have active class
+      const TEST_SEQUENCE = [
+        { action: 'show', expectedActive: true },
+        { action: 'hide', expectedActive: false }
+      ];
+
+      // Initial state
       let hasActiveClass = await elementHasClass(page, '#lintToggle', 'active');
       expect(hasActiveClass).toBe(false);
 
-      // Show panel
-      await page.click('#lintToggle');
-      await waitForElementClass(page, '#lintPanel', 'show');
+      for (const step of TEST_SEQUENCE) {
+        await page.click('#lintToggle');
 
-      // Button should have active class
-      hasActiveClass = await elementHasClass(page, '#lintToggle', 'active');
-      expect(hasActiveClass).toBe(true);
+        if (step.expectedActive) {
+          await waitForElementClass(page, '#lintPanel', 'show');
+        } else {
+          await waitForElementClassRemoved(page, '#lintPanel', 'show');
+        }
 
-      // Hide panel
-      await page.click('#lintToggle');
-      await waitForElementClassRemoved(page, '#lintPanel', 'show');
-
-      // Button should not have active class
-      hasActiveClass = await elementHasClass(page, '#lintToggle', 'active');
-      expect(hasActiveClass).toBe(false);
+        hasActiveClass = await elementHasClass(page, '#lintToggle', 'active');
+        expect(hasActiveClass).toBe(step.expectedActive);
+      }
     });
   });
 
@@ -213,32 +207,31 @@ test.describe('Lint Panel Toggle', () => {
   });
 
   test.describe('Panel Styling and Layout', () => {
-    test('lint panel should have correct CSS positioning', async ({ page }) => {
-      const position = await page.$eval('#lintPanel', el => getComputedStyle(el).position);
-      expect(position).toBe('fixed');
-    });
+    const EXPECTED_STYLES = [
+      { property: 'position', value: 'fixed', description: 'correct CSS positioning' },
+      { property: 'height', value: '300px', description: 'correct height' }
+    ];
 
-    test('lint panel should have correct height', async ({ page }) => {
-      const height = await page.$eval('#lintPanel', el => getComputedStyle(el).height);
-      expect(height).toBe('300px');
-    });
+    for (const style of EXPECTED_STYLES) {
+      test(`lint panel should have ${style.description}`, async ({ page }) => {
+        const value = await page.$eval('#lintPanel', (el, prop) => getComputedStyle(el)[prop], style.property);
+        expect(value).toBe(style.value);
+      });
+    }
 
     test('lint panel should span full width', async ({ page }) => {
-      const styles = await page.$eval('#lintPanel', el => {
-        const computed = getComputedStyle(el);
-        return {
-          left: computed.left,
-          right: computed.right
-        };
-      });
-      expect(styles.left).toBe('0px');
-      expect(styles.right).toBe('0px');
+      const [left, right] = await Promise.all([
+        page.$eval('#lintPanel', el => getComputedStyle(el).left),
+        page.$eval('#lintPanel', el => getComputedStyle(el).right)
+      ]);
+
+      expect(left).toBe('0px');
+      expect(right).toBe('0px');
     });
   });
 
   test.describe('Integration with toggleLintPanel()', () => {
     test('programmatically calling toggleLintPanel() should show panel', async ({ page }) => {
-      // Use extracted helper to avoid deep nesting (SonarCloud S2004)
       const isShown = await page.evaluate(browserToggleLintPanel);
       expect(isShown).toBe(true);
     });
