@@ -55,17 +55,23 @@ function browserRapidCycleStyles({ minStyles, cycleCount }) {
 
 /**
  * Browser-side helper: Check if dark mode exists and select it
+ * Uses inline check to avoid nested function definition
  * @returns {{ darkModeExists: boolean, darkModeSelected: boolean }}
  */
 function browserSelectDarkMode() {
   const selector = document.getElementById('styleSelector');
+  const options = Array.from(selector.options);
 
-  // Helper function to check if option is dark mode
-  function isDarkOption(opt) {
-    return opt.text.toLowerCase().includes('dark') || opt.value.toLowerCase().includes('dark');
+  // Find dark option using inline filter logic
+  let darkOption = null;
+  for (const opt of options) {
+    const textLower = opt.text.toLowerCase();
+    const valueLower = opt.value.toLowerCase();
+    if (textLower.includes('dark') || valueLower.includes('dark')) {
+      darkOption = opt;
+      break;
+    }
   }
-
-  const darkOption = Array.from(selector.options).find(isDarkOption);
 
   if (!darkOption) {
     return { darkModeExists: false, darkModeSelected: false };
@@ -78,17 +84,22 @@ function browserSelectDarkMode() {
 
 /**
  * Browser-side helper: Check if dark mode exists
+ * Uses inline check to avoid nested function definition
  * @returns {boolean} True if dark mode option exists
  */
 function browserCheckDarkModeExists() {
   const selector = document.getElementById('styleSelector');
+  const options = Array.from(selector.options);
 
-  // Helper function to check if option is dark mode
-  function isDarkOption(opt) {
-    return opt.text.toLowerCase().includes('dark') || opt.value.toLowerCase().includes('dark');
+  // Check using inline loop logic
+  for (const opt of options) {
+    const textLower = opt.text.toLowerCase();
+    const valueLower = opt.value.toLowerCase();
+    if (textLower.includes('dark') || valueLower.includes('dark')) {
+      return true;
+    }
   }
-
-  return Array.from(selector.options).some(isDarkOption);
+  return false;
 }
 
 /**
