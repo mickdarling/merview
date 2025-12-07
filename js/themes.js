@@ -9,7 +9,7 @@ import { getElements } from './dom.js';
 import { syntaxThemes, syntaxThemeSRI, editorThemes, availableStyles } from './config.js';
 import { getMarkdownStyle, saveMarkdownStyle, getSyntaxTheme, saveSyntaxTheme, getEditorTheme, saveEditorTheme, saveRespectStyleLayout } from './storage.js';
 import { showStatus, isDarkColor } from './utils.js';
-import { isAllowedCSSURL, isValidBackgroundColor } from './security.js';
+import { isAllowedCSSURL, isValidBackgroundColor, normalizeGistUrl } from './security.js';
 import { updateMermaidTheme } from './renderer.js';
 
 // Local state for theme management
@@ -599,12 +599,15 @@ function promptForURL() {
 }
 
 /**
- * Load CSS from URL (with domain validation)
+ * Load CSS from URL (with domain validation and gist URL normalization)
  * @param {string} url - URL to load CSS from
  */
 async function loadCSSFromURL(url) {
+    // Normalize gist.github.com URLs to raw URLs (Issue #107)
+    const normalizedUrl = normalizeGistUrl(url);
+
     // Validate URL against allowlist
-    if (!isAllowedCSSURL(url)) {
+    if (!isAllowedCSSURL(normalizedUrl)) {
         const ALLOWED_CSS_DOMAINS = [
             'cdn.jsdelivr.net',
             'cdnjs.cloudflare.com',
@@ -618,12 +621,12 @@ async function loadCSSFromURL(url) {
 
     try {
         showStatus(`Loading from URL...`);
-        const response = await fetch(url);
+        const response = await fetch(normalizedUrl);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
         const cssText = await response.text();
-        await applyCSSDirectly(cssText, url);
+        await applyCSSDirectly(cssText, normalizedUrl);
         showStatus(`Loaded from URL`);
     } catch (error) {
         showStatus(`Error loading URL: ${error.message}`);

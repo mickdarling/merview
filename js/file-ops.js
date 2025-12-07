@@ -13,7 +13,7 @@
 import { state } from './state.js';
 import { getElements } from './dom.js';
 import { showStatus } from './utils.js';
-import { isAllowedMarkdownURL } from './security.js';
+import { isAllowedMarkdownURL, normalizeGistUrl } from './security.js';
 import { renderMarkdown } from './renderer.js';
 
 /**
@@ -128,6 +128,7 @@ export function isValidMarkdownContentType(contentType) {
  * Load markdown from URL (with domain validation, timeout, size limits, and Content-Type validation)
  *
  * Security features:
+ * - Gist URL normalization (converts gist.github.com to raw URLs)
  * - Domain allowlist validation
  * - 10 second fetch timeout (prevents hanging on slow endpoints)
  * - 10 MB content size limit (prevents loading extremely large files)
@@ -137,7 +138,10 @@ export function isValidMarkdownContentType(contentType) {
  * @returns {Promise<boolean>} True if successful, false on error
  */
 export async function loadMarkdownFromURL(url) {
-    if (!isAllowedMarkdownURL(url)) {
+    // Normalize gist.github.com URLs to raw URLs (Issue #107)
+    const normalizedUrl = normalizeGistUrl(url);
+
+    if (!isAllowedMarkdownURL(normalizedUrl)) {
         const { ALLOWED_MARKDOWN_DOMAINS } = await import('./config.js');
         showStatus(`URL not allowed. Trusted: ${ALLOWED_MARKDOWN_DOMAINS.join(', ')}`);
         return false;
@@ -149,7 +153,7 @@ export async function loadMarkdownFromURL(url) {
 
     try {
         showStatus('Loading from URL...');
-        const response = await fetch(url, { signal: controller.signal });
+        const response = await fetch(normalizedUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
 
         if (!response.ok) {
@@ -182,8 +186,8 @@ export async function loadMarkdownFromURL(url) {
             cmEditor.setValue(markdown);
         }
 
-        // Extract filename from URL for display
-        const urlPath = new URL(url).pathname;
+        // Extract filename from normalized URL for display
+        const urlPath = new URL(normalizedUrl).pathname;
         state.currentFilename = urlPath.split('/').pop() || 'remote.md';
 
         await renderMarkdown();

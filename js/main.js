@@ -12,7 +12,7 @@ import { loadMarkdownFromURL, loadSample, openFile, saveFile, saveFileAs, isVali
 import { shareToGist, hideGistModal, openGitHubAuth, startDeviceFlow, copyGistUrl, disconnectGitHub } from './gist.js';
 import { toggleLintPanel, validateCode } from './validation.js';
 import { initMermaidFullscreen } from './mermaid-fullscreen.js';
-import { isAllowedMarkdownURL, stripGitHubToken, showPrivateUrlModal, initPrivateUrlModalHandlers } from './security.js';
+import { isAllowedMarkdownURL, isAllowedCSSURL, stripGitHubToken, showPrivateUrlModal, initPrivateUrlModalHandlers, normalizeGistUrl } from './security.js';
 import { getMarkdownContent, isFreshVisit, markSessionInitialized } from './storage.js';
 import { showStatus } from './utils.js';
 import { initResizeHandle } from './resize.js';
@@ -67,7 +67,9 @@ function exposeGlobalFunctions() {
 
     // Security functions
     globalThis.isAllowedMarkdownURL = isAllowedMarkdownURL;
+    globalThis.isAllowedCSSURL = isAllowedCSSURL;
     globalThis.stripGitHubToken = stripGitHubToken;
+    globalThis.normalizeGistUrl = normalizeGistUrl;
 
     // Utility functions
     globalThis.showStatus = showStatus;

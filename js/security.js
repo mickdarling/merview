@@ -75,6 +75,67 @@ function extractHostnameFromString(url) {
 }
 
 /**
+ * Normalize gist.github.com URLs to gist.githubusercontent.com raw URLs
+ *
+ * Handles the following transformations:
+ * - gist.github.com/{user}/{id} → gist.githubusercontent.com/{user}/{id}/raw
+ * - gist.github.com/{user}/{id}/{filename} → gist.githubusercontent.com/{user}/{id}/raw/{filename}
+ * - Preserves query parameters and fragments
+ * - Returns original URL unchanged if not a gist.github.com URL
+ *
+ * Examples:
+ * - Input:  https://gist.github.com/splch/cc419f65d0bedd84ff29f2aa1db9273a
+ *   Output: https://gist.githubusercontent.com/splch/cc419f65d0bedd84ff29f2aa1db9273a/raw
+ *
+ * - Input:  https://gist.github.com/user/abc123/file.md
+ *   Output: https://gist.githubusercontent.com/user/abc123/raw/file.md
+ *
+ * @param {string} url - The URL to normalize
+ * @returns {string} The normalized URL or original URL if not a gist
+ */
+export function normalizeGistUrl(url) {
+    try {
+        const parsed = new URL(url);
+
+        // Only process gist.github.com URLs
+        if (parsed.hostname !== 'gist.github.com') {
+            return url;
+        }
+
+        // Parse pathname: /{user}/{gist_id} or /{user}/{gist_id}/{filename}
+        // Remove leading slash and split
+        const pathParts = parsed.pathname.slice(1).split('/').filter(p => p.length > 0);
+
+        // Need at least user and gist_id
+        if (pathParts.length < 2) {
+            return url;
+        }
+
+        const user = pathParts[0];
+        const gistId = pathParts[1];
+        const filename = pathParts.length > 2 ? pathParts.slice(2).join('/') : null;
+
+        // Build raw URL
+        let rawPath = `/${user}/${gistId}/raw`;
+        if (filename) {
+            rawPath += `/${filename}`;
+        }
+
+        // Construct new URL with gist.githubusercontent.com
+        const rawUrl = new URL(`https://gist.githubusercontent.com${rawPath}`);
+
+        // Preserve query parameters and fragment
+        rawUrl.search = parsed.search;
+        rawUrl.hash = parsed.hash;
+
+        return rawUrl.toString();
+    } catch (error) {
+        // Invalid URL - return unchanged
+        return url;
+    }
+}
+
+/**
  * Validate markdown URL against allowlist with security edge case protections
  *
  * Security checks performed:
