@@ -129,7 +129,7 @@ export function normalizeGistUrl(url) {
         rawUrl.hash = parsed.hash;
 
         return rawUrl.toString();
-    } catch (error) {
+    } catch {
         // Invalid URL - return unchanged
         return url;
     }
