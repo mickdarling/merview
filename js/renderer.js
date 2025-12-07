@@ -39,6 +39,15 @@ export function updateMermaidTheme(isDark) {
             : 'default';
     }
 
+    // Debug logging for issue #168
+    console.log('[Mermaid Theme]', {
+        mode: state.mermaidThemeMode,
+        isDark,
+        currentTheme: state.mermaidTheme,
+        newTheme,
+        willUpdate: state.mermaidTheme !== newTheme
+    });
+
     if (state.mermaidTheme !== newTheme) {
         state.mermaidTheme = newTheme;
         // Reinitialize Mermaid with new theme

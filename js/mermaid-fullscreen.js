@@ -21,12 +21,20 @@ export function expandMermaid(mermaidId) {
     // Clone the SVG content
     const svgContent = mermaidElement.innerHTML;
 
+    // Determine appropriate background based on current Mermaid theme
+    // Dark theme needs dark background for readability
+    const isDarkTheme = state.mermaidTheme === 'dark';
+    const bgColor = isDarkTheme ? 'rgba(30, 30, 30, 0.98)' : 'rgba(255, 255, 255, 0.98)';
+    const closeBtnColor = isDarkTheme ? '#e74c3c' : '#e74c3c'; // Same red works for both
+
     // Create fullscreen overlay
     // Note: Using data attributes instead of inline onclick for consistency and future-proofing
     // (in case this content ever goes through sanitization)
     const overlay = document.createElement('div');
     overlay.className = 'mermaid-fullscreen-overlay';
     overlay.id = 'mermaid-fullscreen-overlay';
+    // Apply dynamic background color via inline style to override CSS default
+    overlay.style.background = bgColor;
     overlay.innerHTML = `
         <button class="mermaid-close-btn" data-action="close">✕ Close</button>
         <div class="mermaid-fullscreen-content" id="mermaid-pan-area">${svgContent}</div>
