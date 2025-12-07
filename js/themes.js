@@ -917,7 +917,7 @@ async function loadMermaidTheme(themeValue) {
         if (themeValue === 'auto') {
             const { preview } = getElements();
             if (preview) {
-                const bgColor = window.getComputedStyle(preview).backgroundColor;
+                const bgColor = globalThis.getComputedStyle(preview).backgroundColor;
                 updateMermaidTheme(isDarkColor(bgColor));
             }
         } else {
