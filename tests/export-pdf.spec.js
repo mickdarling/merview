@@ -556,7 +556,7 @@ test.describe('PDF Page Break Functionality', () => {
         const div = document.querySelector('#wrapper .page-break-before');
         if (!div) return false;
         const styles = globalThis.getComputedStyle(div);
-        return styles.pageBreakBefore === 'always' || styles.breakBefore === 'page';
+        return styles.breakBefore === 'page' || styles.breakBefore === 'always';
       });
 
       expect(hasPageBreak).toBe(true);
