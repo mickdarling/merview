@@ -871,6 +871,43 @@
                 max-width: 100%;
                 height: auto;
             }
+
+            /* Page break support for slide decks and paginated documents */
+            /* Horizontal rules (<hr> from ---) trigger new pages */
+            #wrapper hr {
+                page-break-after: always !important;
+                border: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                visibility: hidden !important;
+                height: 0 !important;
+            }
+
+            /* Respect all CSS page-break properties */
+            #wrapper [style*="page-break-before: always"],
+            #wrapper .page-break-before {
+                page-break-before: always;
+            }
+
+            #wrapper [style*="page-break-after: always"],
+            #wrapper .page-break-after {
+                page-break-after: always;
+            }
+
+            #wrapper [style*="page-break-inside: avoid"],
+            #wrapper .page-break-avoid {
+                page-break-inside: avoid;
+            }
+
+            /* Prevent headings from being orphaned */
+            #wrapper h1,
+            #wrapper h2,
+            #wrapper h3,
+            #wrapper h4,
+            #wrapper h5,
+            #wrapper h6 {
+                page-break-after: avoid;
+            }
         }
     </style>
 </head>

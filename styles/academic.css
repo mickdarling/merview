@@ -212,7 +212,16 @@
 
     #wrapper p,
     #wrapper blockquote,
-    #wrapper pre {
+    #wrapper pre,
+    #wrapper table {
         page-break-inside: avoid;
+    }
+
+    /* Horizontal rules trigger page breaks in PDF */
+    #wrapper hr {
+        page-break-after: always;
+        visibility: hidden;
+        height: 0;
+        margin: 0;
     }
 }

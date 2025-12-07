@@ -266,4 +266,12 @@
     #wrapper h3 {
         page-break-after: avoid;
     }
+
+    /* Horizontal rules trigger page breaks in PDF */
+    #wrapper hr {
+        page-break-after: always;
+        visibility: hidden;
+        height: 0;
+        margin: 0;
+    }
 }

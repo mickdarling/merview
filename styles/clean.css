@@ -173,3 +173,26 @@
     height: auto;
     margin: 16px 0;
 }
+
+/* Page breaks for print and PDF export */
+@media print {
+    #wrapper h1,
+    #wrapper h2 {
+        page-break-after: avoid;
+    }
+
+    #wrapper p,
+    #wrapper blockquote,
+    #wrapper pre,
+    #wrapper table {
+        page-break-inside: avoid;
+    }
+
+    /* Horizontal rules trigger page breaks in PDF */
+    #wrapper hr {
+        page-break-after: always;
+        visibility: hidden;
+        height: 0;
+        margin: 0;
+    }
+}
