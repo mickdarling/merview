@@ -107,6 +107,37 @@ Fixed 5 SonarQube issues in the initial implementation:
 
 ## Next Steps
 
-1. Clean up root directory (session notes file in wrong location, review other files)
-2. Implement session management feature (#139) in future session
-3. Manual testing of fresh visit behavior in production
+### 🔴 Should Fix Before Hacker News Launch (Security/Critical UX)
+
+These issues relate to URL loading security hardening - can be done in one PR:
+
+| Issue | Description | Why Critical |
+|-------|-------------|--------------|
+| **#85** | Add fetch timeout and content size limits for URL loading | DoS risk - someone could point to a huge file or slow endpoint |
+| **#83** | Add Content-Type validation for remote markdown loading | Security - ensure we're loading markdown, not executable content |
+| **#82** | Add URL validation edge case protections | Security hardening for URL loading feature |
+
+### 🟡 Nice to Have (Would Impress HN)
+
+| Issue | Description | Why Nice |
+|-------|-------------|----------|
+| **#92** | Add visual warning when editing URL-loaded document (unsaved changes indicator) | HN users will test edge cases, this prevents data loss frustration |
+| **#81** | Improve error recovery UX for URL loading failures | Better error messages impress technical users |
+| **#131** | Document CSP and DOMPurify defense-in-depth relationship | HN loves security documentation |
+
+### 🟢 Can Wait (Not Launch Blockers)
+
+- **#139** - Document name indicator and session management
+- **#140** - Root directory cleanup
+- **#59-62** - Mobile/tablet responsive design
+- **#74** - Privacy-respecting analytics
+- All refactoring, test coverage, and documentation issues
+
+### Current Security Status ✅
+
+- **SonarQube**: 0 vulnerabilities, 0 bugs, 0 security hotspots
+- **Quality Gate**: Passing
+- **DOMPurify XSS fix**: Merged (PR #128)
+- **CSP headers**: In place
+- **SRI verification**: Implemented for CDN resources
+- **Fresh visit privacy**: Merged (PR #138)
