@@ -346,52 +346,26 @@ test.describe('URL Loading', () => {
       expect(statusText).toContain('Loaded');
     });
 
-    test('Content-Type validation logic should correctly categorize MIME types', async ({ page }) => {
-      // Test the actual isValidMarkdownContentType function exported from file-ops.js
-      // This eliminates code duplication by testing the real implementation
-      const result = await page.evaluate(() => {
-        // Access the exported function via globalThis (exposed by the app)
-        // @ts-ignore - isValidMarkdownContentType is exported from file-ops.js
-        const validate = globalThis.isValidMarkdownContentType;
+    // Data-driven tests for Content-Type validation
+    // Uses the actual isValidMarkdownContentType function exported from file-ops.js
+    const allowedTypes = ['text/plain', 'text/markdown', 'text/x-markdown',
+      'text/plain; charset=utf-8', 'application/octet-stream', null, undefined];
+    const blockedTypes = ['application/javascript', 'text/javascript', 'application/x-javascript',
+      'text/html', 'text/vbscript', 'application/json', 'image/png'];
 
-        // Test cases: { input, expectedAllowed, description }
-        const testCases = [
-          // Allowed: text/* types
-          { input: 'text/plain', expected: true, desc: 'text/plain' },
-          { input: 'text/markdown', expected: true, desc: 'text/markdown' },
-          { input: 'text/x-markdown', expected: true, desc: 'text/x-markdown' },
-          { input: 'text/plain; charset=utf-8', expected: true, desc: 'with charset' },
-          // Allowed: application/octet-stream (GitHub default)
-          { input: 'application/octet-stream', expected: true, desc: 'octet-stream' },
-          // Allowed: missing Content-Type
-          { input: null, expected: true, desc: 'null/missing' },
-          { input: undefined, expected: true, desc: 'undefined' },
-          // Blocked: JavaScript types
-          { input: 'application/javascript', expected: false, desc: 'application/javascript' },
-          { input: 'text/javascript', expected: false, desc: 'text/javascript' },
-          { input: 'application/x-javascript', expected: false, desc: 'application/x-javascript' },
-          // Blocked: HTML (script injection risk)
-          { input: 'text/html', expected: false, desc: 'text/html' },
-          // Blocked: VBScript (legacy Windows IE)
-          { input: 'text/vbscript', expected: false, desc: 'text/vbscript' },
-          // Blocked: Other binary/unknown types
-          { input: 'application/json', expected: false, desc: 'application/json' },
-          { input: 'image/png', expected: false, desc: 'image/png' }
-        ];
-
-        return testCases.map(({ input, expected, desc }) => {
-          const actual = validate(input);
-          return { desc, input, expected, actual, pass: actual === expected };
-        });
+    for (const contentType of allowedTypes) {
+      test(`should allow Content-Type: ${contentType}`, async ({ page }) => {
+        const result = await page.evaluate((ct) => globalThis.isValidMarkdownContentType(ct), contentType);
+        expect(result).toBe(true);
       });
+    }
 
-      // Verify all test cases pass
-      const failures = result.filter(r => !r.pass);
-      if (failures.length > 0) {
-        console.log('Failures:', failures);
-      }
-      expect(failures).toHaveLength(0);
-    });
+    for (const contentType of blockedTypes) {
+      test(`should block Content-Type: ${contentType}`, async ({ page }) => {
+        const result = await page.evaluate((ct) => globalThis.isValidMarkdownContentType(ct), contentType);
+        expect(result).toBe(false);
+      });
+    }
   });
 
   test.describe('URL Parameter Behavior', () => {
