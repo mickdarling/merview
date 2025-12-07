@@ -474,4 +474,55 @@ test.describe('PDF Page Break Functionality', () => {
       expect(exportedContent).toContain('<hr');
     });
   });
+
+  test.describe('Print Media Emulation', () => {
+    test('hr elements should have correct computed styles with print media emulation', async ({ page }) => {
+      // Set content with horizontal rule
+      await setCodeMirrorContent(page, '# Slide 1\n\n---\n\n# Slide 2');
+      await renderMarkdownAndWait(page, WAIT_TIMES.LONG);
+
+      // Emulate print media
+      await page.emulateMedia({ media: 'print' });
+
+      // Check computed styles of hr element
+      const hrStyles = await page.evaluate(() => {
+        const wrapper = document.getElementById('wrapper');
+        const hr = wrapper?.querySelector('hr');
+        if (!hr) return null;
+
+        const computed = window.getComputedStyle(hr);
+        return {
+          visibility: computed.visibility,
+          pageBreakAfter: computed.pageBreakAfter
+        };
+      });
+
+      expect(hrStyles).not.toBeNull();
+      expect(hrStyles.visibility).toBe('hidden');
+      expect(hrStyles.pageBreakAfter).toBe('always');
+    });
+  });
+
+  test.describe('Utility Classes in Export', () => {
+    test('utility classes should appear in exported HTML content', async ({ page }) => {
+      // Create content with utility classes
+      const content = `# Test Document
+
+<div class="page-break-before">Content with page break before</div>
+
+<div class="page-break-after">Content with page break after</div>
+
+<div class="page-break-avoid">Content that avoids page breaks</div>`;
+
+      await setCodeMirrorContent(page, content);
+      await renderMarkdownAndWait(page, WAIT_TIMES.LONG);
+
+      const exportedContent = await page.evaluate(browserCaptureExportContent);
+
+      // Verify utility classes are present in exported HTML
+      expect(exportedContent).toContain('page-break-before');
+      expect(exportedContent).toContain('page-break-after');
+      expect(exportedContent).toContain('page-break-avoid');
+    });
+  });
 });

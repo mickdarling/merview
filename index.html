@@ -865,6 +865,7 @@
             /* Ensure diagrams and images print well */
             .mermaid, img, svg, table, blockquote, pre {
                 page-break-inside: avoid;
+                break-inside: avoid;
             }
 
             img, svg {
@@ -876,6 +877,7 @@
             /* Horizontal rules (<hr> from ---) trigger new pages */
             #wrapper hr {
                 page-break-after: always;
+                break-after: page;
                 border: none;
                 margin: 0;
                 padding: 0;
@@ -887,16 +889,19 @@
             #wrapper [style*="page-break-before: always"],
             #wrapper .page-break-before {
                 page-break-before: always;
+                break-before: page;
             }
 
             #wrapper [style*="page-break-after: always"],
             #wrapper .page-break-after {
                 page-break-after: always;
+                break-after: page;
             }
 
             #wrapper [style*="page-break-inside: avoid"],
             #wrapper .page-break-avoid {
                 page-break-inside: avoid;
+                break-inside: avoid;
             }
 
             /* Prevent headings from being orphaned */
@@ -907,6 +912,7 @@
             #wrapper h5,
             #wrapper h6 {
                 page-break-after: avoid;
+                break-after: avoid;
             }
         }
     </style>
