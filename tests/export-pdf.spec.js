@@ -310,6 +310,27 @@ test.describe('Export PDF Functionality', () => {
 });
 
 /**
+ * Browser-side helper: Capture exported PDF content by mocking window.open
+ * @returns {string} The HTML content that would be written to the PDF window
+ */
+function browserCaptureExportContent() {
+  let capturedContent = '';
+  const originalOpen = globalThis.open;
+
+  globalThis.open = function mockOpenForCapture() {
+    return {
+      document: { open() {}, write(content) { capturedContent = content; }, close() {} },
+      onload: null
+    };
+  };
+
+  globalThis.exportToPDFDirect();
+  globalThis.open = originalOpen;
+
+  return capturedContent;
+}
+
+/**
  * Browser-side helper: Check if a print CSS rule exists matching given criteria
  * @param {Object} opts - Search criteria
  * @param {string} opts.selectorContains - Text that must appear in the selector
@@ -446,27 +467,7 @@ test.describe('PDF Page Break Functionality', () => {
       await setCodeMirrorContent(page, '# Slide 1\n\n---\n\n# Slide 2');
       await renderMarkdownAndWait(page, WAIT_TIMES.LONG);
 
-      const exportedContent = await page.evaluate(() => {
-        // Capture what would be written to the new window
-        let capturedContent = '';
-        const originalOpen = globalThis.open;
-
-        globalThis.open = function() {
-          return {
-            document: {
-              open() {},
-              write(content) { capturedContent = content; },
-              close() {}
-            },
-            onload: null
-          };
-        };
-
-        globalThis.exportToPDFDirect();
-        globalThis.open = originalOpen;
-
-        return capturedContent;
-      });
+      const exportedContent = await page.evaluate(browserCaptureExportContent);
 
       // Verify page break CSS is included
       expect(exportedContent).toContain('page-break-after');
