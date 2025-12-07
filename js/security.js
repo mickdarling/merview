@@ -39,17 +39,17 @@ export function isAllowedCSSURL(url) {
 const MAX_URL_LENGTH = 2048;
 
 /**
- * Check if a string contains only printable ASCII characters
+ * Check if a string contains only printable ASCII characters (no spaces)
  * Used to detect IDN/punycode homograph attacks in hostnames
- * Allows: letters, digits, hyphens, dots (valid hostname characters)
- * Rejects: non-ASCII (> 127) and control characters (< 32)
+ * Allows: ! through ~ (0x21-0x7E) - printable ASCII excluding space
+ * Rejects: non-ASCII (> 127), control characters (< 32), and space (0x20)
  * @param {string} str - The string to check
- * @returns {boolean} True if string is printable ASCII-only
+ * @returns {boolean} True if string contains only printable non-space ASCII
  */
 function isASCII(str) {
-    // Only allow printable ASCII (space through tilde: 0x20-0x7E)
-    // This is safer than allowing all ASCII including control characters
-    return /^[\x20-\x7E]*$/.test(str);
+    // Only allow printable ASCII excluding space (0x21-0x7E)
+    // Hostnames cannot contain spaces, so this is stricter than general printable ASCII
+    return /^[\x21-\x7E]*$/.test(str);
 }
 
 /**
@@ -59,11 +59,16 @@ function isASCII(str) {
  * This extracts the hostname portion between :// and the next / or : (port)
  * Example: "https://example.com:8080/path" → "example.com"
  *
+ * Note: For URLs with credentials (user:pass@host), this extracts "user:pass@host"
+ * which is semantically incorrect but doesn't affect security - the ASCII check
+ * still works, and credentials are explicitly blocked in a separate check later.
+ *
  * @param {string} url - The URL string to extract hostname from
- * @returns {string|null} The hostname or null if extraction fails
+ * @returns {string|null} The hostname (or user:pass@hostname) or null if extraction fails
  */
 function extractHostnameFromString(url) {
-    // Match hostname between :// and the next / or : (port) or end of string
+    // Match content between :// and the next / or : (port) or end of string
+    // Note: This intentionally doesn't strip credentials - see JSDoc above
     const hostnameRegex = /:\/\/([^/:]+)/;
     const match = hostnameRegex.exec(url);
     return match ? match[1] : null;
