@@ -55,12 +55,17 @@ function isASCII(str) {
 /**
  * Extract hostname from URL string without full parsing
  * Used to check for non-ASCII characters before browser normalizes to punycode
- * @param {string} url - The URL string
+ *
+ * This extracts the hostname portion between :// and the next / or : (port)
+ * Example: "https://example.com:8080/path" → "example.com"
+ *
+ * @param {string} url - The URL string to extract hostname from
  * @returns {string|null} The hostname or null if extraction fails
  */
 function extractHostnameFromString(url) {
-    // Match hostname between :// and the next / or end of string
-    const match = url.match(/:\/\/([^/:]+)/);
+    // Match hostname between :// and the next / or : (port) or end of string
+    const hostnameRegex = /:\/\/([^/:]+)/;
+    const match = hostnameRegex.exec(url);
     return match ? match[1] : null;
 }
 
