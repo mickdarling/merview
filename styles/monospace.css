@@ -258,6 +258,12 @@
     box-shadow: inset 0 -1px 0 #959da5;
 }
 
+/* Remove decorative ::before content when hr is used as page break */
+#wrapper hr[style*="visibility"]::before,
+#wrapper hr[style*="page-break"]::before {
+    content: none !important;
+}
+
 /* Page breaks for print and PDF export */
 @media print {
     #wrapper h1,
