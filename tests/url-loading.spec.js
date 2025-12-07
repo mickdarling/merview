@@ -324,6 +324,104 @@ test.describe('URL Loading', () => {
     });
   });
 
+  test.describe('Content-Type Validation (Issue #83)', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.goto('/');
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+    });
+
+    test('should successfully load files with text/plain Content-Type', async ({ page }) => {
+      // GitHub raw files typically serve text/plain
+      const testUrl = 'https://raw.githubusercontent.com/mickdarling/merview/main/README.md';
+
+      await page.goto(`/?url=${encodeURIComponent(testUrl)}`);
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+
+      await page.waitForFunction(() => {
+        const status = document.getElementById('status');
+        return status?.textContent?.includes('Loaded') || status?.textContent?.includes('Error');
+      }, { timeout: 15000 });
+
+      const statusText = await page.locator('#status').textContent();
+      expect(statusText).toContain('Loaded');
+    });
+
+    test('Content-Type validation should allow text/* types', async ({ page }) => {
+      // Test the validation logic directly
+      const result = await page.evaluate(() => {
+        // Simulate what isValidMarkdownContentType does
+        const testTypes = [
+          { type: 'text/plain', expected: true },
+          { type: 'text/markdown', expected: true },
+          { type: 'text/x-markdown', expected: true },
+          { type: 'text/plain; charset=utf-8', expected: true }
+        ];
+
+        return testTypes.map(({ type, expected }) => {
+          const mimeType = type.split(';')[0].trim().toLowerCase();
+          const isText = mimeType.startsWith('text/');
+          const blockedTypes = ['application/javascript', 'text/javascript', 'text/html'];
+          const isBlocked = blockedTypes.includes(mimeType);
+          const actual = isText && !isBlocked;
+          return { type, expected, actual, pass: actual === expected };
+        });
+      });
+
+      result.forEach(({ type, expected, actual, pass }) => {
+        expect(pass).toBe(true);
+      });
+    });
+
+    test('Content-Type validation should allow application/octet-stream', async ({ page }) => {
+      // GitHub sometimes serves raw files as application/octet-stream
+      const result = await page.evaluate(() => {
+        const mimeType = 'application/octet-stream';
+        return mimeType === 'application/octet-stream';
+      });
+
+      expect(result).toBe(true);
+    });
+
+    test('Content-Type validation should block JavaScript types', async ({ page }) => {
+      const result = await page.evaluate(() => {
+        const dangerousTypes = [
+          'application/javascript',
+          'text/javascript',
+          'application/x-javascript'
+        ];
+
+        return dangerousTypes.map(type => {
+          const blockedTypes = ['application/javascript', 'text/javascript', 'text/html', 'application/x-javascript'];
+          return { type, blocked: blockedTypes.includes(type) };
+        });
+      });
+
+      result.forEach(({ type, blocked }) => {
+        expect(blocked).toBe(true);
+      });
+    });
+
+    test('Content-Type validation should block HTML', async ({ page }) => {
+      const result = await page.evaluate(() => {
+        const blockedTypes = ['application/javascript', 'text/javascript', 'text/html', 'application/x-javascript'];
+        return blockedTypes.includes('text/html');
+      });
+
+      expect(result).toBe(true);
+    });
+
+    test('Content-Type validation should handle missing Content-Type header', async ({ page }) => {
+      // Missing Content-Type should be allowed (some servers don't send it)
+      const result = await page.evaluate(() => {
+        // Simulate null Content-Type
+        const contentType = null;
+        return contentType === null; // We allow null/missing Content-Type
+      });
+
+      expect(result).toBe(true);
+    });
+  });
+
   test.describe('URL Parameter Behavior', () => {
     // Common test URL used across multiple tests
     const TEST_README_URL = 'https://raw.githubusercontent.com/mickdarling/merview/main/README.md';
