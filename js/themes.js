@@ -921,8 +921,10 @@ async function loadMermaidTheme(themeValue) {
                 updateMermaidTheme(isDarkColor(bgColor));
             }
         } else {
-            // Manual theme selection - apply directly
-            updateMermaidTheme(false); // The function will use mermaidThemeMode instead of isDark when not in auto
+            // Manual theme selection: mermaidThemeMode is already set above to the user's chosen theme.
+            // updateMermaidTheme() checks mermaidThemeMode first - when it's not 'auto', it uses
+            // mermaidThemeMode directly as the theme name, ignoring the isDark parameter entirely.
+            updateMermaidTheme(false);
         }
 
         // Save preference

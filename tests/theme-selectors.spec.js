@@ -8,6 +8,8 @@ const {
   waitForGlobalFunctions,
   isGlobalFunctionAvailable,
   getElementAttribute,
+  setCodeMirrorContent,
+  renderMarkdownAndWait,
   WAIT_TIMES
 } = require('./helpers/test-utils');
 
@@ -299,10 +301,11 @@ test.describe('Theme Selectors', () => {
     });
 
     test('theme selectors should not interfere with each other', async ({ page }) => {
-      const [initialStyle, initialSyntax, initialEditor] = await Promise.all([
+      const [initialStyle, initialSyntax, initialEditor, initialMermaid] = await Promise.all([
         page.$eval('#styleSelector', s => s.value),
         page.$eval('#syntaxThemeSelector', s => s.value),
-        page.$eval('#editorThemeSelector', s => s.value)
+        page.$eval('#editorThemeSelector', s => s.value),
+        page.$eval('#mermaidThemeSelector', s => s.value)
       ]);
 
       const styleOptions = await page.$$eval('#styleSelector option',
@@ -314,14 +317,45 @@ test.describe('Theme Selectors', () => {
         await page.selectOption('#styleSelector', newStyle);
         await page.waitForTimeout(WAIT_TIMES.MEDIUM);
 
-        const [syntaxAfter, editorAfter] = await Promise.all([
+        const [syntaxAfter, editorAfter, mermaidAfter] = await Promise.all([
           page.$eval('#syntaxThemeSelector', s => s.value),
-          page.$eval('#editorThemeSelector', s => s.value)
+          page.$eval('#editorThemeSelector', s => s.value),
+          page.$eval('#mermaidThemeSelector', s => s.value)
         ]);
 
         expect(syntaxAfter).toBe(initialSyntax);
         expect(editorAfter).toBe(initialEditor);
+        expect(mermaidAfter).toBe(initialMermaid);
       }
+    });
+
+    test('Mermaid theme change should update diagram rendering', async ({ page }) => {
+      // Set content with a Mermaid diagram
+      await setCodeMirrorContent(page, '```mermaid\ngraph TD\n    A[Start] --> B[End]\n```');
+      await renderMarkdownAndWait(page, WAIT_TIMES.LONG);
+
+      // Wait for Mermaid diagram to render
+      await page.waitForSelector('.mermaid svg', { timeout: 5000 });
+
+      // Get initial selector value and SVG content
+      const initialValue = await page.$eval('#mermaidThemeSelector', s => s.value);
+      const initialSvgContent = await page.$eval('.mermaid svg', el => el.outerHTML);
+
+      // Change to a different theme - use 'dark' which has visually distinct styling
+      const newTheme = initialValue === 'dark' ? 'forest' : 'dark';
+      await page.selectOption('#mermaidThemeSelector', newTheme);
+      await page.waitForTimeout(WAIT_TIMES.LONG);
+
+      // Wait for re-render (diagram should still exist)
+      await page.waitForSelector('.mermaid svg', { timeout: 5000 });
+
+      // Verify the dropdown value changed
+      const selectorValue = await page.$eval('#mermaidThemeSelector', s => s.value);
+      expect(selectorValue).toBe(newTheme);
+
+      // Verify the SVG was re-rendered (content should change with different theme)
+      const newSvgContent = await page.$eval('.mermaid svg', el => el.outerHTML);
+      expect(newSvgContent).not.toBe(initialSvgContent);
     });
   });
 });

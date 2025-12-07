@@ -24,14 +24,19 @@ mermaid.initialize({
  * @param {boolean} isDark - Whether the preview background is dark
  */
 export function updateMermaidTheme(isDark) {
+    // Valid Mermaid themes (excluding 'auto' which is a mode, not a theme)
+    const validThemes = ['default', 'forest', 'dark', 'neutral', 'base'];
+
     // Determine the actual theme to use
     let newTheme;
     if (state.mermaidThemeMode === 'auto') {
         // Auto mode: switch based on background
         newTheme = isDark ? 'dark' : 'default';
     } else {
-        // Manual selection: use the user's chosen theme
-        newTheme = state.mermaidThemeMode;
+        // Manual selection: use the user's chosen theme if valid, otherwise fallback
+        newTheme = validThemes.includes(state.mermaidThemeMode)
+            ? state.mermaidThemeMode
+            : 'default';
     }
 
     if (state.mermaidTheme !== newTheme) {
