@@ -35,7 +35,8 @@ function clearEditor() {
  * Expose functions to globalThis for onclick handlers in HTML
  */
 function exposeGlobalFunctions() {
-    // State (for testing and debugging)
+    // State - exposed for testing and debugging
+    // WARNING: Do not store sensitive data in state. See js/state.js for details.
     globalThis.state = state;
 
     // Editor functions
