@@ -222,10 +222,12 @@ function initializeApp() {
     initCodeMirror(scheduleRender);
 
     // Initialize theme selectors
+    // IMPORTANT: Mermaid theme must be initialized BEFORE style selector,
+    // so user's saved theme preference is loaded before style triggers auto-detection
+    initMermaidThemeSelector();
     initStyleSelector();
     initSyntaxThemeSelector();
     initEditorThemeSelector();
-    initMermaidThemeSelector();
 
     // Initialize preview drag-and-drop for CSS files
     initPreviewDragDrop();
