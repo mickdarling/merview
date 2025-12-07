@@ -10,7 +10,7 @@ import { syntaxThemes, syntaxThemeSRI, editorThemes, availableStyles, mermaidThe
 import { getMarkdownStyle, saveMarkdownStyle, getSyntaxTheme, saveSyntaxTheme, getEditorTheme, saveEditorTheme, saveRespectStyleLayout, getMermaidTheme, saveMermaidTheme } from './storage.js';
 import { showStatus, isDarkColor } from './utils.js';
 import { isAllowedCSSURL, isValidBackgroundColor, normalizeGistUrl } from './security.js';
-import { updateMermaidTheme } from './renderer.js';
+import { updateMermaidTheme, scheduleRender } from './renderer.js';
 
 // Local state for theme management
 let layoutToggleOption = null; // Cached reference for performance
@@ -943,9 +943,7 @@ async function changeMermaidTheme(themeValue) {
     if (!themeValue) return;
     await loadMermaidTheme(themeValue);
     // Re-render to apply new Mermaid theme
-    if (state.renderMarkdown) {
-        await state.renderMarkdown();
-    }
+    scheduleRender();
 }
 
 /**

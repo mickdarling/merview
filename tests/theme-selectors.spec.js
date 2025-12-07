@@ -111,13 +111,23 @@ const THEME_SELECTORS = [
     verifyAttribute: null,
     hasToggleOption: false,
     checkCodeMirrorBackground: true
+  },
+  {
+    id: 'mermaidThemeSelector',
+    name: 'Mermaid Theme',
+    changeFunction: 'changeMermaidTheme',
+    expectedOption: 'auto',
+    excludeFromSelection: null,
+    verifyElement: null,
+    verifyAttribute: null,
+    hasToggleOption: false
   }
 ];
 
 /**
  * Tests for Theme Selector functionality
  *
- * These tests ensure the three theme selectors (Style, Syntax, and Editor)
+ * These tests ensure the four theme selectors (Style, Syntax, Editor, and Mermaid)
  * are properly initialized with their respective options and can trigger
  * theme changes when selections are made.
  */
@@ -128,7 +138,8 @@ test.describe('Theme Selectors', () => {
     await waitForGlobalFunctions(page, [
       'changeStyle',
       'changeSyntaxTheme',
-      'changeEditorTheme'
+      'changeEditorTheme',
+      'changeMermaidTheme'
     ]);
   });
 
@@ -273,16 +284,18 @@ test.describe('Theme Selectors', () => {
   }
 
   test.describe('Theme Integration', () => {
-    test('all three theme selectors should be functional simultaneously', async ({ page }) => {
-      const [styleOptions, syntaxOptions, editorOptions] = await Promise.all([
+    test('all four theme selectors should be functional simultaneously', async ({ page }) => {
+      const [styleOptions, syntaxOptions, editorOptions, mermaidOptions] = await Promise.all([
         page.$$eval('#styleSelector option', opts => opts.length),
         page.$$eval('#syntaxThemeSelector option', opts => opts.length),
-        page.$$eval('#editorThemeSelector option', opts => opts.length)
+        page.$$eval('#editorThemeSelector option', opts => opts.length),
+        page.$$eval('#mermaidThemeSelector option', opts => opts.length)
       ]);
 
       expect(styleOptions).toBeGreaterThan(MIN_THEME_OPTIONS);
       expect(syntaxOptions).toBeGreaterThan(MIN_THEME_OPTIONS);
       expect(editorOptions).toBeGreaterThan(MIN_THEME_OPTIONS);
+      expect(mermaidOptions).toBeGreaterThan(MIN_THEME_OPTIONS);
     });
 
     test('theme selectors should not interfere with each other', async ({ page }) => {
