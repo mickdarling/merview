@@ -324,6 +324,50 @@ test.describe('URL Loading', () => {
     });
   });
 
+  test.describe('Content-Type Validation (Issue #83)', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.goto('/');
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+    });
+
+    test('should successfully load files with text/plain Content-Type', async ({ page }) => {
+      // GitHub raw files typically serve text/plain - integration test
+      const testUrl = 'https://raw.githubusercontent.com/mickdarling/merview/main/README.md';
+
+      await page.goto(`/?url=${encodeURIComponent(testUrl)}`);
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+
+      await page.waitForFunction(() => {
+        const status = document.getElementById('status');
+        return status?.textContent?.includes('Loaded') || status?.textContent?.includes('Error');
+      }, { timeout: 15000 });
+
+      const statusText = await page.locator('#status').textContent();
+      expect(statusText).toContain('Loaded');
+    });
+
+    // Data-driven tests for Content-Type validation
+    // Uses the actual isValidMarkdownContentType function exported from file-ops.js
+    const allowedTypes = ['text/plain', 'text/markdown', 'text/x-markdown',
+      'text/plain; charset=utf-8', 'application/octet-stream', null, undefined];
+    const blockedTypes = ['application/javascript', 'text/javascript', 'application/x-javascript',
+      'text/html', 'text/vbscript', 'application/json', 'image/png'];
+
+    for (const contentType of allowedTypes) {
+      test(`should allow Content-Type: ${contentType}`, async ({ page }) => {
+        const result = await page.evaluate((ct) => globalThis.isValidMarkdownContentType(ct), contentType);
+        expect(result).toBe(true);
+      });
+    }
+
+    for (const contentType of blockedTypes) {
+      test(`should block Content-Type: ${contentType}`, async ({ page }) => {
+        const result = await page.evaluate((ct) => globalThis.isValidMarkdownContentType(ct), contentType);
+        expect(result).toBe(false);
+      });
+    }
+  });
+
   test.describe('URL Parameter Behavior', () => {
     // Common test URL used across multiple tests
     const TEST_README_URL = 'https://raw.githubusercontent.com/mickdarling/merview/main/README.md';

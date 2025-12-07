@@ -68,12 +68,70 @@ const FETCH_TIMEOUT_MS = 10000;
 const MAX_CONTENT_SIZE = 10 * 1024 * 1024;
 
 /**
- * Load markdown from URL (with domain validation, timeout, and size limits)
+ * Validate Content-Type header for markdown content
+ * Defense-in-depth check to ensure we're loading text content
+ *
+ * Allowed types:
+ * - text/* (text/plain, text/markdown, text/x-markdown, etc.)
+ * - application/octet-stream (GitHub's default for raw files)
+ * - No Content-Type header (some servers don't send it)
+ *
+ * Blocked types:
+ * - application/javascript, text/javascript (executable code)
+ * - text/html (could contain scripts)
+ * - Binary types (application/zip, image/*, etc.)
+ *
+ * @param {string|null} contentType - The Content-Type header value
+ * @returns {boolean} True if content type is acceptable
+ */
+export function isValidMarkdownContentType(contentType) {
+    // No Content-Type header is acceptable (some servers don't send it)
+    if (!contentType) {
+        return true;
+    }
+
+    // Extract MIME type (ignore charset and other parameters)
+    const mimeType = contentType.split(';')[0].trim().toLowerCase();
+
+    // Block dangerous executable types first
+    // Note: This validation relies on server sending truthful headers.
+    // A compromised allowlisted domain could still send malicious content
+    // with a spoofed Content-Type. Domain allowlisting is the primary defense.
+    const blockedTypes = [
+        'application/javascript',
+        'text/javascript',
+        'text/html',
+        'application/x-javascript',
+        'text/vbscript'  // Legacy VBScript (Windows IE)
+    ];
+    if (blockedTypes.includes(mimeType)) {
+        console.warn('Content-Type blocked:', mimeType);
+        return false;
+    }
+
+    // Allow text/* types (text/plain, text/markdown, etc.)
+    if (mimeType.startsWith('text/')) {
+        return true;
+    }
+
+    // Allow application/octet-stream (GitHub's default for raw files)
+    if (mimeType === 'application/octet-stream') {
+        return true;
+    }
+
+    // Block everything else (binary types, etc.)
+    console.warn('Content-Type not allowed for markdown:', mimeType);
+    return false;
+}
+
+/**
+ * Load markdown from URL (with domain validation, timeout, size limits, and Content-Type validation)
  *
  * Security features:
  * - Domain allowlist validation
  * - 10 second fetch timeout (prevents hanging on slow endpoints)
  * - 10 MB content size limit (prevents loading extremely large files)
+ * - Content-Type validation (blocks executable/binary content)
  *
  * @param {string} url - The URL to load markdown from
  * @returns {Promise<boolean>} True if successful, false on error
@@ -102,6 +160,12 @@ export async function loadMarkdownFromURL(url) {
         const contentLength = response.headers.get('content-length');
         if (contentLength && Number.parseInt(contentLength, 10) > MAX_CONTENT_SIZE) {
             throw new Error(`File too large (${Math.round(Number.parseInt(contentLength, 10) / 1024 / 1024)}MB, max 10MB)`);
+        }
+
+        // Validate Content-Type header (defense-in-depth)
+        const contentType = response.headers.get('content-type');
+        if (!isValidMarkdownContentType(contentType)) {
+            throw new Error('Invalid content type: expected text');
         }
 
         // Read response text (second line of defense - streaming check)

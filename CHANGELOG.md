@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 10-second timeout prevents app hanging on slow/unresponsive endpoints
   - 10MB content size limit prevents loading extremely large files
   - User-friendly error messages for timeout and size limit violations
+- Add Content-Type validation for remote markdown loading (#83)
+  - Allows text/* types (text/plain, text/markdown, etc.)
+  - Allows application/octet-stream (GitHub's default for raw files)
+  - Blocks JavaScript types (application/javascript, text/javascript)
+  - Blocks HTML to prevent script injection
+  - Gracefully handles missing Content-Type headers
 
 ### Changed
 - Fresh visits to merview.com now load the sample document instead of cached content (#137)
