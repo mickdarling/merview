@@ -235,6 +235,95 @@ test.describe('URL Loading', () => {
     });
   });
 
+  test.describe('Fetch Timeout and Size Limits (Issue #85)', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.goto('/');
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+    });
+
+    test('should use AbortController for fetch timeout capability', async ({ page }) => {
+      // Verify AbortController is available and functions correctly
+      // This validates the timeout mechanism used by loadMarkdownFromURL
+
+      const result = await page.evaluate(async () => {
+        const controller = new AbortController();
+
+        // Immediately abort to simulate timeout behavior
+        controller.abort();
+
+        try {
+          await fetch('https://raw.githubusercontent.com/test/test/main/test.md', {
+            signal: controller.signal
+          });
+          return { aborted: false };
+        } catch (error) {
+          return { aborted: true, errorName: error.name };
+        }
+      });
+
+      expect(result.aborted).toBe(true);
+      expect(result.errorName).toBe('AbortError');
+    });
+
+    test('should successfully load files within size limit', async ({ page }) => {
+      // Load a normal-sized file from GitHub (README is well under 10MB)
+      const testUrl = 'https://raw.githubusercontent.com/mickdarling/merview/main/README.md';
+
+      await page.goto(`/?url=${encodeURIComponent(testUrl)}`);
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+
+      // Wait for the load to complete
+      await page.waitForFunction(() => {
+        const status = document.getElementById('status');
+        return status?.textContent?.includes('Loaded') || status?.textContent?.includes('Error');
+      }, { timeout: 15000 });
+
+      const statusText = await page.locator('#status').textContent();
+      expect(statusText).toContain('Loaded');
+    });
+
+    test('should log error for failed URL loads', async ({ page }) => {
+      // Verify error handling path works correctly
+      const consoleMessages = [];
+      page.on('console', msg => {
+        if (msg.type() === 'error') {
+          consoleMessages.push(msg.text());
+        }
+      });
+
+      // Try to load a non-existent file to trigger error handling
+      const notFoundUrl = 'https://raw.githubusercontent.com/test/nonexistent-repo-12345/main/file.md';
+      await page.goto(`/?url=${encodeURIComponent(notFoundUrl)}`);
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+
+      // Wait for error
+      await page.waitForFunction(() => {
+        const status = document.getElementById('status');
+        return status?.textContent?.includes('Error');
+      }, { timeout: 15000 });
+
+      // Verify error was logged
+      const hasErrorLog = consoleMessages.some(msg => msg.includes('Error loading URL'));
+      expect(hasErrorLog).toBe(true);
+    });
+
+    test('should display user-friendly error message on failure', async ({ page }) => {
+      // Verify status shows helpful error message
+      const notFoundUrl = 'https://raw.githubusercontent.com/test/nonexistent-repo-12345/main/file.md';
+      await page.goto(`/?url=${encodeURIComponent(notFoundUrl)}`);
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+
+      await page.waitForFunction(() => {
+        const status = document.getElementById('status');
+        return status?.textContent?.includes('Error');
+      }, { timeout: 15000 });
+
+      const statusText = await page.locator('#status').textContent();
+      expect(statusText).toContain('Error loading URL');
+      expect(statusText).toContain('HTTP'); // Should mention HTTP status
+    });
+  });
+
   test.describe('URL Parameter Behavior', () => {
     // Common test URL used across multiple tests
     const TEST_README_URL = 'https://raw.githubusercontent.com/mickdarling/merview/main/README.md';

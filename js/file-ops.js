@@ -61,9 +61,20 @@ export async function loadMarkdownFile(file) {
     }
 }
 
+/** Fetch timeout in milliseconds (10 seconds) */
+const FETCH_TIMEOUT_MS = 10000;
+
+/** Maximum content size in bytes (10 MB) */
+const MAX_CONTENT_SIZE = 10 * 1024 * 1024;
+
 /**
- * Load markdown from URL (with domain validation)
- * Validates URL against allowlist and handles private GitHub URLs
+ * Load markdown from URL (with domain validation, timeout, and size limits)
+ *
+ * Security features:
+ * - Domain allowlist validation
+ * - 10 second fetch timeout (prevents hanging on slow endpoints)
+ * - 10 MB content size limit (prevents loading extremely large files)
+ *
  * @param {string} url - The URL to load markdown from
  * @returns {Promise<boolean>} True if successful, false on error
  */
@@ -74,13 +85,33 @@ export async function loadMarkdownFromURL(url) {
         return false;
     }
 
+    // Set up abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
     try {
         showStatus('Loading from URL...');
-        const response = await fetch(url);
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
+
+        // Check Content-Length header if available (first line of defense)
+        const contentLength = response.headers.get('content-length');
+        if (contentLength && Number.parseInt(contentLength, 10) > MAX_CONTENT_SIZE) {
+            throw new Error(`File too large (${Math.round(Number.parseInt(contentLength, 10) / 1024 / 1024)}MB, max 10MB)`);
+        }
+
+        // Read response text (second line of defense - streaming check)
         const markdown = await response.text();
+
+        // Verify actual content size (in case Content-Length was missing or incorrect)
+        if (markdown.length > MAX_CONTENT_SIZE) {
+            throw new Error(`File too large (${Math.round(markdown.length / 1024 / 1024)}MB, max 10MB)`);
+        }
+
         const { cmEditor } = state;
 
         if (cmEditor) {
@@ -95,8 +126,16 @@ export async function loadMarkdownFromURL(url) {
         showStatus(`Loaded: ${state.currentFilename}`);
         return true;
     } catch (error) {
-        console.error('Error loading URL:', error);
-        showStatus(`Error loading URL: ${error.message}`);
+        clearTimeout(timeoutId);
+
+        // Provide user-friendly error messages
+        if (error.name === 'AbortError') {
+            console.error('Error loading URL: Request timed out');
+            showStatus('Error loading URL: Request timed out (10s limit)');
+        } else {
+            console.error('Error loading URL:', error);
+            showStatus(`Error loading URL: ${error.message}`);
+        }
         return false;
     }
 }

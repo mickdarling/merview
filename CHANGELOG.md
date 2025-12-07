@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Block URLs with embedded credentials (user:pass@host) to prevent credential leakage
   - Enforce 2048 character URL length limit to prevent DoS attacks
   - Block IDN/punycode homograph attacks by rejecting non-ASCII hostnames
+- Add fetch timeout and content size limits for URL loading (#85)
+  - 10-second timeout prevents app hanging on slow/unresponsive endpoints
+  - 10MB content size limit prevents loading extremely large files
+  - User-friendly error messages for timeout and size limit violations
 
 ### Changed
 - Fresh visits to merview.com now load the sample document instead of cached content (#137)
