@@ -179,6 +179,34 @@ test.describe('Fresh Visit Behavior', () => {
   });
 
   test.describe('URL Parameter Behavior', () => {
+    test('fresh visit with ?url= parameter should load URL content (common first-time user scenario)', async ({ page }) => {
+      // This is a critical test: many users' first experience with Merview
+      // will be clicking a shared link with a ?url= parameter. They should
+      // see the shared content, not the sample document.
+
+      // Clear all storage to simulate true first-time visitor
+      await page.goto('/');
+      await clearAllStorage(page);
+
+      // Now visit with a URL parameter (simulating clicking a shared link)
+      // Using a data URL to avoid external dependencies in tests
+      const testMarkdown = '# Shared Document\n\nThis was shared via link.';
+      const encodedContent = encodeURIComponent(testMarkdown);
+
+      await page.goto(`/?md=${encodedContent}`);
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+      await page.waitForTimeout(WAIT_TIMES.MEDIUM);
+
+      const content = await getCodeMirrorContent(page);
+      // Should load the shared content, NOT the sample document
+      expect(content).toContain('Shared Document');
+      expect(isSampleContent(content)).toBe(false);
+
+      // Session should be marked as initialized
+      const marker = await getSessionMarker(page);
+      expect(marker).toBe('true');
+    });
+
     test('URL with ?md= parameter should load inline content and mark session', async ({ page }) => {
       const inlineContent = '# Inline Content';
       const encodedContent = encodeURIComponent(inlineContent);
