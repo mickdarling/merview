@@ -84,7 +84,7 @@ const MAX_CONTENT_SIZE = 10 * 1024 * 1024;
  * @param {string|null} contentType - The Content-Type header value
  * @returns {boolean} True if content type is acceptable
  */
-function isValidMarkdownContentType(contentType) {
+export function isValidMarkdownContentType(contentType) {
     // No Content-Type header is acceptable (some servers don't send it)
     if (!contentType) {
         return true;

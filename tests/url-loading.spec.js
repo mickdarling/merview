@@ -347,27 +347,12 @@ test.describe('URL Loading', () => {
     });
 
     test('Content-Type validation logic should correctly categorize MIME types', async ({ page }) => {
-      // Consolidated test for Content-Type validation logic
-      // Tests allowed types, blocked types, and edge cases in a single test
-      // to reduce code duplication while maintaining comprehensive coverage
+      // Test the actual isValidMarkdownContentType function exported from file-ops.js
+      // This eliminates code duplication by testing the real implementation
       const result = await page.evaluate(() => {
-        // Define the validation logic once (mirrors isValidMarkdownContentType)
-        const blockedTypes = [
-          'application/javascript',
-          'text/javascript',
-          'text/html',
-          'application/x-javascript',
-          'text/vbscript'
-        ];
-
-        function validateContentType(contentType) {
-          if (!contentType) return true; // Missing = allowed
-          const mimeType = contentType.split(';')[0].trim().toLowerCase();
-          if (blockedTypes.includes(mimeType)) return false;
-          if (mimeType.startsWith('text/')) return true;
-          if (mimeType === 'application/octet-stream') return true;
-          return false;
-        }
+        // Access the exported function via globalThis (exposed by the app)
+        // @ts-ignore - isValidMarkdownContentType is exported from file-ops.js
+        const validate = globalThis.isValidMarkdownContentType;
 
         // Test cases: { input, expectedAllowed, description }
         const testCases = [
@@ -395,7 +380,7 @@ test.describe('URL Loading', () => {
         ];
 
         return testCases.map(({ input, expected, desc }) => {
-          const actual = validateContentType(input);
+          const actual = validate(input);
           return { desc, input, expected, actual, pass: actual === expected };
         });
       });

@@ -8,7 +8,7 @@ import { state } from './state.js';
 import { initCodeMirror, getEditorContent, setEditorContent } from './editor.js';
 import { renderMarkdown, scheduleRender } from './renderer.js';
 import { initStyleSelector, initSyntaxThemeSelector, initEditorThemeSelector, initPreviewDragDrop, changeStyle, changeSyntaxTheme, changeEditorTheme, applyPreviewBackground } from './themes.js';
-import { loadMarkdownFromURL, loadSample, openFile, saveFile, saveFileAs, isValidMarkdownFile, exportToPDF, exportToPDFDirect, initFileInputHandlers } from './file-ops.js';
+import { loadMarkdownFromURL, loadSample, openFile, saveFile, saveFileAs, isValidMarkdownFile, isValidMarkdownContentType, exportToPDF, exportToPDFDirect, initFileInputHandlers } from './file-ops.js';
 import { shareToGist, hideGistModal, openGitHubAuth, startDeviceFlow, copyGistUrl, disconnectGitHub } from './gist.js';
 import { toggleLintPanel, validateCode } from './validation.js';
 import { initMermaidFullscreen } from './mermaid-fullscreen.js';
@@ -57,6 +57,7 @@ function exposeGlobalFunctions() {
     globalThis.saveFile = saveFile;
     globalThis.saveFileAs = saveFileAs;
     globalThis.isValidMarkdownFile = isValidMarkdownFile;
+    globalThis.isValidMarkdownContentType = isValidMarkdownContentType;
     globalThis.exportToPDF = exportToPDF;
     globalThis.exportToPDFDirect = exportToPDFDirect;
 
