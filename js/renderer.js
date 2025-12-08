@@ -9,6 +9,13 @@ import { saveMarkdownContent } from './storage.js';
 import { escapeHtml, slugify } from './utils.js';
 import { validateCode } from './validation.js';
 
+// Debug flag for Mermaid theme investigation (#168)
+// Enable via: localStorage.setItem('debug-mermaid-theme', 'true')
+// Note: Checked at runtime so changes take effect immediately without page refresh
+function isDebugMermaidTheme() {
+    return localStorage.getItem('debug-mermaid-theme') === 'true';
+}
+
 // Initialize Mermaid with security settings (theme set dynamically)
 mermaid.initialize({
     startOnLoad: false,
@@ -37,6 +44,18 @@ export function updateMermaidTheme(isDark) {
         newTheme = validThemes.includes(state.mermaidThemeMode)
             ? state.mermaidThemeMode
             : 'default';
+    }
+
+    // Debug logging for issue #168 investigation
+    // Enable via: localStorage.setItem('debug-mermaid-theme', 'true')
+    if (isDebugMermaidTheme()) {
+        console.log('[Mermaid Theme]', {
+            mode: state.mermaidThemeMode,
+            isDark,
+            currentTheme: state.mermaidTheme,
+            newTheme,
+            willUpdate: state.mermaidTheme !== newTheme
+        });
     }
 
     if (state.mermaidTheme !== newTheme) {

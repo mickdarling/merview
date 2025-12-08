@@ -74,4 +74,138 @@ test.describe('Mermaid Fullscreen and Zoom', () => {
       await expect(page.locator('#mermaid-fullscreen-overlay')).toBeVisible({ timeout: 5000 });
     });
   });
+
+  test.describe('Fullscreen background colors', () => {
+    const mermaidDiagram = '```mermaid\ngraph TD\nA[Start] --> B[End]\n```';
+
+    test('fullscreen overlay uses dark background when Mermaid theme is "dark"', async ({ page }) => {
+      // Set Mermaid theme to dark
+      await page.evaluate(() => {
+        globalThis.state.mermaidTheme = 'dark';
+      });
+
+      // Render a mermaid diagram
+      await setCodeMirrorContent(page, mermaidDiagram);
+      await renderMarkdownAndWait(page, WAIT_TIMES.EXTRA_LONG);
+
+      // Wait for mermaid to render the SVG
+      await expect(page.locator('.mermaid svg')).toBeVisible({ timeout: 10000 });
+
+      // Open fullscreen
+      await page.locator('.mermaid-expand-btn').click();
+      await expect(page.locator('#mermaid-fullscreen-overlay')).toBeVisible({ timeout: 5000 });
+
+      // Get background color of fullscreen overlay
+      const bgColor = await page.$eval('#mermaid-fullscreen-overlay', el => {
+        return globalThis.getComputedStyle(el).backgroundColor;
+      });
+
+      // Verify dark background color (rgba(30, 30, 30, 0.98))
+      expect(bgColor).toBe('rgba(30, 30, 30, 0.98)');
+    });
+
+    test('fullscreen overlay uses light background when Mermaid theme is "default"', async ({ page }) => {
+      // Set Mermaid theme to default
+      await page.evaluate(() => {
+        globalThis.state.mermaidTheme = 'default';
+      });
+
+      // Render a mermaid diagram
+      await setCodeMirrorContent(page, mermaidDiagram);
+      await renderMarkdownAndWait(page, WAIT_TIMES.EXTRA_LONG);
+
+      // Wait for mermaid to render the SVG
+      await expect(page.locator('.mermaid svg')).toBeVisible({ timeout: 10000 });
+
+      // Open fullscreen
+      await page.locator('.mermaid-expand-btn').click();
+      await expect(page.locator('#mermaid-fullscreen-overlay')).toBeVisible({ timeout: 5000 });
+
+      // Get background color of fullscreen overlay
+      const bgColor = await page.$eval('#mermaid-fullscreen-overlay', el => {
+        return globalThis.getComputedStyle(el).backgroundColor;
+      });
+
+      // Verify light background color (rgba(255, 255, 255, 0.98))
+      expect(bgColor).toBe('rgba(255, 255, 255, 0.98)');
+    });
+
+    test('fullscreen overlay uses light background when Mermaid theme is "forest"', async ({ page }) => {
+      // Set Mermaid theme to forest
+      await page.evaluate(() => {
+        globalThis.state.mermaidTheme = 'forest';
+      });
+
+      // Render a mermaid diagram
+      await setCodeMirrorContent(page, mermaidDiagram);
+      await renderMarkdownAndWait(page, WAIT_TIMES.EXTRA_LONG);
+
+      // Wait for mermaid to render the SVG
+      await expect(page.locator('.mermaid svg')).toBeVisible({ timeout: 10000 });
+
+      // Open fullscreen
+      await page.locator('.mermaid-expand-btn').click();
+      await expect(page.locator('#mermaid-fullscreen-overlay')).toBeVisible({ timeout: 5000 });
+
+      // Get background color of fullscreen overlay
+      const bgColor = await page.$eval('#mermaid-fullscreen-overlay', el => {
+        return globalThis.getComputedStyle(el).backgroundColor;
+      });
+
+      // Verify light background color (rgba(255, 255, 255, 0.98))
+      expect(bgColor).toBe('rgba(255, 255, 255, 0.98)');
+    });
+
+    test('fullscreen overlay uses light background when Mermaid theme is "neutral"', async ({ page }) => {
+      // Set Mermaid theme to neutral
+      await page.evaluate(() => {
+        globalThis.state.mermaidTheme = 'neutral';
+      });
+
+      // Render a mermaid diagram
+      await setCodeMirrorContent(page, mermaidDiagram);
+      await renderMarkdownAndWait(page, WAIT_TIMES.EXTRA_LONG);
+
+      // Wait for mermaid to render the SVG
+      await expect(page.locator('.mermaid svg')).toBeVisible({ timeout: 10000 });
+
+      // Open fullscreen
+      await page.locator('.mermaid-expand-btn').click();
+      await expect(page.locator('#mermaid-fullscreen-overlay')).toBeVisible({ timeout: 5000 });
+
+      // Get background color of fullscreen overlay
+      const bgColor = await page.$eval('#mermaid-fullscreen-overlay', el => {
+        return globalThis.getComputedStyle(el).backgroundColor;
+      });
+
+      // Verify light background color (rgba(255, 255, 255, 0.98))
+      expect(bgColor).toBe('rgba(255, 255, 255, 0.98)');
+    });
+
+    test('fullscreen overlay uses light background when Mermaid theme is "base"', async ({ page }) => {
+      // Set Mermaid theme to base
+      await page.evaluate(() => {
+        globalThis.state.mermaidTheme = 'base';
+      });
+
+      // Render a mermaid diagram
+      await setCodeMirrorContent(page, mermaidDiagram);
+      await renderMarkdownAndWait(page, WAIT_TIMES.EXTRA_LONG);
+
+      // Wait for mermaid to render the SVG
+      await expect(page.locator('.mermaid svg')).toBeVisible({ timeout: 10000 });
+
+      // Open fullscreen
+      await page.locator('.mermaid-expand-btn').click();
+      await expect(page.locator('#mermaid-fullscreen-overlay')).toBeVisible({ timeout: 5000 });
+
+      // Get background color of fullscreen overlay
+      const bgColor = await page.$eval('#mermaid-fullscreen-overlay', el => {
+        return globalThis.getComputedStyle(el).backgroundColor;
+      });
+
+      // Verify light background color (rgba(255, 255, 255, 0.98))
+      expect(bgColor).toBe('rgba(255, 255, 255, 0.98)');
+    });
+  });
 });

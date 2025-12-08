@@ -11,6 +11,14 @@ import { getMarkdownStyle, saveMarkdownStyle, getSyntaxTheme, saveSyntaxTheme, g
 import { showStatus, isDarkColor } from './utils.js';
 import { isAllowedCSSURL, isValidBackgroundColor, normalizeGistUrl } from './security.js';
 import { updateMermaidTheme, scheduleRender } from './renderer.js';
+import { updateFullscreenBackground } from './mermaid-fullscreen.js';
+
+// Debug flag for Mermaid theme investigation (#168)
+// Enable via: localStorage.setItem('debug-mermaid-theme', 'true')
+// Note: Checked at runtime so changes take effect immediately without page refresh
+function isDebugMermaidTheme() {
+    return localStorage.getItem('debug-mermaid-theme') === 'true';
+}
 
 // Local state for theme management
 let layoutToggleOption = null; // Cached reference for performance
@@ -445,9 +453,7 @@ async function applyCSSCore(cssText) {
     applySyntaxOverride();
 
     // Re-render markdown to update Mermaid diagrams with new CSS
-    if (state.renderMarkdown) {
-        await state.renderMarkdown();
-    }
+    scheduleRender();
 }
 
 /**
@@ -491,9 +497,7 @@ async function handleSpecialStyleSource(style) {
         // Reset Mermaid to default (light) theme
         updateMermaidTheme(false);
         showStatus('CSS removed');
-        if (state.renderMarkdown) {
-            await state.renderMarkdown();
-        }
+        scheduleRender();
         return { handled: true, success: true };
     }
     if (style.source === 'file') {
@@ -798,9 +802,7 @@ async function changeSyntaxTheme(themeName) {
     if (!themeName) return;
     await loadSyntaxTheme(themeName);
     // Re-render to apply new syntax theme
-    if (state.renderMarkdown) {
-        await state.renderMarkdown();
-    }
+    scheduleRender();
 }
 
 /**
@@ -918,6 +920,9 @@ async function loadMermaidTheme(themeValue) {
             const { preview } = getElements();
             if (preview) {
                 const bgColor = globalThis.getComputedStyle(preview).backgroundColor;
+                if (isDebugMermaidTheme()) {
+                    console.log('[Mermaid Auto] Detecting background:', bgColor, 'isDark:', isDarkColor(bgColor));
+                }
                 updateMermaidTheme(isDarkColor(bgColor));
             }
         } else {
@@ -926,6 +931,9 @@ async function loadMermaidTheme(themeValue) {
             // mermaidThemeMode directly as the theme name, ignoring the isDark parameter entirely.
             updateMermaidTheme(false);
         }
+
+        // Update fullscreen overlay background if it's currently open
+        updateFullscreenBackground(state.mermaidTheme);
 
         // Save preference
         saveMermaidTheme(themeValue);
