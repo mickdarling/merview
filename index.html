@@ -552,6 +552,16 @@
 
         .mermaid {
             text-align: center;
+            /* Prevent preview style typography from affecting SVG text rendering */
+            line-height: 1;
+            font-size: initial;
+        }
+
+        /* Ensure SVG text elements don't inherit conflicting line-height */
+        .mermaid svg,
+        .mermaid svg text,
+        .mermaid svg tspan {
+            line-height: 1;
         }
 
         .mermaid-expand-btn {
