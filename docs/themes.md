@@ -1,10 +1,10 @@
 # Theme Guide
 
-[← Back to Welcome](https://merview.com)
+[← Back to Welcome](/?sample)
 
 ---
 
-Merview offers extensive theming options to make your documents look exactly how you want them. There are three types of themes you can customize:
+Merview offers extensive theming options to make your documents look exactly how you want them. There are four types of themes you can customize:
 
 ```mermaid
 graph TD
@@ -13,48 +13,44 @@ graph TD
     A --> D[Editor Theme]
     A --> E[Mermaid Theme]
 
-    B --> B1[37 Built-in Styles]
+    B --> B1[6 Built-in + External]
     B --> B2[Custom CSS URL]
-    C --> C1[20+ Syntax Themes]
-    D --> D1[Light/Dark Modes]
-    E --> E1[Default/Dark/Forest/Neutral]
+    C --> C1[12 Syntax Themes]
+    D --> D1[6 Editor Themes]
+    E --> E1[6 Diagram Themes]
 ```
 
 ---
 
 ## Document Styles
 
-The **Style** dropdown controls the overall look of your rendered document. Choose from 37 professional styles:
+The **Style** dropdown controls the overall look of your rendered document.
 
-### Popular Choices
+### Built-in Styles
 
 | Style | Best For |
 |-------|----------|
-| **Clean** | General purpose, minimal design |
+| **Clean** | General purpose, minimal design (default) |
 | **Academic** | Research papers, formal documents |
 | **GitHub** | README files, developer docs |
-| **Torpedo** | Creative, modern documents |
-| **Dark** | Low-light environments |
+| **Dark Mode** | Low-light environments |
 | **Monospace** | Technical documentation |
+| **Newspaper** | Print-style articles |
 
-### Full Style List
+### External Styles (MarkedCustomStyles)
 
-**Light Themes:**
-- Clean, Academic, GitHub, Torpedo, Newsprint
-- Antique, Cafe Noir, Metro, Metro Serif
-- Chocolate, Cobalt, Espresso, Florid, Gazette
-- Kacit, Letter, Linen, Manuscript, Pannam
-- Peacock, Quartz, Solarized, Spring, Steampunk
-- Swiss, Typed, Victorian, Whitey
+The Style dropdown also provides access to 40+ additional themes from the [MarkedCustomStyles](https://github.com/ttscoff/MarkedCustomStyles) repository, including:
 
-**Dark Themes:**
-- Dark, GitHub Dark, Academic Dark
+- Academia, Avenue, Bear, Torpedo
+- Swiss, Ulysses, Yeti, and many more
+
+**Note:** These external styles have no explicit license. See THIRD-PARTY-NOTICES.md for details.
 
 ### Using Custom CSS
 
 You can load any CSS file from a URL:
 
-1. Click **"Load Style from URL"**
+1. Select **"Load from URL..."** in the Style dropdown
 2. Enter the URL to your CSS file
 3. The style is applied immediately
 
@@ -69,7 +65,7 @@ You can load any CSS file from a URL:
 
 ## Code Syntax Themes
 
-The **Code Theme** dropdown controls how code blocks are highlighted:
+The **Code Theme** dropdown controls how code blocks in the preview are highlighted:
 
 ```javascript
 // This code block uses your selected theme
@@ -84,19 +80,15 @@ function example() {
 
 | Theme | Style |
 |-------|-------|
-| **GitHub** | Light, familiar |
-| **GitHub Dark** | Dark mode GitHub |
-| **VS2015** | Visual Studio dark |
+| **GitHub Dark** | Dark mode GitHub (default) |
+| **GitHub Light** | Light, familiar |
+| **VS Code Dark+** | Visual Studio dark |
 | **Monokai** | Classic dark theme |
 | **Atom One Dark** | Atom editor style |
 | **Atom One Light** | Light Atom style |
 | **Nord** | Arctic, bluish dark |
 | **Tokyo Night Dark** | Purple-tinted dark |
 | **Tokyo Night Light** | Soft light theme |
-| **Solarized Dark** | Warm dark theme |
-| **Solarized Light** | Warm light theme |
-| **Gruvbox Dark** | Retro dark |
-| **Gruvbox Light** | Retro light |
 | **Night Owl** | Dark blue theme |
 | **Obsidian** | Dark gray theme |
 | **Agate** | Minimal dark |
@@ -105,11 +97,16 @@ function example() {
 
 ## Editor Themes
 
-The **Editor Theme** dropdown (gear icon area) controls the editing pane appearance:
+The **Editor Theme** dropdown controls the editing pane (left side) appearance:
 
-- **Light themes** - Default, Eclipse, Elegant
-- **Dark themes** - Material, Dracula, Monokai, Nord
-- **High contrast** - For accessibility needs
+| Theme | Style |
+|-------|-------|
+| **Material Darker** | Dark gray (default) |
+| **GitHub Dark** | GitHub's dark theme |
+| **Monokai** | Classic dark |
+| **Dracula** | Purple-tinted dark |
+| **Solarized Dark** | Warm dark theme |
+| **Solarized Light** | Warm light theme |
 
 ---
 
@@ -117,20 +114,27 @@ The **Editor Theme** dropdown (gear icon area) controls the editing pane appeara
 
 The **Mermaid Theme** dropdown controls diagram styling:
 
-### Default
+| Theme | Description |
+|-------|-------------|
+| **Auto** | Automatically switches between Default and Dark based on your document style's background color (default) |
+| **Default** | Blue/gray tones, best for light backgrounds |
+| **Forest** | Green-tinted, nature-inspired |
+| **Dark** | Dark background, best for dark document styles |
+| **Neutral** | Grayscale, minimal distraction |
+| **Base** | Minimal styling, useful as starting point for customization |
+
+### Auto Mode
+
+When set to **Auto**, Merview detects whether your document style has a dark or light background and automatically chooses the appropriate Mermaid theme:
+- Light backgrounds → Default theme
+- Dark backgrounds → Dark theme
+
 ```mermaid
 graph LR
-    A[Default] --> B[Clean and professional]
+    A[Auto Mode] --> B{Background?}
+    B -->|Light| C[Default Theme]
+    B -->|Dark| D[Dark Theme]
 ```
-
-### Dark
-Best paired with dark document styles.
-
-### Forest
-Green-tinted, nature-inspired.
-
-### Neutral
-Grayscale, minimal distraction.
 
 ---
 
@@ -138,29 +142,30 @@ Grayscale, minimal distraction.
 
 Here are some recommended combinations:
 
-| Document | Code | Mermaid | Use Case |
-|----------|------|---------|----------|
-| Clean | GitHub | Default | General purpose |
-| Academic | GitHub | Neutral | Papers, reports |
-| GitHub | GitHub Dark | Default | Developer docs |
-| Dark | Monokai | Dark | Night coding |
-| Torpedo | Atom One Dark | Default | Creative projects |
+| Document | Code | Editor | Mermaid | Use Case |
+|----------|------|--------|---------|----------|
+| Clean | GitHub Dark | Material Darker | Auto | General purpose |
+| Academic | GitHub Light | Solarized Light | Neutral | Papers, reports |
+| GitHub | GitHub Dark | GitHub Dark | Default | Developer docs |
+| Dark Mode | Monokai | Monokai | Dark | Night coding |
+| Monospace | VS Code Dark+ | Material Darker | Auto | Technical docs |
 
 ---
 
 ## Tips
 
-1. **Match light with light** - Pair light document styles with light code themes
-2. **Consistency matters** - Use the same theme family across all settings
-3. **Consider your audience** - Academic for formal, creative for portfolios
-4. **Test before exporting** - Preview how themes look in PDF
+1. **Use Auto for Mermaid** - Let Merview pick the best diagram theme automatically
+2. **Match light with light** - Pair light document styles with light code/editor themes
+3. **Consistency matters** - Use the same theme family across all settings
+4. **Consider your audience** - Academic for formal, creative for portfolios
+5. **Test before exporting** - Preview how themes look in PDF
 
 ---
 
 ## Navigation
 
-- [← Back to Welcome](https://merview.com)
-- [About Merview](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/about.md)
-- [Security](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/security.md)
-- [Contributing](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/contributing.md)
-- [Support the Project](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/sponsor.md)
+- [← Back to Welcome](/?sample)
+- [About Merview](/?url=docs/about.md)
+- [Security](/?url=docs/security.md)
+- [Contributing](/?url=docs/contributing.md)
+- [Support the Project](/?url=docs/sponsor.md)

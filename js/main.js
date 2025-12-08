@@ -13,6 +13,7 @@ import { shareToGist, hideGistModal, openGitHubAuth, startDeviceFlow, copyGistUr
 import { toggleLintPanel, validateCode } from './validation.js';
 import { initMermaidFullscreen } from './mermaid-fullscreen.js';
 import { isAllowedMarkdownURL, isAllowedCSSURL, stripGitHubToken, showPrivateUrlModal, initPrivateUrlModalHandlers, normalizeGistUrl } from './security.js';
+import { isRelativeDocPath, resolveDocUrl } from './config.js';
 import { getMarkdownContent, isFreshVisit, markSessionInitialized } from './storage.js';
 import { showStatus } from './utils.js';
 import { initResizeHandle } from './resize.js';
@@ -130,10 +131,23 @@ function setupKeyboardShortcuts() {
 function handleURLParameters() {
     const urlParams = new URLSearchParams(globalThis.location.search);
 
+    // Check for sample parameter - explicitly load the sample/welcome document
+    if (urlParams.has('sample')) {
+        loadSample();
+        markSessionInitialized();
+        return;
+    }
+
     // Check for remote URL parameter
-    const remoteURL = urlParams.get('url');
+    let remoteURL = urlParams.get('url');
 
     if (remoteURL) {
+        // Resolve relative doc paths (e.g., "docs/about.md") to full URLs
+        // This allows docs to use portable links that work in both dev and prod
+        if (isRelativeDocPath(remoteURL)) {
+            remoteURL = resolveDocUrl(remoteURL);
+        }
+
         // Security: Check for GitHub private repo tokens
         const { hadToken } = stripGitHubToken(remoteURL);
 

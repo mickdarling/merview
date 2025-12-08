@@ -1,6 +1,6 @@
 # Security
 
-[← Back to Welcome](https://merview.com)
+[← Back to Welcome](/?sample)
 
 ---
 
@@ -35,15 +35,17 @@ Merview processes everything in your browser:
 - **No accounts** - No personal data collected
 - **LocalStorage only** - Auto-save stays on your device
 
-### What We Don't Collect
+### What We Don't Collect (Currently)
 
 | Data Type | Collected? |
 |-----------|------------|
 | Document content | ❌ No |
-| Usage analytics | ❌ No |
+| Usage analytics | ❌ No (see note below) |
 | Personal info | ❌ No |
 | IP addresses | ❌ No |
 | Browser fingerprints | ❌ No |
+
+**Future Analytics Note:** We're considering adding [privacy-respecting analytics](https://github.com/mickdarling/merview/issues/74) following the Wikimedia Foundation model—aggregate counts only (page loads, feature usage) with no personal identifiers, no IP logging, and no tracking cookies. Any such implementation would be transparent and documented here.
 
 ---
 
@@ -173,8 +175,8 @@ We actively maintain security:
 
 ## Navigation
 
-- [← Back to Welcome](https://merview.com)
-- [About Merview](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/about.md)
-- [Theme Guide](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/themes.md)
-- [Contributing](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/contributing.md)
-- [Support the Project](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/sponsor.md)
+- [← Back to Welcome](/?sample)
+- [About Merview](/?url=docs/about.md)
+- [Theme Guide](/?url=docs/themes.md)
+- [Contributing](/?url=docs/contributing.md)
+- [Support the Project](/?url=docs/sponsor.md)

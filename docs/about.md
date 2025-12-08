@@ -1,6 +1,6 @@
 # About Merview
 
-[← Back to Welcome](https://merview.com)
+[← Back to Welcome](/?sample)
 
 ---
 
@@ -24,7 +24,7 @@ Everything runs in your browser. Your documents never leave your machine unless 
 - **No server-side processing** - all rendering happens locally
 - **No tracking or analytics** - we don't know what you write
 - **No account required** - just open and start writing
-- **Auto-save to localStorage** - your work persists across sessions
+- **Auto-save to localStorage** - your current work persists across browser sessions (note: loading a URL creates a new working copy; edits don't modify the original source)
 
 ### Mermaid Diagram Support
 
@@ -45,15 +45,15 @@ Full support for Mermaid.js diagrams including:
 
 ### Professional Themes
 
-Choose from **37 professional document styles** to make your documents look polished:
+Choose from **6 built-in styles** plus **40+ external themes** to make your documents look polished:
 
-- **Clean** - Minimal and modern
+- **Clean** - Minimal and modern (default)
 - **Academic** - Perfect for papers and reports
 - **GitHub** - Familiar GitHub-flavored styling
-- **Dark themes** - Easy on the eyes
-- **And many more...**
+- **Dark Mode** - Easy on the eyes
+- **And many more via external styles...**
 
-[View Theme Guide →](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/themes.md)
+[View Theme Guide →](/?url=docs/themes.md)
 
 ### Code Syntax Highlighting
 
@@ -75,9 +75,16 @@ def fibonacci(n):
 
 ### Export Options
 
-- **Print to PDF** - Use your browser's print dialog
-- **Print in New Tab** - Preview before printing
-- **Save as .md** - Download your markdown file
+- **Print/PDF** - Export using your browser's print dialog
+- **Print (New Tab)** - Opens preview in new tab before printing
+
+**Tips for better PDF exports:**
+- Use the browser's print preview to adjust settings
+- Reduce scale to ~75% to fit more content per page
+- Disable headers/footers in print settings for cleaner output
+- Content will automatically paginate across multiple pages
+
+- **Save** - Download your document as a `.md` file
 
 ## How It Works
 
@@ -103,13 +110,13 @@ sequenceDiagram
 
 ## Technology
 
-Merview is built with:
+Merview is built with these open source libraries:
 
-- **[marked](https://marked.js.org/)** - Fast Markdown parsing
-- **[highlight.js](https://highlightjs.org/)** - Syntax highlighting
-- **[Mermaid](https://mermaid.js.org/)** - Diagram rendering
-- **[CodeMirror](https://codemirror.net/)** - Editor component
-- **[DOMPurify](https://github.com/cure53/DOMPurify)** - XSS protection
+- **[marked](https://marked.js.org/)** - Fast Markdown parsing (MIT)
+- **[highlight.js](https://highlightjs.org/)** - Syntax highlighting (BSD-3)
+- **[Mermaid](https://mermaid.js.org/)** - Diagram rendering (MIT)
+- **[CodeMirror](https://codemirror.net/)** - Editor component (MIT)
+- **[DOMPurify](https://github.com/cure53/DOMPurify)** - XSS protection (Apache-2.0/MPL-2.0)
 
 ## Open Source
 
@@ -117,14 +124,20 @@ Merview is open source under the **AGPL-3.0 license**.
 
 - **Source Code**: [github.com/mickdarling/merview](https://github.com/mickdarling/merview)
 - **Report Issues**: [GitHub Issues](https://github.com/mickdarling/merview/issues)
-- **Contribute**: [Contributing Guide](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/contributing.md)
+- **Contribute**: [Contributing Guide](/?url=docs/contributing.md)
+
+## Background
+
+Merview was created by [Mick Darling](https://github.com/mickdarling) as a tool to help build [DollhouseMCP](https://github.com/mickdarling/DollhouseMCP), an MCP server for managing AI personas, skills, and templates. Writing documentation with embedded Mermaid diagrams needed a better workflow, and Merview was born.
+
+It turned out to be a useful tool in its own right, so it's now available as a standalone project. It's maintained because it's genuinely useful—both for DollhouseMCP development and as a general-purpose Markdown+Mermaid editor.
 
 ---
 
 ## Navigation
 
-- [← Back to Welcome](https://merview.com)
-- [Theme Guide](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/themes.md)
-- [Security](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/security.md)
-- [Contributing](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/contributing.md)
-- [Support the Project](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/sponsor.md)
+- [← Back to Welcome](/?sample)
+- [Theme Guide](/?url=docs/themes.md)
+- [Security](/?url=docs/security.md)
+- [Contributing](/?url=docs/contributing.md)
+- [Support the Project](/?url=docs/sponsor.md)

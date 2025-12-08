@@ -511,22 +511,22 @@ graph LR
     A --- E
     A --- F
 
-    click B "https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/about.md" "About Merview"
-    click C "https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/themes.md" "Theme Guide"
-    click D "https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/security.md" "Security"
-    click E "https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/contributing.md" "Contributing"
-    click F "https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/sponsor.md" "Support the Project"
+    click B "/?url=docs/about.md" "About Merview"
+    click C "/?url=docs/themes.md" "Theme Guide"
+    click D "/?url=docs/security.md" "Security"
+    click E "/?url=docs/contributing.md" "Contributing"
+    click F "/?url=docs/sponsor.md" "Support the Project"
 \`\`\`
 
 ---
 
 ## Quick Links
 
-- [About Merview](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/about.md) - Features, technology, and how it works
-- [Theme Guide](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/themes.md) - 37 document styles and customization
-- [Security](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/security.md) - Privacy-first design and protections
-- [Contributing](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/contributing.md) - How to help improve Merview
-- [Support the Project](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/sponsor.md) - Sponsor development
+- [About Merview](/?url=docs/about.md) - Features, technology, and how it works
+- [Theme Guide](/?url=docs/themes.md) - 37 document styles and customization
+- [Security](/?url=docs/security.md) - Privacy-first design and protections
+- [Contributing](/?url=docs/contributing.md) - How to help improve Merview
+- [Support the Project](/?url=docs/sponsor.md) - Sponsor development
 
 ---
 

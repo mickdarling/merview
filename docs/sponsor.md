@@ -1,6 +1,6 @@
 # Support Merview
 
-[← Back to Welcome](https://merview.com)
+[← Back to Welcome](/?sample)
 
 ---
 
@@ -87,9 +87,9 @@ The best support is simply using Merview for your work. Every user validates the
 
 Hi! I'm **Mick Darling**. I've spent nearly two decades in tech across media, biotech, and IT. I hold four patents in natural language processing and believe deeply in open source.
 
-Merview started as a tool I built to help with another project ([DollhouseMCP](https://github.com/mickdarling/DollhouseMCP)), and I realized it could be useful to others. Now I maintain it as a labor of love.
+Merview started as a tool I built to help with [DollhouseMCP](https://github.com/mickdarling/DollhouseMCP), an MCP server for managing AI personas and skills. I needed a better way to write and preview documentation with embedded Mermaid diagrams, so I built this. It turned out to be genuinely useful, so I'm sharing it.
 
-Your sponsorship directly supports my ability to dedicate time to projects like this instead of other work.
+Your sponsorship helps me dedicate more time to open source projects like this.
 
 ---
 
@@ -108,8 +108,8 @@ Your sponsorship directly supports my ability to dedicate time to projects like 
 
 ## Navigation
 
-- [← Back to Welcome](https://merview.com)
-- [About Merview](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/about.md)
-- [Theme Guide](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/themes.md)
-- [Security](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/security.md)
-- [Contributing](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/contributing.md)
+- [← Back to Welcome](/?sample)
+- [About Merview](/?url=docs/about.md)
+- [Theme Guide](/?url=docs/themes.md)
+- [Security](/?url=docs/security.md)
+- [Contributing](/?url=docs/contributing.md)

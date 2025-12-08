@@ -166,8 +166,8 @@ export function isAllowedMarkdownURL(url) {
 
         const parsed = new URL(url);
 
-        // Require HTTPS
-        if (parsed.protocol !== 'https:') {
+        // Require HTTPS (except localhost for development)
+        if (parsed.protocol !== 'https:' && parsed.hostname !== 'localhost') {
             console.warn('Markdown URL blocked: HTTPS required, got', parsed.protocol);
             return false;
         }
@@ -178,8 +178,11 @@ export function isAllowedMarkdownURL(url) {
             return false;
         }
 
-        // Check against allowlist
-        const isAllowed = ALLOWED_MARKDOWN_DOMAINS.includes(parsed.hostname.toLowerCase());
+        // Check against allowlist (localhost is always allowed for development)
+        const hostname = parsed.hostname.toLowerCase();
+        const isAllowed = ALLOWED_MARKDOWN_DOMAINS.includes(hostname) ||
+                          hostname === 'localhost' ||
+                          hostname === '127.0.0.1';
         if (!isAllowed) {
             console.warn('Markdown URL blocked: domain not in allowlist:', parsed.hostname);
         }

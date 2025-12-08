@@ -114,7 +114,43 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-### 4. CodeMirror 5
+### 4. DOMPurify
+
+**Version:** 3.2.2
+**Source:** https://github.com/cure53/DOMPurify
+**License:** Apache License 2.0 OR Mozilla Public License 2.0 (dual-licensed)
+**Used For:** XSS sanitization and HTML purification
+
+```
+DOMPurify
+Copyright 2025 Dr.-Ing. Mario Heiderich, Cure53
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+---
+
+Alternatively, you may use this software under the Mozilla Public License 2.0:
+
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at http://mozilla.org/MPL/2.0/.
+```
+
+**Note:** This project uses DOMPurify under the Apache License 2.0 terms, which is compatible with AGPL-3.0.
+
+---
+
+### 5. CodeMirror 5
 
 **Version:** 5.65.18
 **Source:** https://github.com/codemirror/codemirror5
@@ -149,7 +185,7 @@ SOFTWARE.
 
 ## Development Dependencies (npm)
 
-### 5. http-server
+### 6. http-server
 
 **Version:** 14.1.1
 **Source:** https://github.com/http-party/http-server
@@ -184,7 +220,7 @@ SOFTWARE.
 
 ## External Resources (CDN)
 
-### 6. MarkedCustomStyles (CSS Themes)
+### 7. MarkedCustomStyles (CSS Themes)
 
 **Source:** https://github.com/ttscoff/MarkedCustomStyles
 **Author:** Brett Terpstra (@ttscoff)
@@ -230,19 +266,19 @@ This application loads libraries from the following CDN providers:
 
 ### jsDelivr
 - **Website:** https://www.jsdelivr.com/
-- **Libraries Served:** marked.js, mermaid.js, MarkedCustomStyles
+- **Libraries Served:** marked.js, mermaid.js, DOMPurify, MarkedCustomStyles
 - **Terms of Service:** https://www.jsdelivr.com/terms
 
 ### Cloudflare CDN (cdnjs)
 - **Website:** https://cdnjs.com/
-- **Libraries Served:** highlight.js
+- **Libraries Served:** highlight.js, CodeMirror
 - **Terms of Service:** https://www.cloudflare.com/website-terms/
 
 ---
 
 ## License Compatibility
 
-All explicitly licensed dependencies (marked.js, mermaid.js, highlight.js, CodeMirror, http-server) are compatible with the AGPL-3.0 License used by this project. The licenses allow:
+All explicitly licensed dependencies (marked.js, mermaid.js, highlight.js, DOMPurify, CodeMirror, http-server) are compatible with the AGPL-3.0 License used by this project. The licenses allow:
 
 - ✅ Commercial use
 - ✅ Modification
@@ -253,8 +289,12 @@ All explicitly licensed dependencies (marked.js, mermaid.js, highlight.js, CodeM
 - Include license and copyright notice
 - Provide attribution
 
-**BSD 3-Clause Additional Requirement:**
+**BSD 3-Clause Additional Requirement (highlight.js):**
 - Cannot use contributor names for endorsement without permission
+
+**Apache 2.0 Additional Requirements (DOMPurify):**
+- State changes made to the software
+- Include NOTICE file if one exists in the original
 
 ---
 
@@ -263,10 +303,11 @@ All explicitly licensed dependencies (marked.js, mermaid.js, highlight.js, CodeM
 If you redistribute this application or create derivative works, you must:
 
 1. **Include this THIRD-PARTY-NOTICES.md file** (or equivalent attribution)
-2. **Include the MIT License** for marked.js, mermaid.js, http-server
+2. **Include the MIT License** for marked.js, mermaid.js, CodeMirror, http-server
 3. **Include the BSD 3-Clause License** for highlight.js
-4. **Provide attribution** to all library authors
-5. **Address the MarkedCustomStyles licensing** (contact author or remove)
+4. **Include the Apache 2.0 License** for DOMPurify (or MPL-2.0 at your choice)
+5. **Provide attribution** to all library authors
+6. **Address the MarkedCustomStyles licensing** (contact author or remove)
 
 ---
 
@@ -283,7 +324,7 @@ This document is provided for informational purposes. The application developers
 
 ## Updates
 
-This notice was last updated: **2025-11-30**
+This notice was last updated: **2025-12-08**
 
 If you discover any license issues or inaccuracies, please:
 - Open an issue on GitHub
@@ -299,6 +340,7 @@ If you discover any license issues or inaccuracies, please:
 | marked.js | MIT | ✅ Yes | ✅ Yes | Compatible |
 | mermaid.js | MIT | ✅ Yes | ✅ Yes | Compatible |
 | highlight.js | BSD-3 | ✅ Yes | ✅ Yes | Compatible |
+| DOMPurify | Apache-2.0 / MPL-2.0 | ✅ Yes | ✅ Yes | Compatible (using Apache-2.0) |
 | CodeMirror 5 | MIT | ✅ Yes | ✅ Yes | Compatible |
 | http-server | MIT | ✅ Yes | ✅ Yes | Dev only |
 | MarkedCustomStyles | ⚠️ None | ⚠️ Unclear | ⚠️ Unclear | **NEEDS RESOLUTION** |

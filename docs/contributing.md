@@ -1,6 +1,6 @@
 # Contributing to Merview
 
-[← Back to Welcome](https://merview.com)
+[← Back to Welcome](/?sample)
 
 ---
 
@@ -70,9 +70,9 @@ sequenceDiagram
 
 ### Prerequisites
 
-- Node.js 18+ (for running tests)
 - A modern web browser
 - Git
+- Node.js 18+ (only needed for running tests)
 
 ### Getting Started
 
@@ -81,14 +81,29 @@ sequenceDiagram
 git clone https://github.com/YOUR_USERNAME/merview.git
 cd merview
 
-# Install dependencies
+# Start a local server - no build step needed!
+# Use any static file server, for example:
+npx http-server -p 8080
+# or: python3 -m http.server 8080
+
+# Open http://localhost:8080 in your browser
+```
+
+**Note:** Merview is a vanilla JavaScript application with no build step. All libraries are loaded from CDNs. You can open `index.html` directly in a browser, but a local server is recommended for testing URL loading features.
+
+### Running Tests (Optional)
+
+Tests use Playwright and require Node.js:
+
+```bash
+# Install test dependencies
 npm install
 
-# Run tests
+# Run all tests
 npm test
 
-# Start local server (optional)
-npx http-server -p 8080
+# Run specific test file
+npx playwright test tests/your-test.spec.js
 ```
 
 ### Project Structure
@@ -185,8 +200,8 @@ chore: Update dependencies
 
 ## Navigation
 
-- [← Back to Welcome](https://merview.com)
-- [About Merview](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/about.md)
-- [Theme Guide](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/themes.md)
-- [Security](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/security.md)
-- [Support the Project](https://merview.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/docs/sponsor.md)
+- [← Back to Welcome](/?sample)
+- [About Merview](/?url=docs/about.md)
+- [Theme Guide](/?url=docs/themes.md)
+- [Security](/?url=docs/security.md)
+- [Support the Project](/?url=docs/sponsor.md)
