@@ -552,7 +552,13 @@
 
         .mermaid {
             text-align: center;
-            /* Prevent preview style typography from affecting SVG text rendering */
+            /*
+             * Prevent preview style typography from affecting SVG text rendering.
+             * Without this isolation, line-height values from preview styles (e.g.,
+             * Monospace's 1.8) cascade into SVG text elements, causing Mermaid to
+             * miscalculate bounding boxes and clip text at the bottom of nodes.
+             * See: https://github.com/mickdarling/merview/issues/172
+             */
             line-height: 1;
             font-size: initial;
         }

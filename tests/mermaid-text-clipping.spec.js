@@ -76,4 +76,30 @@ graph LR
         expect(numericSize).toBeGreaterThan(0);
         expect(numericSize).toBeLessThanOrEqual(20); // Should be reasonable default
     });
+
+    test('line-height stays isolated after switching to Monospace style', async ({ page }) => {
+        const mermaidDiv = page.locator('.mermaid').first();
+        await expect(mermaidDiv).toBeVisible();
+
+        // Switch to Monospace style (which has line-height: 1.8 on #wrapper)
+        await page.evaluate(() => {
+            if (globalThis.changeStyle) {
+                globalThis.changeStyle('monospace');
+            }
+        });
+        await page.waitForTimeout(1500);
+
+        // Verify line-height on mermaid container is still isolated
+        const lineHeight = await mermaidDiv.evaluate((el) => {
+            return globalThis.getComputedStyle(el).lineHeight;
+        });
+
+        const numericValue = Number.parseFloat(lineHeight);
+        if (!Number.isNaN(numericValue)) {
+            // Should still be small, not inflated by Monospace's 1.8 line-height
+            expect(numericValue).toBeLessThan(25);
+        } else {
+            expect(lineHeight).toBe('normal');
+        }
+    });
 });
