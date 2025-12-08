@@ -51,8 +51,10 @@ graph LR
         if (!Number.isNaN(numericValue)) {
             // If it's a numeric pixel value, it should be close to the font-size (not inflated)
             expect(numericValue).toBeLessThan(25); // Should not be inflated
+        } else {
+            // "normal" is the browser default and is acceptable for isolated containers
+            expect(lineHeight).toBe('normal');
         }
-        // If it's "normal", that's fine too
     });
 
     test('mermaid SVG should be rendered', async ({ page }) => {
