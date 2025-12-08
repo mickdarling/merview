@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2025 Mick Darling
+
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
