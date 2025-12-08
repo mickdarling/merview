@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Mermaid theme auto mode now properly updates when changing preview styles (#168)
+  - Root cause: `state.renderMarkdown` was undefined, preventing diagram re-rendering
+  - Replaced broken calls with working `scheduleRender()` function
+- Mermaid fullscreen modal now uses appropriate background color for dark themes (#168)
+  - Dark theme diagrams are now readable in fullscreen (dark background instead of white)
+
+### Added
+- Opt-in debug logging for Mermaid theme investigation
+  - Enable via: `localStorage.setItem('debug-mermaid-theme', 'true')`
+  - Helps diagnose auto mode behavior without polluting production console
+- Test coverage for Mermaid fullscreen background colors (5 new tests)
+  - Verifies correct background for all Mermaid themes (dark, default, forest, neutral, base)
+
 ### Security
 - Add URL validation edge case protections for remote markdown loading (#82)
   - Block URLs with embedded credentials (user:pass@host) to prevent credential leakage
