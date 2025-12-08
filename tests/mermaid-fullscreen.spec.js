@@ -81,7 +81,7 @@ test.describe('Mermaid Fullscreen and Zoom', () => {
     test('fullscreen overlay uses dark background when Mermaid theme is "dark"', async ({ page }) => {
       // Set Mermaid theme to dark
       await page.evaluate(() => {
-        window.state.mermaidTheme = 'dark';
+        globalThis.state.mermaidTheme = 'dark';
       });
 
       // Render a mermaid diagram
@@ -97,7 +97,7 @@ test.describe('Mermaid Fullscreen and Zoom', () => {
 
       // Get background color of fullscreen overlay
       const bgColor = await page.$eval('#mermaid-fullscreen-overlay', el => {
-        return window.getComputedStyle(el).backgroundColor;
+        return globalThis.getComputedStyle(el).backgroundColor;
       });
 
       // Verify dark background color (rgba(30, 30, 30, 0.98))
@@ -107,7 +107,7 @@ test.describe('Mermaid Fullscreen and Zoom', () => {
     test('fullscreen overlay uses light background when Mermaid theme is "default"', async ({ page }) => {
       // Set Mermaid theme to default
       await page.evaluate(() => {
-        window.state.mermaidTheme = 'default';
+        globalThis.state.mermaidTheme = 'default';
       });
 
       // Render a mermaid diagram
@@ -123,7 +123,7 @@ test.describe('Mermaid Fullscreen and Zoom', () => {
 
       // Get background color of fullscreen overlay
       const bgColor = await page.$eval('#mermaid-fullscreen-overlay', el => {
-        return window.getComputedStyle(el).backgroundColor;
+        return globalThis.getComputedStyle(el).backgroundColor;
       });
 
       // Verify light background color (rgba(255, 255, 255, 0.98))
@@ -133,7 +133,7 @@ test.describe('Mermaid Fullscreen and Zoom', () => {
     test('fullscreen overlay uses light background when Mermaid theme is "forest"', async ({ page }) => {
       // Set Mermaid theme to forest
       await page.evaluate(() => {
-        window.state.mermaidTheme = 'forest';
+        globalThis.state.mermaidTheme = 'forest';
       });
 
       // Render a mermaid diagram
@@ -149,7 +149,7 @@ test.describe('Mermaid Fullscreen and Zoom', () => {
 
       // Get background color of fullscreen overlay
       const bgColor = await page.$eval('#mermaid-fullscreen-overlay', el => {
-        return window.getComputedStyle(el).backgroundColor;
+        return globalThis.getComputedStyle(el).backgroundColor;
       });
 
       // Verify light background color (rgba(255, 255, 255, 0.98))
@@ -159,7 +159,7 @@ test.describe('Mermaid Fullscreen and Zoom', () => {
     test('fullscreen overlay uses light background when Mermaid theme is "neutral"', async ({ page }) => {
       // Set Mermaid theme to neutral
       await page.evaluate(() => {
-        window.state.mermaidTheme = 'neutral';
+        globalThis.state.mermaidTheme = 'neutral';
       });
 
       // Render a mermaid diagram
@@ -175,7 +175,7 @@ test.describe('Mermaid Fullscreen and Zoom', () => {
 
       // Get background color of fullscreen overlay
       const bgColor = await page.$eval('#mermaid-fullscreen-overlay', el => {
-        return window.getComputedStyle(el).backgroundColor;
+        return globalThis.getComputedStyle(el).backgroundColor;
       });
 
       // Verify light background color (rgba(255, 255, 255, 0.98))
@@ -185,7 +185,7 @@ test.describe('Mermaid Fullscreen and Zoom', () => {
     test('fullscreen overlay uses light background when Mermaid theme is "base"', async ({ page }) => {
       // Set Mermaid theme to base
       await page.evaluate(() => {
-        window.state.mermaidTheme = 'base';
+        globalThis.state.mermaidTheme = 'base';
       });
 
       // Render a mermaid diagram
@@ -201,7 +201,7 @@ test.describe('Mermaid Fullscreen and Zoom', () => {
 
       // Get background color of fullscreen overlay
       const bgColor = await page.$eval('#mermaid-fullscreen-overlay', el => {
-        return window.getComputedStyle(el).backgroundColor;
+        return globalThis.getComputedStyle(el).backgroundColor;
       });
 
       // Verify light background color (rgba(255, 255, 255, 0.98))
