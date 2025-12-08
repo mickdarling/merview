@@ -35,7 +35,15 @@ export function isAllowedCSSURL(url) {
     }
 }
 
-/** Maximum allowed URL length (matches common browser limits) */
+/**
+ * Maximum allowed URL length for security validation.
+ * 2048 bytes is the de facto standard limit supported by most browsers and servers:
+ * - Internet Explorer: 2,083 characters
+ * - Chrome, Firefox, Safari: ~32KB but 2KB is safe for compatibility
+ * - Apache default: 8,190 bytes
+ * - IIS default: 4,096 bytes
+ * Using 2048 provides a safe, widely-compatible limit that prevents DoS via extremely long URLs.
+ */
 const MAX_URL_LENGTH = 2048;
 
 /**

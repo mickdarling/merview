@@ -91,6 +91,8 @@ npx http-server -p 8080
 
 **Note:** Merview is a vanilla JavaScript application with no build step. All libraries are loaded from CDNs. You can open `index.html` directly in a browser, but a local server is recommended for testing URL loading features.
 
+**Doc Navigation:** Links to documentation pages (like `/?url=docs/about.md`) automatically resolve to your local server in development or to GitHub raw content in production. The app detects `localhost` or `127.0.0.1` and adjusts URLs accordingly, so you can test doc navigation locally without changing any paths.
+
 ### Running Tests (Optional)
 
 Tests use Playwright and require Node.js:

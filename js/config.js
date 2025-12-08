@@ -123,6 +123,8 @@ export function getDocsBaseUrl() {
 
     if (isLocalDev) {
         // Local development - serve from local server
+        // Port detection: uses actual port from URL if present (e.g., localhost:3000),
+        // falls back to 8080 only when port is empty (localhost on port 80, which is rare)
         const port = globalThis.location?.port || '8080';
         return `http://localhost:${port}`;
     }
