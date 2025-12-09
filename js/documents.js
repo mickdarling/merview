@@ -103,8 +103,14 @@ export async function changeDocument(value) {
                 allowedDomains: ALLOWED_MARKDOWN_DOMAINS
             });
             if (url) {
-                await loadMarkdownFromURL(url);
-                updateDocumentSelector();
+                try {
+                    await loadMarkdownFromURL(url);
+                    updateDocumentSelector();
+                } catch (error) {
+                    // Error already handled by loadMarkdownFromURL via showStatus()
+                    // Selector will reset to current document below
+                    console.error('Failed to load document from URL:', error);
+                }
             }
             break;
         }

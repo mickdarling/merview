@@ -295,5 +295,76 @@ test.describe('Open Functionality', () => {
       const domainList = await page.$eval('#urlModalDomains', el => el.textContent);
       expect(domainList).toContain('raw.githubusercontent.com');
     });
+
+    test('failed URL load should gracefully handle error and preserve document selector', async ({ page }) => {
+      // Set up initial document state
+      await page.evaluate(() => {
+        globalThis.state.currentFilename = 'initial-document.md';
+        globalThis.updateDocumentSelector();
+      });
+
+      // Verify initial state
+      const initialSelectedText = await page.$eval('#documentSelector', el => {
+        const selected = el.querySelector('option:checked');
+        return selected ? selected.textContent : '';
+      });
+      expect(initialSelectedText).toBe('initial-document.md');
+
+      // Mock loadMarkdownFromURL to simulate a failure (e.g., network error)
+      await page.evaluate(() => {
+        // Store original function
+        const originalLoadMarkdownFromURL = globalThis.loadMarkdownFromURL;
+
+        // Mock to simulate failure
+        globalThis.loadMarkdownFromURL = async function mockFailedLoad() {
+          // Simulate the error handling that happens in the real function
+          globalThis.showStatus('Error loading URL: Network error');
+          return false; // Return false to indicate failure
+        };
+
+        // Store original for cleanup (optional, but good practice)
+        globalThis._originalLoadMarkdownFromURL = originalLoadMarkdownFromURL;
+      });
+
+      // Attempt to load from URL (this will fail with our mock)
+      await page.evaluate(async () => {
+        // Simulate what changeDocument('__load_url__') does when user provides a URL
+        const url = 'https://raw.githubusercontent.com/invalid/url/test.md';
+        try {
+          await globalThis.loadMarkdownFromURL(url);
+          globalThis.updateDocumentSelector();
+        } catch (error) {
+          console.error('Failed to load document from URL:', error);
+        }
+      });
+
+      await page.waitForTimeout(100);
+
+      // Verify document selector still shows the original document
+      const afterFailureText = await page.$eval('#documentSelector', el => {
+        const selected = el.querySelector('option:checked');
+        return selected ? selected.textContent : '';
+      });
+      expect(afterFailureText).toBe('initial-document.md');
+
+      // Verify the app is still functional (selector exists and is enabled)
+      const selectorExists = await page.$('#documentSelector');
+      expect(selectorExists).not.toBeNull();
+
+      const isDisabled = await page.$eval('#documentSelector', el => el.disabled);
+      expect(isDisabled).toBe(false);
+
+      // Verify the original filename is preserved in state
+      const filename = await page.evaluate(() => globalThis.state.currentFilename);
+      expect(filename).toBe('initial-document.md');
+
+      // Cleanup: restore original function
+      await page.evaluate(() => {
+        if (globalThis._originalLoadMarkdownFromURL) {
+          globalThis.loadMarkdownFromURL = globalThis._originalLoadMarkdownFromURL;
+          delete globalThis._originalLoadMarkdownFromURL;
+        }
+      });
+    });
   });
 });

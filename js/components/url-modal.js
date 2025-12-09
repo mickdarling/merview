@@ -13,6 +13,9 @@
 import { ALLOWED_CSS_DOMAINS } from '../config.js';
 import { normalizeGitHubContentUrl } from '../security.js';
 
+// Maximum URL length to prevent DoS attacks (matches security.js)
+const MAX_URL_LENGTH = 2048;
+
 /**
  * Validate URL against an array of allowed domains
  * @param {string} url - The URL to validate
@@ -21,6 +24,12 @@ import { normalizeGitHubContentUrl } from '../security.js';
  */
 function isAllowedURL(url, allowedDomains) {
     try {
+        // Check URL length before parsing (defense against DoS)
+        if (url.length > MAX_URL_LENGTH) {
+            console.warn('URL blocked: URL too long (' + url.length + ' chars, max ' + MAX_URL_LENGTH + ')');
+            return false;
+        }
+
         const parsed = new URL(url);
 
         // Require HTTPS

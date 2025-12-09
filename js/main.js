@@ -112,7 +112,7 @@ function setupKeyboardShortcuts() {
         }
 
         // Ctrl/Cmd + Shift + O to open from URL
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'O') {
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'o') {
             e.preventDefault();
             changeDocument('__load_url__');
         }
@@ -124,7 +124,7 @@ function setupKeyboardShortcuts() {
         }
 
         // Ctrl/Cmd + Shift + P to print in new tab
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'P') {
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
             e.preventDefault();
             exportToPDFDirect();
         }
