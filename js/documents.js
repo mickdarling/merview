@@ -110,14 +110,13 @@ export async function changeDocument(value) {
                 allowedDomains: ALLOWED_MARKDOWN_DOMAINS
             });
             if (url) {
-                try {
-                    await loadMarkdownFromURL(url);
-                    // Only update selector after successful load
+                // loadMarkdownFromURL returns boolean (doesn't throw)
+                // It handles errors internally via showStatus()
+                const success = await loadMarkdownFromURL(url);
+                if (success) {
                     updateDocumentSelector();
-                } catch (error) {
-                    // Error already handled by loadMarkdownFromURL via showStatus()
-                    console.error('Failed to load document from URL:', error);
                 }
+                // On failure, selector stays on current document (correct behavior)
             }
             // Reset selector after async operation completes (success or failure)
             resetSelector(selector);

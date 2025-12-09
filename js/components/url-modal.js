@@ -10,7 +10,7 @@
  * - Returns focus to trigger element on close
  */
 
-import { ALLOWED_CSS_DOMAINS, ALLOWED_MARKDOWN_DOMAINS } from '../config.js';
+import { ALLOWED_CSS_DOMAINS } from '../config.js';
 import { normalizeGitHubContentUrl, isAllowedMarkdownURL, isAllowedCSSURL } from '../security.js';
 
 // Modal state
