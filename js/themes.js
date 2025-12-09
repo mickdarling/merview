@@ -7,7 +7,9 @@
 import { state } from './state.js';
 import { getElements } from './dom.js';
 import { syntaxThemes, syntaxThemeSRI, editorThemes, availableStyles, mermaidThemes, ALLOWED_CSS_DOMAINS } from './config.js';
-import { showURLModal, initURLModalHandlers } from './components/url-modal.js';
+import { showURLModal } from './components/url-modal.js';
+// Re-export initURLModalHandlers for main.js
+export { initURLModalHandlers } from './components/url-modal.js';
 import { getMarkdownStyle, saveMarkdownStyle, getSyntaxTheme, saveSyntaxTheme, getEditorTheme, saveEditorTheme, saveRespectStyleLayout, getMermaidTheme, saveMermaidTheme } from './storage.js';
 import { showStatus, isDarkColor } from './utils.js';
 import { isAllowedCSSURL, isValidBackgroundColor, normalizeGistUrl } from './security.js';
@@ -1196,7 +1198,6 @@ export {
     initEditorThemeSelector,
     initMermaidThemeSelector,
     initPreviewDragDrop,
-    initURLModalHandlers,
     changeStyle,
     changeSyntaxTheme,
     changeEditorTheme,

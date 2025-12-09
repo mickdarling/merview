@@ -124,14 +124,12 @@ function clearModalError() {
  */
 export function hideURLModal() {
     const modal = document.getElementById('urlModal');
-    if (modal && modal.open) {
+    if (modal?.open) {
         modal.close();
     }
 
     // Restore focus to trigger element
-    if (triggerElement && triggerElement.focus) {
-        triggerElement.focus();
-    }
+    triggerElement?.focus?.();
     triggerElement = null;
 }
 
@@ -215,9 +213,7 @@ export function initURLModalHandlers() {
             resolve(null);
         }
         // Restore focus to trigger element
-        if (triggerElement && triggerElement.focus) {
-            triggerElement.focus();
-        }
+        triggerElement?.focus?.();
         triggerElement = null;
     });
 
