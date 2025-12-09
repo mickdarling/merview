@@ -39,7 +39,7 @@ The **Style** dropdown controls the overall look of your rendered document.
 
 ### External Styles (MarkedCustomStyles)
 
-The Style dropdown also provides access to 40+ additional themes from the [MarkedCustomStyles](https://github.com/ttscoff/MarkedCustomStyles) repository, including:
+The Style dropdown provides access to the [MarkedCustomStyles](https://github.com/ttscoff/MarkedCustomStyles) repository, which contains 40+ additional themes. Select "MarkedCustomStyles (external)" from the dropdown to browse themes including:
 
 - Academia, Avenue, Bear, Torpedo
 - Swiss, Ulysses, Yeti, and many more

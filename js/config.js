@@ -123,10 +123,17 @@ export function getDocsBaseUrl() {
 
     if (isLocalDev) {
         // Local development - serve from local server
-        // Port detection: uses actual port from URL if present (e.g., localhost:3000),
-        // falls back to 8080 only when port is empty (localhost on port 80, which is rare)
-        const port = globalThis.location?.port || '8080';
-        return `http://localhost:${port}`;
+        // Port detection: uses actual port from URL if present (e.g., localhost:3000)
+        // When port is empty string (default port), use protocol-appropriate default
+        const port = globalThis.location?.port ||
+                     (globalThis.location?.protocol === 'https:' ? '443' : '80');
+        // Omit port from URL if it's the default for the protocol
+        const protocol = globalThis.location?.protocol || 'http:';
+        const isDefaultPort = (protocol === 'http:' && port === '80') ||
+                              (protocol === 'https:' && port === '443');
+        return isDefaultPort
+            ? `${protocol}//localhost`
+            : `${protocol}//localhost:${port}`;
     }
 
     // Production - serve from GitHub raw

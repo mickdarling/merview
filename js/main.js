@@ -145,7 +145,15 @@ function handleURLParameters() {
         // Resolve relative doc paths (e.g., "docs/about.md") to full URLs
         // This allows docs to use portable links that work in both dev and prod
         if (isRelativeDocPath(remoteURL)) {
-            remoteURL = resolveDocUrl(remoteURL);
+            try {
+                remoteURL = resolveDocUrl(remoteURL);
+            } catch (error) {
+                console.error('Error resolving doc URL:', error);
+                showStatus('Error loading documentation', 'warning');
+                loadSavedContentOrSample();
+                markSessionInitialized();
+                return;
+            }
         }
 
         // Security: Check for GitHub private repo tokens

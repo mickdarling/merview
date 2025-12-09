@@ -45,7 +45,7 @@ Full support for Mermaid.js diagrams including:
 
 ### Professional Themes
 
-Choose from **6 built-in styles** plus **40+ external themes** to make your documents look polished:
+Choose from **6 built-in styles** plus access to **40+ external themes** via the MarkedCustomStyles repository:
 
 - **Clean** - Minimal and modern (default)
 - **Academic** - Perfect for papers and reports
