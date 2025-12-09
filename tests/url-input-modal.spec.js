@@ -820,7 +820,7 @@ test.describe('Theme Selector Optgroups', () => {
       test('should have optgroup elements', async ({ page }) => {
         const optgroupCount = await page.$$eval(
           `#${selector.id} optgroup`,
-          groups => groups.length
+          function countGroups(groups) { return groups.length; }
         );
         expect(optgroupCount).toBeGreaterThan(0);
       });
@@ -828,7 +828,7 @@ test.describe('Theme Selector Optgroups', () => {
       test('should have correct optgroup labels', async ({ page }) => {
         const labels = await page.$$eval(
           `#${selector.id} optgroup`,
-          groups => groups.map(g => g.label)
+          function getLabels(groups) { return groups.map(function extractLabel(g) { return g.label; }); }
         );
 
         for (const expectedGroup of selector.expectedGroups) {
