@@ -12,7 +12,7 @@ import { showURLModal } from './components/url-modal.js';
 export { initURLModalHandlers } from './components/url-modal.js';
 import { getMarkdownStyle, saveMarkdownStyle, getSyntaxTheme, saveSyntaxTheme, getEditorTheme, saveEditorTheme, saveRespectStyleLayout, getMermaidTheme, saveMermaidTheme } from './storage.js';
 import { showStatus, isDarkColor } from './utils.js';
-import { isAllowedCSSURL, isValidBackgroundColor, normalizeGistUrl } from './security.js';
+import { isAllowedCSSURL, isValidBackgroundColor, normalizeGitHubContentUrl } from './security.js';
 import { updateMermaidTheme, scheduleRender } from './renderer.js';
 import { updateFullscreenBackground } from './mermaid-fullscreen.js';
 
@@ -608,8 +608,8 @@ function promptForURL() {
  * @param {string} url - URL to load CSS from
  */
 async function loadCSSFromURL(url) {
-    // Normalize gist.github.com URLs to raw URLs (Issue #107)
-    const normalizedUrl = normalizeGistUrl(url);
+    // Normalize GitHub URLs (gist.github.com and github.com/blob) to raw URLs
+    const normalizedUrl = normalizeGitHubContentUrl(url);
 
     // Validate URL against allowlist
     if (!isAllowedCSSURL(normalizedUrl)) {

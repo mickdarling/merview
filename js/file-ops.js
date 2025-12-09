@@ -13,7 +13,7 @@
 import { state } from './state.js';
 import { getElements } from './dom.js';
 import { showStatus } from './utils.js';
-import { isAllowedMarkdownURL, normalizeGistUrl } from './security.js';
+import { isAllowedMarkdownURL, normalizeGitHubContentUrl } from './security.js';
 import { renderMarkdown } from './renderer.js';
 
 /**
@@ -51,6 +51,13 @@ export async function loadMarkdownFile(file) {
         }
 
         state.currentFilename = file.name;
+        state.loadedFromURL = null; // Clear URL source when loading from file
+
+        // Update document selector to show the new name
+        if (typeof globalThis.updateDocumentSelector === 'function') {
+            globalThis.updateDocumentSelector();
+        }
+
         await renderMarkdown();
         showStatus(`Loaded: ${file.name}`);
         return true;
@@ -138,8 +145,8 @@ export function isValidMarkdownContentType(contentType) {
  * @returns {Promise<boolean>} True if successful, false on error
  */
 export async function loadMarkdownFromURL(url) {
-    // Normalize gist.github.com URLs to raw URLs (Issue #107)
-    const normalizedUrl = normalizeGistUrl(url);
+    // Normalize GitHub URLs (gist.github.com and github.com/blob) to raw URLs
+    const normalizedUrl = normalizeGitHubContentUrl(url);
 
     if (!isAllowedMarkdownURL(normalizedUrl)) {
         const { ALLOWED_MARKDOWN_DOMAINS } = await import('./config.js');
@@ -189,6 +196,12 @@ export async function loadMarkdownFromURL(url) {
         // Extract filename from normalized URL for display
         const urlPath = new URL(normalizedUrl).pathname;
         state.currentFilename = urlPath.split('/').pop() || 'remote.md';
+        state.loadedFromURL = normalizedUrl; // Track URL source
+
+        // Update document selector to show the new name
+        if (typeof globalThis.updateDocumentSelector === 'function') {
+            globalThis.updateDocumentSelector();
+        }
 
         await renderMarkdown();
         showStatus(`Loaded: ${state.currentFilename}`);
@@ -650,6 +663,16 @@ Merview is free and open source under the AGPL-3.0 license.
     if (cmEditor) {
         cmEditor.setValue(sample);
     }
+
+    // Set document name for the sample
+    state.currentFilename = 'Welcome.md';
+    state.loadedFromURL = null;
+
+    // Update document selector to show the new name
+    if (typeof globalThis.updateDocumentSelector === 'function') {
+        globalThis.updateDocumentSelector();
+    }
+
     renderMarkdown();
 }
 

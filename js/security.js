@@ -98,6 +98,12 @@ function extractHostnameFromString(url) {
  * - Input:  https://gist.github.com/user/abc123/file.md
  *   Output: https://gist.githubusercontent.com/user/abc123/raw/file.md
  *
+ * Note: This function is kept separate from normalizeGitHubUrl() because:
+ * 1. Different URL structure (gists use 2 path segments vs 4+ for github blobs)
+ * 2. Different raw URL format (gist.githubusercontent.com with /raw vs raw.githubusercontent.com)
+ * 3. Different query parameter handling (gists preserve fragments, github blobs don't)
+ * The shared URL parsing code is minimal and extracting it would add complexity without benefit.
+ *
  * @param {string} url - The URL to normalize
  * @returns {string} The normalized URL or original URL if not a gist
  */
@@ -141,6 +147,83 @@ export function normalizeGistUrl(url) {
         // Invalid URL - return unchanged
         return url;
     }
+}
+
+/**
+ * Normalize github.com blob URLs to raw.githubusercontent.com URLs
+ *
+ * Handles the following transformations:
+ * - github.com/{user}/{repo}/blob/{branch}/{path} → raw.githubusercontent.com/{user}/{repo}/{branch}/{path}
+ * - Returns original URL unchanged if not a github.com blob URL
+ *
+ * Examples:
+ * - Input:  https://github.com/DollhouseMCP/mcp-server/blob/main/README.md
+ *   Output: https://raw.githubusercontent.com/DollhouseMCP/mcp-server/main/README.md
+ *
+ * - Input:  https://github.com/user/repo/blob/develop/docs/guide.md
+ *   Output: https://raw.githubusercontent.com/user/repo/develop/docs/guide.md
+ *
+ * Note: This function is kept separate from normalizeGistUrl() because:
+ * 1. Different URL structure (blobs need 4+ path segments vs 2 for gists)
+ * 2. Different raw URL format (raw.githubusercontent.com vs gist.githubusercontent.com with /raw)
+ * 3. Different path manipulation (need to remove "blob" segment vs insert "raw" segment)
+ * The shared URL parsing code is minimal and extracting it would add complexity without benefit.
+ *
+ * @param {string} url - The URL to normalize
+ * @returns {string} The normalized URL or original URL if not a github blob URL
+ */
+export function normalizeGitHubUrl(url) {
+    try {
+        const parsed = new URL(url);
+
+        // Only process github.com URLs
+        if (parsed.hostname !== 'github.com') {
+            return url;
+        }
+
+        // Parse pathname: /{user}/{repo}/blob/{branch}/{...path}
+        const pathParts = parsed.pathname.slice(1).split('/').filter(p => p.length > 0);
+
+        // Need at least user, repo, "blob", branch, and at least one path segment
+        if (pathParts.length < 5 || pathParts[2] !== 'blob') {
+            return url;
+        }
+
+        const user = pathParts[0];
+        const repo = pathParts[1];
+        // pathParts[2] is 'blob' - skip it
+        const branch = pathParts[3];
+        const filePath = pathParts.slice(4).join('/');
+
+        // Build raw URL
+        const rawUrl = new URL(`https://raw.githubusercontent.com/${user}/${repo}/${branch}/${filePath}`);
+
+        // Preserve query parameters (but not fragment - raw URLs don't use them)
+        rawUrl.search = parsed.search;
+
+        return rawUrl.toString();
+    } catch {
+        // Invalid URL - return unchanged
+        return url;
+    }
+}
+
+/**
+ * Normalize any GitHub-related URL to its raw content URL
+ * Combines normalizeGistUrl and normalizeGitHubUrl for convenience
+ *
+ * @param {string} url - The URL to normalize
+ * @returns {string} The normalized URL or original URL if not a GitHub URL
+ */
+export function normalizeGitHubContentUrl(url) {
+    // First try gist normalization
+    let normalized = normalizeGistUrl(url);
+    if (normalized !== url) {
+        return normalized;
+    }
+
+    // Then try github.com blob normalization
+    return normalizeGitHubUrl(url);
 }
 
 /**

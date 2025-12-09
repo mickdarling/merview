@@ -11,7 +11,7 @@
  */
 
 import { ALLOWED_CSS_DOMAINS } from '../config.js';
-import { isAllowedCSSURL, normalizeGistUrl } from '../security.js';
+import { normalizeGitHubContentUrl, isAllowedMarkdownURL, isAllowedCSSURL } from '../security.js';
 
 // Modal state
 let currentResolve = null;
@@ -161,9 +161,11 @@ export function initURLModalHandlers() {
                     return;
                 }
 
-                // Normalize gist URLs and validate against allowed domains
-                const normalizedUrl = normalizeGistUrl(url);
-                if (!isAllowedCSSURL(normalizedUrl)) {
+                // Normalize GitHub URLs and validate against allowed domains
+                const normalizedUrl = normalizeGitHubContentUrl(url);
+                const isCSS = currentAllowedDomains === ALLOWED_CSS_DOMAINS;
+                const isValid = isCSS ? isAllowedCSSURL(normalizedUrl) : isAllowedMarkdownURL(normalizedUrl);
+                if (!isValid) {
                     showModalError(`URL not allowed. Use: ${currentAllowedDomains.join(', ')}`);
                     urlInput.focus();
                     return;
@@ -174,7 +176,7 @@ export function initURLModalHandlers() {
                 const resolve = currentResolve;
                 currentResolve = null;
                 hideURLModal();
-                resolve(url);
+                resolve(normalizedUrl);
             }
         });
     }

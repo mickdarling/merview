@@ -385,6 +385,9 @@ test.describe('Share to Gist', () => {
     });
 
     test('should call GitHub API to create gist', async ({ page }) => {
+      // Clear filename to test default behavior (sample loads with Welcome.md)
+      await page.evaluate(() => { globalThis.state.currentFilename = null; });
+
       let requestBody = null;
       await mockGistCreation(page, (body) => { requestBody = body; });
 
@@ -438,6 +441,9 @@ test.describe('Share to Gist', () => {
     });
 
     test('should use default filename for gist file', async ({ page }) => {
+      // Clear filename to test default behavior (sample loads with Welcome.md)
+      await page.evaluate(() => { globalThis.state.currentFilename = null; });
+
       let requestBody = null;
       await mockGistCreation(page, (body) => { requestBody = body; });
 

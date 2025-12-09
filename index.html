@@ -468,6 +468,12 @@
             gap: 8px;
         }
 
+        .panel-title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
         .panel-selector {
             background: #2c3e50;
             color: white;
@@ -947,7 +953,6 @@
             </a>
         </header>
         <div class="toolbar-buttons">
-            <button class="btn" onclick="openFile()">📂 Open</button>
             <button class="btn btn-success" onclick="saveFile()">💾 Save</button>
             <button class="btn btn-success" onclick="saveFileAs()">📥 Save As</button>
             <button class="btn btn-success" onclick="shareToGist()" id="shareGistBtn" title="Share document as a GitHub Gist">🔗 Share to Gist</button>
@@ -1023,7 +1028,12 @@
     <div class="container">
         <div class="editor-panel">
             <div class="panel-header">
-                <span>Editor</span>
+                <div class="panel-title-group">
+                    <span>Editor</span>
+                    <select class="panel-selector" id="documentSelector" title="Current document">
+                        <option value="">Document...</option>
+                    </select>
+                </div>
                 <select class="panel-selector" id="editorThemeSelector" onchange="changeEditorTheme(this.value)" title="Editor syntax highlighting">
                     <option value="">Theme...</option>
                 </select>

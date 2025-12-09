@@ -9,10 +9,11 @@ import { initCodeMirror, getEditorContent, setEditorContent } from './editor.js'
 import { renderMarkdown, scheduleRender } from './renderer.js';
 import { initStyleSelector, initSyntaxThemeSelector, initEditorThemeSelector, initMermaidThemeSelector, initPreviewDragDrop, initURLModalHandlers, changeStyle, changeSyntaxTheme, changeEditorTheme, changeMermaidTheme, applyPreviewBackground } from './themes.js';
 import { loadMarkdownFromURL, loadSample, openFile, saveFile, saveFileAs, isValidMarkdownFile, isValidMarkdownContentType, exportToPDF, exportToPDFDirect, initFileInputHandlers } from './file-ops.js';
+import { initDocumentSelector, changeDocument, updateDocumentSelector } from './documents.js';
 import { shareToGist, hideGistModal, openGitHubAuth, startDeviceFlow, copyGistUrl, disconnectGitHub } from './gist.js';
 import { toggleLintPanel, validateCode } from './validation.js';
 import { initMermaidFullscreen } from './mermaid-fullscreen.js';
-import { isAllowedMarkdownURL, isAllowedCSSURL, stripGitHubToken, showPrivateUrlModal, initPrivateUrlModalHandlers, normalizeGistUrl } from './security.js';
+import { isAllowedMarkdownURL, isAllowedCSSURL, stripGitHubToken, showPrivateUrlModal, initPrivateUrlModalHandlers, normalizeGistUrl, normalizeGitHubContentUrl } from './security.js';
 import { isRelativeDocPath, resolveDocUrl } from './config.js';
 import { getMarkdownContent, isFreshVisit, markSessionInitialized } from './storage.js';
 import { showStatus } from './utils.js';
@@ -27,6 +28,8 @@ function clearEditor() {
             state.cmEditor.setValue('');
         }
         state.currentFilename = null;
+        state.loadedFromURL = null;
+        updateDocumentSelector();
         renderMarkdown();
         showStatus('Editor cleared');
     }
@@ -66,6 +69,13 @@ function exposeGlobalFunctions() {
     globalThis.exportToPDF = exportToPDF;
     globalThis.exportToPDFDirect = exportToPDFDirect;
 
+    // Document management functions
+    // Only changeDocument needs to be global (for keyboard shortcuts)
+    // updateDocumentSelector is needed globally due to circular dependency with file-ops.js
+    // newDocument is internal - called via changeDocument('__new__')
+    globalThis.changeDocument = changeDocument;
+    globalThis.updateDocumentSelector = updateDocumentSelector;
+
     // Validation functions
     globalThis.toggleLintPanel = toggleLintPanel;
     globalThis.validateCode = validateCode;
@@ -75,6 +85,7 @@ function exposeGlobalFunctions() {
     globalThis.isAllowedCSSURL = isAllowedCSSURL;
     globalThis.stripGitHubToken = stripGitHubToken;
     globalThis.normalizeGistUrl = normalizeGistUrl;
+    globalThis.normalizeGitHubContentUrl = normalizeGitHubContentUrl;
 
     // Utility functions
     globalThis.showStatus = showStatus;
@@ -97,9 +108,15 @@ function setupKeyboardShortcuts() {
         }
 
         // Ctrl/Cmd + O to open file
-        if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'o') {
             e.preventDefault();
             openFile();
+        }
+
+        // Ctrl/Cmd + Shift + O to open from URL
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'o') {
+            e.preventDefault();
+            changeDocument('__load_url__');
         }
 
         // Ctrl/Cmd + P to print/export PDF
@@ -109,7 +126,7 @@ function setupKeyboardShortcuts() {
         }
 
         // Ctrl/Cmd + Shift + P to print in new tab
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'P') {
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
             e.preventDefault();
             exportToPDFDirect();
         }
@@ -274,6 +291,9 @@ function initializeApp() {
 
     // Initialize file input handlers
     initFileInputHandlers();
+
+    // Initialize document selector
+    initDocumentSelector();
 
     // Initialize private URL modal handlers
     initPrivateUrlModalHandlers();

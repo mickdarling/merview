@@ -18,6 +18,12 @@ test.describe('Save Functionality', () => {
 
   test.describe('Save As Button', () => {
     test('should prompt for filename when clicking Save As', async ({ page }) => {
+      // Clear the filename first (sample loads with Welcome.md)
+      await page.evaluate(() => {
+        globalThis.state.currentFilename = null;
+        globalThis.setEditorContent('# Test content');
+      });
+
       // Set up dialog handler before triggering
       let dialogMessage = '';
       let dialogDefaultValue = '';
@@ -151,6 +157,12 @@ test.describe('Save Functionality', () => {
 
   test.describe('Save Button', () => {
     test('should prompt for filename on first save (no current filename)', async ({ page }) => {
+      // Clear the filename by creating a new document (sample loads with Welcome.md)
+      await page.evaluate(() => {
+        globalThis.state.currentFilename = null;
+        globalThis.setEditorContent('# Test content');
+      });
+
       let promptShown = false;
       page.on('dialog', async dialog => {
         if (dialog.type() === 'prompt') {
@@ -167,6 +179,12 @@ test.describe('Save Functionality', () => {
     });
 
     test('should use remembered filename on subsequent saves', async ({ page }) => {
+      // Clear the filename first (sample loads with Welcome.md)
+      await page.evaluate(() => {
+        globalThis.state.currentFilename = null;
+        globalThis.setEditorContent('# Test content');
+      });
+
       // First save - set the filename
       let promptCount = 0;
       page.on('dialog', async dialog => {
@@ -203,6 +221,12 @@ test.describe('Save Functionality', () => {
 
   test.describe('Keyboard Shortcut Ctrl+S', () => {
     test('should trigger save on Ctrl+S', async ({ page }) => {
+      // Clear the filename first (sample loads with Welcome.md)
+      await page.evaluate(() => {
+        globalThis.state.currentFilename = null;
+        globalThis.setEditorContent('# Test content');
+      });
+
       page.once('dialog', async dialog => {
         await dialog.accept('keyboard-save.md');
       });
@@ -218,6 +242,12 @@ test.describe('Save Functionality', () => {
     });
 
     test('should trigger save on Cmd+S (Mac)', async ({ page }) => {
+      // Clear the filename first (sample loads with Welcome.md)
+      await page.evaluate(() => {
+        globalThis.state.currentFilename = null;
+        globalThis.setEditorContent('# Test content');
+      });
+
       page.once('dialog', async dialog => {
         await dialog.accept('mac-save.md');
       });
@@ -325,6 +355,9 @@ test.describe('Save Functionality', () => {
 
   test.describe('Status Messages', () => {
     test('should show status message after save', async ({ page }) => {
+      // Wait for initial status messages to clear
+      await page.waitForTimeout(500);
+
       page.once('dialog', async dialog => {
         await dialog.accept('status-test.md');
       });
@@ -333,15 +366,21 @@ test.describe('Save Functionality', () => {
       await page.click('button[onclick="saveFileAs()"]');
       await downloadPromise;
 
-      // Check status message appears
+      // Check status message appears (with retry for timing)
       const status = page.locator('#status');
-      await expect(status).toContainText('Saved: status-test.md');
+      await expect(status).toContainText('Saved: status-test.md', { timeout: 10000 });
       await expect(status).toHaveClass(/show/);
     });
   });
 
   test.describe('Save As Default Value', () => {
     test('should show current filename in Save As prompt after previous save', async ({ page }) => {
+      // Clear the filename first (sample loads with Welcome.md)
+      await page.evaluate(() => {
+        globalThis.state.currentFilename = null;
+        globalThis.setEditorContent('# Test content');
+      });
+
       // First save with a specific filename
       page.on('dialog', async dialog => {
         if (dialog.type() === 'prompt') {

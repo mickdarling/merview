@@ -30,6 +30,11 @@ jobs:
         with:
           fetch-depth: 1
 
+      # Workaround for https://github.com/anthropics/claude-code-action/issues/709
+      # Clear stale lock files that cause "another process is currently installing" errors
+      - name: Clear Claude installation locks
+        run: rm -rf ~/.local/state/claude/locks
+
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
