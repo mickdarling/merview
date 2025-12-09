@@ -43,7 +43,8 @@ test-results/
 *.temp
 
 # Session notes (developer documentation, not user-facing)
-docs/session-notes-*.md
+docs/session-notes/
+docs/session-notes*.md
 
 # Dollhouse cache (optional - can track or ignore)
 .dollhousemcp/cache/

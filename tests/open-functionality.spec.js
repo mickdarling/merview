@@ -224,6 +224,32 @@ test.describe('Open Functionality', () => {
   });
 
   test.describe('Document Name in Selector', () => {
+    test('Document selector should show Welcome.md on initial fresh load', async ({ page }) => {
+      // This test verifies the fix for the race condition where the selector
+      // showed "Untitled" instead of "Welcome.md" on initial load.
+      // The fix removed premature updateDocumentSelector() call from initDocumentSelector(),
+      // allowing loadSample() to set the filename before the selector is populated.
+
+      // Clear sessionStorage to simulate fresh visit, then reload
+      await page.evaluate(() => {
+        sessionStorage.clear();
+        localStorage.removeItem('markdown-editor-content');
+      });
+      await page.reload();
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+      await page.waitForFunction(() => typeof globalThis.openFile === 'function', { timeout: 5000 });
+
+      // Wait for the document selector to show Welcome.md (condition-based, not timeout)
+      await page.waitForFunction(
+        () => globalThis.state?.currentFilename === 'Welcome.md',
+        { timeout: 10000 }
+      );
+
+      // The selector should show "Welcome.md" (from loadSample)
+      const selectedText = await page.$eval('#documentSelector', getSelectedOptionText);
+      expect(selectedText).toBe('Welcome.md');
+    });
+
     test('Document selector should show current document name', async ({ page }) => {
       // Set a filename and update selector
       await page.evaluate(() => {

@@ -221,6 +221,11 @@ export function newDocument() {
 /**
  * Initialize the document selector
  * Should be called once during app initialization
+ *
+ * Note: This only sets up the event handler, NOT the initial content.
+ * The selector content is populated by updateDocumentSelector() which is called
+ * after content is loaded (e.g., by loadSample() or loadMarkdownFromURL()).
+ * This ensures the document name is correctly displayed on initial load.
  */
 export function initDocumentSelector() {
     // Guard against duplicate initialization to prevent multiple event handlers
@@ -240,8 +245,10 @@ export function initDocumentSelector() {
         changeDocument(e.target.value);
     });
 
-    // Initial population
-    updateDocumentSelector();
+    // Note: We don't call updateDocumentSelector() here because state.currentFilename
+    // won't be set until content is loaded. The content loading functions (loadSample,
+    // loadMarkdownFromURL, loadMarkdownFile) call updateDocumentSelector() after
+    // setting the filename.
 
     // Mark as initialized
     initialized = true;

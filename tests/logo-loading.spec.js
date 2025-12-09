@@ -61,18 +61,21 @@ test.describe('Logo Loading and Display', () => {
   test('logo has appropriate alt text for accessibility', async ({ page }) => {
     const logo = getLogo(page);
 
-    // Get alt text
+    // The logo is inside a link with aria-label, so it should have empty alt
+    // and aria-hidden="true" to avoid redundant announcements.
+    // The parent link provides the accessible name.
     const altText = await logo.getAttribute('alt');
+    const ariaHidden = await logo.getAttribute('aria-hidden');
 
-    // Verify alt text exists and is meaningful
-    expect(altText).toBeTruthy();
-    expect(altText).toBe('Merview - Mermaid diagram and Markdown editor');
+    // For decorative images in labeled links, alt should be empty
+    expect(altText).toBe('');
+    expect(ariaHidden).toBe('true');
 
-    // Verify it's descriptive (not just empty or 'logo')
-    expect(altText.length).toBeGreaterThan(5);
-
-    // Verify it includes the app name
-    expect(altText).toContain('Merview');
+    // Verify the parent link has proper aria-label
+    const parentLink = page.locator('.brand-home-link');
+    const linkAriaLabel = await parentLink.getAttribute('aria-label');
+    expect(linkAriaLabel).toBeTruthy();
+    expect(linkAriaLabel).toContain('Merview');
   });
 
   test('logo actually loads (naturalWidth > 0)', async ({ page }) => {
@@ -182,21 +185,19 @@ test.describe('Logo Loading and Display', () => {
       expect(errorHandled).toBe(true);
     });
 
-    test('logo alt text provides meaningful fallback', async ({ page }) => {
-      const logo = getLogo(page);
+    test('logo parent link provides meaningful fallback via aria-label', async ({ page }) => {
+      // The logo has empty alt and is decorative (aria-hidden="true")
+      // The parent link provides the accessible name via aria-label
+      const parentLink = page.locator('.brand-home-link');
+      const ariaLabel = await parentLink.getAttribute('aria-label');
 
-      const altText = await logo.getAttribute('alt');
+      // aria-label should provide meaningful description
+      expect(ariaLabel).toBeTruthy();
+      expect(ariaLabel.toLowerCase()).toContain('merview');
 
-      // Alt text should be descriptive enough to convey meaning if image fails
-      expect(altText).toBeTruthy();
-      expect(altText.toLowerCase()).toContain('merview');
-
-      // Verify it's meaningful and descriptive for screen readers
-      expect(altText).toContain('Mermaid');
-      expect(altText).toContain('Markdown');
-
-      // Verify it's long enough to be descriptive
-      expect(altText.length).toBeGreaterThan(20);
+      // Verify the h1 inside the link provides visible text
+      const h1Text = await page.locator('.brand-home-link h1').textContent();
+      expect(h1Text).toContain('Merview');
     });
   });
 
@@ -204,13 +205,20 @@ test.describe('Logo Loading and Display', () => {
     test('logo has proper ARIA attributes for accessibility', async ({ page }) => {
       const logo = getLogo(page);
 
-      // Logo should have alt text (which we already test)
+      // Logo is decorative (inside a labeled link), so it should be hidden from screen readers
+      // The parent link provides the accessible name via aria-label
       const altText = await logo.getAttribute('alt');
-      expect(altText).toBeTruthy();
-
-      // Check that it's not hidden from screen readers
       const ariaHidden = await logo.getAttribute('aria-hidden');
-      expect(ariaHidden).not.toBe('true');
+
+      // Decorative image pattern: empty alt + aria-hidden="true"
+      expect(altText).toBe('');
+      expect(ariaHidden).toBe('true');
+
+      // Verify parent link is accessible
+      const parentLink = page.locator('.brand-home-link');
+      const linkAriaLabel = await parentLink.getAttribute('aria-label');
+      expect(linkAriaLabel).toBeTruthy();
+      expect(linkAriaLabel).toContain('Merview');
     });
 
     test('logo is keyboard navigable as part of toolbar', async ({ page }) => {
@@ -223,6 +231,102 @@ test.describe('Logo Loading and Display', () => {
 
       // Just verify something is focused (toolbar buttons, links, etc.)
       expect(focusedElement).toBeTruthy();
+    });
+  });
+
+  test.describe('Logo Home Link Functionality', () => {
+    test('logo link has correct href to load welcome document', async ({ page }) => {
+      const logoLink = page.locator('.brand-home-link');
+
+      // Verify the link exists and has correct href
+      await expect(logoLink).toBeAttached();
+      const href = await logoLink.getAttribute('href');
+      expect(href).toBe('/?sample');
+    });
+
+    test('clicking logo link loads welcome document without page reload', async ({ page }) => {
+      // First, change the document to something else
+      await page.evaluate(() => {
+        globalThis.setEditorContent('# Different Content');
+        globalThis.state.currentFilename = 'other-document.md';
+        globalThis.updateDocumentSelector();
+      });
+
+      // Verify the content changed
+      const initialContent = await page.evaluate(() => globalThis.getEditorContent());
+      expect(initialContent).toBe('# Different Content');
+
+      // Click the logo link - this should load sample via JS, not page reload
+      const logoLink = page.locator('.brand-home-link');
+      await logoLink.click();
+
+      // Wait for the sample to load (no page navigation needed)
+      await page.waitForFunction(
+        () => globalThis.state?.currentFilename === 'Welcome.md',
+        { timeout: 5000 }
+      );
+
+      // Verify welcome document is loaded
+      const filename = await page.evaluate(() => globalThis.state.currentFilename);
+      expect(filename).toBe('Welcome.md');
+
+      // Verify content contains welcome document text
+      const content = await page.evaluate(() => globalThis.getEditorContent());
+      expect(content).toContain('Welcome to Merview');
+    });
+
+    test('logo link is focusable for keyboard navigation', async ({ page }) => {
+      const logoLink = page.locator('.brand-home-link');
+
+      // Focus the link
+      await logoLink.focus();
+
+      // Verify it's focused
+      const isFocused = await page.evaluate(() => {
+        const link = document.querySelector('.brand-home-link');
+        return document.activeElement === link;
+      });
+      expect(isFocused).toBe(true);
+    });
+
+    test('logo link can be activated via keyboard', async ({ page }) => {
+      // First, change the document
+      await page.evaluate(() => {
+        globalThis.setEditorContent('# Keyboard Test');
+        globalThis.state.currentFilename = 'keyboard-test.md';
+        globalThis.updateDocumentSelector();
+      });
+
+      // Focus and activate the logo link via keyboard
+      const logoLink = page.locator('.brand-home-link');
+      await logoLink.focus();
+      await page.keyboard.press('Enter');
+
+      // Wait for the sample to load (no page navigation needed)
+      await page.waitForFunction(
+        () => globalThis.state?.currentFilename === 'Welcome.md',
+        { timeout: 5000 }
+      );
+
+      // Verify welcome document is loaded
+      const filename = await page.evaluate(() => globalThis.state.currentFilename);
+      expect(filename).toBe('Welcome.md');
+    });
+
+    test('logo link has visible focus indicator for keyboard navigation', async ({ page }) => {
+      const logoLink = page.locator('.brand-home-link');
+
+      // Focus the link using keyboard navigation
+      await logoLink.focus();
+
+      // Check that focus-visible styles are applied
+      const outlineStyle = await logoLink.evaluate(el => {
+        const styles = getComputedStyle(el);
+        return styles.outlineWidth !== '0px' || styles.outlineStyle !== 'none';
+      });
+
+      // The link should have a visible focus indicator
+      expect(outlineStyle).toBe(true);
     });
   });
 

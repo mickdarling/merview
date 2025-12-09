@@ -129,6 +129,33 @@
             gap: 12px;
         }
 
+        .brand-home-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            border-radius: 4px;
+            padding: 4px 8px;
+            margin: -4px -8px;
+            transition: background-color 0.15s ease;
+        }
+
+        .brand-home-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .brand-home-link:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.8);
+            outline-offset: 2px;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .brand-home-link:active {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+
         .brand-logo {
             height: 28px;
             width: auto;
@@ -942,8 +969,10 @@
 <body>
     <div class="toolbar">
         <header class="toolbar-brand" aria-label="Merview application branding">
-            <img src="images/logo.png" alt="Merview - Mermaid diagram and Markdown editor" class="brand-logo">
-            <h1>Merview</h1>
+            <a href="/?sample" class="brand-home-link" id="brandHomeLink" title="Load welcome document" aria-label="Merview home - load welcome document">
+                <img src="images/logo.png" alt="" class="brand-logo" aria-hidden="true">
+                <h1>Merview</h1>
+            </a>
             <span class="brand-tagline">Mermaid + Markdown Editor</span>
             <a href="https://github.com/mickdarling/merview" target="_blank" rel="noopener noreferrer" class="github-link" title="View source on GitHub (AGPL-3.0)" aria-label="View Merview source code on GitHub (AGPL-3.0 license)">
                 <span class="github-label">Source</span>

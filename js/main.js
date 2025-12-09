@@ -266,6 +266,22 @@ function loadSavedContentOrSample() {
 }
 
 /**
+ * Initialize brand home link click handler
+ * Provides smooth UX by loading sample without page reload,
+ * while keeping href as fallback for accessibility (right-click, new tab)
+ */
+function initBrandHomeLink() {
+    const brandHomeLink = document.getElementById('brandHomeLink');
+    if (brandHomeLink) {
+        brandHomeLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            loadSample();
+            showStatus('Welcome document loaded');
+        });
+    }
+}
+
+/**
  * Initialize the application on DOMContentLoaded
  */
 function initializeApp() {
@@ -294,6 +310,9 @@ function initializeApp() {
 
     // Initialize document selector
     initDocumentSelector();
+
+    // Initialize brand home link (logo click handler)
+    initBrandHomeLink();
 
     // Initialize private URL modal handlers
     initPrivateUrlModalHandlers();
