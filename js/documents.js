@@ -74,6 +74,16 @@ export function updateDocumentSelector() {
 }
 
 /**
+ * Reset the document selector to show current document
+ * @param {HTMLSelectElement|null} selector - The selector element
+ */
+function resetSelector(selector) {
+    if (selector) {
+        selector.value = '__current__';
+    }
+}
+
+/**
  * Handle document selector change
  * @param {string} value - The selected value
  */
@@ -87,7 +97,9 @@ export async function changeDocument(value) {
 
         case '__load_file__':
             // Trigger file picker using existing openFile() infrastructure
+            // Reset immediately since file picker is async and handled elsewhere
             openFile();
+            resetSelector(selector);
             break;
 
         case '__load_url__': {
@@ -100,29 +112,28 @@ export async function changeDocument(value) {
             if (url) {
                 try {
                     await loadMarkdownFromURL(url);
+                    // Only update selector after successful load
                     updateDocumentSelector();
                 } catch (error) {
                     // Error already handled by loadMarkdownFromURL via showStatus()
-                    // Selector will reset to current document below
                     console.error('Failed to load document from URL:', error);
                 }
             }
+            // Reset selector after async operation completes (success or failure)
+            resetSelector(selector);
             break;
         }
 
         case '__new__':
-            // Create new document
+            // Create new document (synchronous, updates selector internally)
             newDocument();
+            resetSelector(selector);
             break;
 
         default:
             // Future: handle saved document selection
+            resetSelector(selector);
             break;
-    }
-
-    // Reset selector to show current document
-    if (selector) {
-        selector.value = '__current__';
     }
 }
 

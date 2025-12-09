@@ -67,6 +67,42 @@ function setupMockLoadMarkdownFromURL() {
 }
 
 /**
+ * Browser-side helper: Attempt to load a URL and handle failure
+ * Extracted to avoid deep function nesting (SonarCloud S2004)
+ */
+async function attemptFailedUrlLoad() {
+  const url = 'https://raw.githubusercontent.com/invalid/url/test.md';
+  try {
+    await globalThis.loadMarkdownFromURL(url);
+    globalThis.updateDocumentSelector();
+  } catch (error) {
+    console.error('Failed to load document from URL:', error);
+  }
+}
+
+/**
+ * Browser-side helper: Get selected option text from document selector
+ * Extracted to avoid deep function nesting (SonarCloud S2004)
+ * @param {Element} el - The select element
+ * @returns {string} The text content of the selected option
+ */
+function getSelectedOptionText(el) {
+  const selected = el.querySelector('option:checked');
+  return selected ? selected.textContent : '';
+}
+
+/**
+ * Browser-side helper: Restore original loadMarkdownFromURL function
+ * Extracted to avoid deep function nesting (SonarCloud S2004)
+ */
+function restoreLoadMarkdownFromURL() {
+  if (globalThis._originalLoadMarkdownFromURL) {
+    globalThis.loadMarkdownFromURL = globalThis._originalLoadMarkdownFromURL;
+    delete globalThis._originalLoadMarkdownFromURL;
+  }
+}
+
+/**
  * Tests for Open button functionality
  *
  * These tests ensure the Open button and file input infrastructure exists
@@ -322,36 +358,21 @@ test.describe('Open Functionality', () => {
         globalThis.updateDocumentSelector();
       });
 
-      // Verify initial state
-      const initialSelectedText = await page.$eval('#documentSelector', el => {
-        const selected = el.querySelector('option:checked');
-        return selected ? selected.textContent : '';
-      });
+      // Verify initial state - uses extracted helper to avoid deep nesting
+      const initialSelectedText = await page.$eval('#documentSelector', getSelectedOptionText);
       expect(initialSelectedText).toBe('initial-document.md');
 
       // Mock loadMarkdownFromURL to simulate a failure (e.g., network error)
-      // Uses extracted helper to avoid deep nesting (SonarCloud S2004)
       await page.evaluate(setupMockLoadMarkdownFromURL);
 
       // Attempt to load from URL (this will fail with our mock)
-      await page.evaluate(async () => {
-        // Simulate what changeDocument('__load_url__') does when user provides a URL
-        const url = 'https://raw.githubusercontent.com/invalid/url/test.md';
-        try {
-          await globalThis.loadMarkdownFromURL(url);
-          globalThis.updateDocumentSelector();
-        } catch (error) {
-          console.error('Failed to load document from URL:', error);
-        }
-      });
+      // Uses extracted helper to avoid deep nesting (SonarCloud S2004)
+      await page.evaluate(attemptFailedUrlLoad);
 
       await page.waitForTimeout(100);
 
       // Verify document selector still shows the original document
-      const afterFailureText = await page.$eval('#documentSelector', el => {
-        const selected = el.querySelector('option:checked');
-        return selected ? selected.textContent : '';
-      });
+      const afterFailureText = await page.$eval('#documentSelector', getSelectedOptionText);
       expect(afterFailureText).toBe('initial-document.md');
 
       // Verify the app is still functional (selector exists and is enabled)
@@ -366,12 +387,7 @@ test.describe('Open Functionality', () => {
       expect(filename).toBe('initial-document.md');
 
       // Cleanup: restore original function
-      await page.evaluate(() => {
-        if (globalThis._originalLoadMarkdownFromURL) {
-          globalThis.loadMarkdownFromURL = globalThis._originalLoadMarkdownFromURL;
-          delete globalThis._originalLoadMarkdownFromURL;
-        }
-      });
+      await page.evaluate(restoreLoadMarkdownFromURL);
     });
   });
 });
