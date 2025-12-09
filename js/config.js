@@ -153,7 +153,9 @@ export function resolveDocUrl(docPath) {
  */
 export function isRelativeDocPath(url) {
     // Match paths like "docs/about.md" or "/docs/about.md"
-    return /^\/?(docs\/[^/]+\.md)$/i.test(url);
+    // Only allow safe filename characters: alphanumeric, hyphen, underscore
+    // This prevents path traversal and special character attacks
+    return /^\/?(docs\/[\w-]+\.md)$/i.test(url);
 }
 
 // ==========================================
