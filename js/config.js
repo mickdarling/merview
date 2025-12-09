@@ -110,14 +110,22 @@ export const availableStyles = [
 // DOCUMENTATION URL CONFIGURATION
 // ==========================================
 
+/** Cached docs base URL (computed once on first access) */
+let cachedDocsBaseUrl = null;
+
 /**
  * Get the base URL for documentation files.
  * In development (localhost), serves docs from local server.
  * In production, serves from GitHub raw content.
+ * Result is cached for performance.
  *
  * @returns {string} The base URL for docs (no trailing slash)
  */
 export function getDocsBaseUrl() {
+    if (cachedDocsBaseUrl !== null) {
+        return cachedDocsBaseUrl;
+    }
+
     const hostname = globalThis.location?.hostname || '';
     const isLocalDev = hostname === 'localhost' || hostname === '127.0.0.1';
 
@@ -131,13 +139,15 @@ export function getDocsBaseUrl() {
         const protocol = globalThis.location?.protocol || 'http:';
         const isDefaultPort = (protocol === 'http:' && port === '80') ||
                               (protocol === 'https:' && port === '443');
-        return isDefaultPort
+        cachedDocsBaseUrl = isDefaultPort
             ? `${protocol}//localhost`
             : `${protocol}//localhost:${port}`;
+    } else {
+        // Production - serve from GitHub raw
+        cachedDocsBaseUrl = 'https://raw.githubusercontent.com/mickdarling/merview/main';
     }
 
-    // Production - serve from GitHub raw
-    return 'https://raw.githubusercontent.com/mickdarling/merview/main';
+    return cachedDocsBaseUrl;
 }
 
 /**
@@ -155,14 +165,16 @@ export function resolveDocUrl(docPath) {
 
 /**
  * Check if a URL parameter is a relative doc path that needs resolution.
+ * Case-sensitive match for "docs/" prefix (lowercase only).
  * @param {string} url - The URL or path to check
  * @returns {boolean} True if this is a relative doc path
  */
 export function isRelativeDocPath(url) {
     // Match paths like "docs/about.md" or "/docs/about.md"
+    // Case-sensitive: "docs/" must be lowercase, filename allows mixed case
     // Only allow safe filename characters: alphanumeric, hyphen, underscore
     // This prevents path traversal and special character attacks
-    return /^\/?(docs\/[\w-]+\.md)$/i.test(url);
+    return /^\/?(docs\/[\w-]+\.md)$/.test(url);
 }
 
 // ==========================================
