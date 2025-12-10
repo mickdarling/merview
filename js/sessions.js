@@ -144,7 +144,7 @@ function saveSessionsIndex(index) {
                     showStatus(`Storage full - cleaned up ${deletedCount} old session(s)`, 'warning');
                     return;
                 } catch (retryError) {
-                    // Cleanup didn't help enough
+                    console.warn('Storage still full after cleanup:', retryError.message);
                 }
             }
             showStatus('Storage quota exceeded. Please delete some sessions to continue.', 'error');
@@ -195,7 +195,7 @@ function saveSessionData(sessionData) {
                     showStatus(`Storage full - cleaned up ${deletedCount} old session(s)`, 'warning');
                     return;
                 } catch (retryError) {
-                    // Cleanup didn't help enough
+                    console.warn('Storage still full after cleanup:', retryError.message);
                 }
             }
             showStatus('Storage quota exceeded. Please delete some sessions to continue.', 'error');
