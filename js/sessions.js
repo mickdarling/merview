@@ -156,7 +156,7 @@ function saveSessionsIndex(index) {
 
 /**
  * Load session content from localStorage
- * If data is corrupted, automatically cleans up the orphaned entry
+ * If data is corrupted, automatically cleans up both the content and index entry
  * @param {string} sessionId - Session ID
  * @returns {Object|null} Session data with content
  */
@@ -166,9 +166,36 @@ function loadSessionData(sessionId) {
         if (!raw) return null;
         return JSON.parse(raw);
     } catch (error) {
-        console.error(`Failed to load session ${sessionId}:`, error);
-        // Clean up corrupted data to prevent orphaned localStorage entries
+        console.error(`Failed to load session ${sessionId} - corrupted data will be removed:`, error);
+
+        // Clean up corrupted content
         deleteSessionData(sessionId);
+
+        // Also remove from index to prevent inconsistent state
+        const index = loadSessionsIndex();
+        const hadSession = index.sessions.some(s => s.id === sessionId);
+        if (hadSession) {
+            index.sessions = index.sessions.filter(s => s.id !== sessionId);
+
+            // If it was the active session, switch to another one
+            if (index.activeSessionId === sessionId) {
+                if (index.sessions.length > 0) {
+                    const mostRecent = [...index.sessions].sort(
+                        (a, b) => (b.lastModified || 0) - (a.lastModified || 0)
+                    )[0];
+                    index.activeSessionId = mostRecent.id;
+                    state.activeSessionId = mostRecent.id;
+                    state.currentFilename = mostRecent.name;
+                } else {
+                    index.activeSessionId = null;
+                    state.activeSessionId = null;
+                    state.currentFilename = null;
+                }
+            }
+
+            saveSessionsIndex(index);
+        }
+
         showStatus('A corrupted session was removed', 'warning');
         return null;
     }
