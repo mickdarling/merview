@@ -6,9 +6,11 @@
  *
  * Features:
  * - Document selector with current document and import options
+ * - Recent sessions list for quick document switching
  * - Load from file picker
  * - Load from URL
  * - Document name tracking and display
+ * - Session management modal
  */
 
 import { state } from './state.js';
@@ -17,6 +19,15 @@ import { loadMarkdownFromURL, openFile } from './file-ops.js';
 import { showURLModal } from './components/url-modal.js';
 import { ALLOWED_MARKDOWN_DOMAINS } from './config.js';
 import { renderMarkdown } from './renderer.js';
+import {
+    getRecentSessions,
+    getActiveSessionMeta,
+    switchSession,
+    createSession,
+    isSessionsInitialized,
+    formatSessionName
+} from './sessions.js';
+import { showSessionsModal } from './components/sessions-modal.js';
 
 /**
  * Document selector action values
@@ -25,7 +36,8 @@ const DOCUMENT_ACTIONS = {
     CURRENT: '__current__',
     LOAD_FILE: '__load_file__',
     LOAD_URL: '__load_url__',
-    NEW: '__new__'
+    NEW: '__new__',
+    MANAGE: '__manage__'
 };
 
 /**
@@ -49,7 +61,33 @@ function getDocumentSelector() {
 }
 
 /**
- * Update the document selector to show current document
+ * Create an optgroup element
+ * @param {string} label - Group label
+ * @returns {HTMLOptGroupElement}
+ */
+function createOptgroup(label) {
+    const group = document.createElement('optgroup');
+    group.label = label;
+    return group;
+}
+
+/**
+ * Create an option element
+ * @param {string} value - Option value
+ * @param {string} text - Option display text
+ * @param {boolean} [selected=false] - Whether option is selected
+ * @returns {HTMLOptionElement}
+ */
+function createOption(value, text, selected = false) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = text;
+    if (selected) option.selected = true;
+    return option;
+}
+
+/**
+ * Update the document selector to show current document and recent sessions
  */
 export function updateDocumentSelector() {
     try {
@@ -63,37 +101,46 @@ export function updateDocumentSelector() {
         selector.innerHTML = '';
 
         // Current document optgroup
-        const currentGroup = document.createElement('optgroup');
-        currentGroup.label = 'Current';
-
-        const currentOption = document.createElement('option');
-        currentOption.value = DOCUMENT_ACTIONS.CURRENT;
-        currentOption.textContent = currentName;
-        currentOption.selected = true;
-        currentGroup.appendChild(currentOption);
-
+        const currentGroup = createOptgroup('Current');
+        currentGroup.appendChild(
+            createOption(DOCUMENT_ACTIONS.CURRENT, currentName, true)
+        );
         selector.appendChild(currentGroup);
 
-        // Import optgroup
-        const importGroup = document.createElement('optgroup');
-        importGroup.label = 'Import';
+        // Recent sessions optgroup (only if sessions are initialized)
+        if (isSessionsInitialized()) {
+            const recentSessions = getRecentSessions(5);
+            const activeSession = getActiveSessionMeta();
 
-        const fileOption = document.createElement('option');
-        fileOption.value = DOCUMENT_ACTIONS.LOAD_FILE;
-        fileOption.textContent = 'Load from file...';
-        importGroup.appendChild(fileOption);
+            // Filter out the active session from recent list
+            const otherSessions = recentSessions.filter(
+                session => !activeSession || session.id !== activeSession.id
+            );
 
-        const urlOption = document.createElement('option');
-        urlOption.value = DOCUMENT_ACTIONS.LOAD_URL;
-        urlOption.textContent = 'Load from URL...';
-        importGroup.appendChild(urlOption);
+            if (otherSessions.length > 0) {
+                const recentGroup = createOptgroup('Recent');
+                recentGroup.id = 'recentDocsGroup';
 
-        const newOption = document.createElement('option');
-        newOption.value = DOCUMENT_ACTIONS.NEW;
-        newOption.textContent = 'New document';
-        importGroup.appendChild(newOption);
+                otherSessions.forEach(session => {
+                    const option = createOption(
+                        session.id,
+                        formatSessionName(session)
+                    );
+                    option.title = `Last modified: ${new Date(session.lastModified).toLocaleString()}`;
+                    recentGroup.appendChild(option);
+                });
 
-        selector.appendChild(importGroup);
+                selector.appendChild(recentGroup);
+            }
+        }
+
+        // Actions optgroup
+        const actionsGroup = createOptgroup('Actions');
+        actionsGroup.appendChild(createOption(DOCUMENT_ACTIONS.LOAD_FILE, 'Load from file...'));
+        actionsGroup.appendChild(createOption(DOCUMENT_ACTIONS.LOAD_URL, 'Load from URL...'));
+        actionsGroup.appendChild(createOption(DOCUMENT_ACTIONS.NEW, 'New document'));
+        actionsGroup.appendChild(createOption(DOCUMENT_ACTIONS.MANAGE, 'Manage sessions...'));
+        selector.appendChild(actionsGroup);
     } catch (error) {
         console.error('Error updating document selector:', error);
         // Selector may be in inconsistent state, but app should continue working
@@ -123,6 +170,42 @@ function resetSelector(selector) {
 }
 
 /**
+ * Switch to a different session and load its content
+ * @param {string} sessionId - Session ID to switch to
+ */
+async function switchToSession(sessionId) {
+    const selector = getDocumentSelector();
+    setLoading(selector, true);
+
+    try {
+        const session = switchSession(sessionId);
+
+        if (session) {
+            // Load content into editor
+            const { cmEditor } = state;
+            if (cmEditor) {
+                cmEditor.setValue(session.content);
+            }
+
+            // State is already updated by switchSession()
+            // Render and update UI
+            renderMarkdown();
+            updateDocumentSelector();
+            showStatus(`Opened: ${session.name}`);
+        } else {
+            showStatus('Session not found', 'warning');
+            resetSelector(selector);
+        }
+    } catch (error) {
+        console.error('Error switching session:', error);
+        showStatus('Failed to load session', 'error');
+        resetSelector(selector);
+    } finally {
+        setLoading(selector, false);
+    }
+}
+
+/**
  * Handle document selector change
  * @param {string} value - The selected value
  */
@@ -131,6 +214,12 @@ export async function changeDocument(value) {
 
     // Increment request ID for race condition prevention
     const requestId = ++currentRequestId;
+
+    // Handle session switching (session IDs start with 'session-')
+    if (value.startsWith('session-')) {
+        await switchToSession(value);
+        return;
+    }
 
     switch (value) {
         case DOCUMENT_ACTIONS.CURRENT:
@@ -194,8 +283,14 @@ export async function changeDocument(value) {
             resetSelector(selector);
             break;
 
+        case DOCUMENT_ACTIONS.MANAGE:
+            // Open session management modal
+            showSessionsModal();
+            resetSelector(selector);
+            break;
+
         default:
-            // Future: handle saved document selection
+            // Unknown action
             resetSelector(selector);
             break;
     }
@@ -213,6 +308,16 @@ export function newDocument() {
 
     state.currentFilename = null;
     state.loadedFromURL = null;
+
+    // Create a new session for the empty document
+    if (isSessionsInitialized()) {
+        createSession({
+            name: 'Untitled',
+            content: '',
+            source: 'new'
+        });
+    }
+
     updateDocumentSelector();
     renderMarkdown();
     showStatus('New document created');
@@ -243,6 +348,11 @@ export function initDocumentSelector() {
     // Set up change handler
     selector.addEventListener('change', (e) => {
         changeDocument(e.target.value);
+    });
+
+    // Listen for sessions changes (from other tabs or modal updates)
+    window.addEventListener('sessions-changed', () => {
+        updateDocumentSelector();
     });
 
     // Note: We don't call updateDocumentSelector() here because state.currentFilename

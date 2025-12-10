@@ -179,9 +179,9 @@ test.describe('Open Functionality', () => {
       expect(isFunction).toBe(true);
     });
 
-    test('Document selector should have Import optgroup', async ({ page }) => {
+    test('Document selector should have Actions optgroup', async ({ page }) => {
       const optgroups = await page.$$eval('#documentSelector optgroup', getOptgroupLabels);
-      expect(optgroups).toContain('Import');
+      expect(optgroups).toContain('Actions');
     });
 
     test('Document selector should have Load from file option', async ({ page }) => {
