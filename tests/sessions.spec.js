@@ -24,14 +24,17 @@ function getOptionTexts(opts) {
   return opts.map(o => o.textContent);
 }
 
-function findUntitledSession(sessions) {
-  return sessions.find(s => s.name.startsWith('Untitled'));
-}
-
 function getActiveSessionSize() {
   const raw = localStorage.getItem('merview-sessions-index');
   const index = JSON.parse(raw);
-  const activeSession = index.sessions.find(s => s.id === index.activeSessionId);
+  // Use for loop to avoid arrow function
+  let activeSession = null;
+  for (const s of index.sessions) {
+    if (s.id === index.activeSessionId) {
+      activeSession = s;
+      break;
+    }
+  }
   return activeSession?.contentSize || 0;
 }
 
@@ -475,8 +478,8 @@ test.describe('Session Management', () => {
         const originalSetItem = localStorage.setItem;
         let errorCaught = false;
 
-        // Mock setItem to throw QuotaExceededError for session data
-        localStorage.setItem = function(key, value) {
+        // Mock setItem - extracted to reduce nesting
+        const mockSetItem = function(key, value) {
           if (key.startsWith('merview-session-')) {
             const error = new Error('QuotaExceededError');
             error.name = 'QuotaExceededError';
@@ -485,12 +488,12 @@ test.describe('Session Management', () => {
           return originalSetItem.call(this, key, value);
         };
 
+        localStorage.setItem = mockSetItem;
+
         // Try to save content
         try {
           globalThis.state.cmEditor.setValue('# Test content');
-          // Trigger save by dispatching change event
-          const event = new Event('change');
-          globalThis.state.cmEditor.on('change', () => {});
+          globalThis.state.cmEditor.on('change', function handleChange() {});
         } catch (error) {
           errorCaught = error.name === 'QuotaExceededError';
         }
@@ -510,8 +513,8 @@ test.describe('Session Management', () => {
         const originalSetItem = localStorage.setItem;
         let errorHandled = false;
 
-        // Mock setItem to throw QuotaExceededError for index
-        localStorage.setItem = function(key, value) {
+        // Mock setItem - extracted to reduce nesting
+        const mockSetItem = function(key, value) {
           if (key === 'merview-sessions-index') {
             const error = new Error('QuotaExceededError');
             error.name = 'QuotaExceededError';
@@ -520,14 +523,16 @@ test.describe('Session Management', () => {
           return originalSetItem.call(this, key, value);
         };
 
+        localStorage.setItem = mockSetItem;
+
         // Try to create a new session which saves the index
         try {
-          // This would normally throw, but should be caught
           const selector = document.getElementById('documentSelector');
           selector.value = '__new__';
           selector.dispatchEvent(new Event('change'));
           errorHandled = true;
-        } catch (error) {
+        } catch {
+          // Error expected and handled
           errorHandled = false;
         }
 
@@ -605,7 +610,14 @@ test.describe('Session Management', () => {
       const savedSize = await page.evaluate(() => {
         const raw = localStorage.getItem('merview-sessions-index');
         const index = JSON.parse(raw);
-        const activeSession = index.sessions.find(s => s.id === index.activeSessionId);
+        // Use for loop to avoid nested arrow function
+        let activeSession = null;
+        for (const s of index.sessions) {
+          if (s.id === index.activeSessionId) {
+            activeSession = s;
+            break;
+          }
+        }
         return activeSession?.contentSize || 0;
       });
 
@@ -625,7 +637,14 @@ test.describe('Session Management', () => {
       const trackedSize = await page.evaluate(() => {
         const raw = localStorage.getItem('merview-sessions-index');
         const index = JSON.parse(raw);
-        const activeSession = index.sessions.find(s => s.id === index.activeSessionId);
+        // Use for loop to avoid nested arrow function
+        let activeSession = null;
+        for (const s of index.sessions) {
+          if (s.id === index.activeSessionId) {
+            activeSession = s;
+            break;
+          }
+        }
         return activeSession?.contentSize || 0;
       });
 
