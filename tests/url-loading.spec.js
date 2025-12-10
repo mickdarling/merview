@@ -5,13 +5,14 @@
 const { test, expect } = require('@playwright/test');
 
 /**
- * Tests for URL parameter loading functionality (Issue #79, PR #80)
+ * Tests for URL parameter loading functionality (Issue #79, PR #80, Issue #201)
  *
  * The URL loading feature should:
- * - Load markdown from allowed GitHub domains via ?url= parameter
- * - Block untrusted domains
+ * - Load markdown from any HTTPS URL via ?url= parameter (content sanitized by DOMPurify)
  * - Enforce HTTPS-only
- * - Clear URL parameter after successful load
+ * - Block URLs with embedded credentials
+ * - Block URLs exceeding length limits
+ * - Block non-ASCII hostnames (IDN homograph attacks)
  * - Handle errors gracefully
  */
 
@@ -42,7 +43,7 @@ async function waitForStatusContaining(page, text, timeout = 10000) {
 }
 
 test.describe('URL Loading', () => {
-  test.describe('Domain Allowlist Validation', () => {
+  test.describe('HTTPS URL Acceptance (Issue #201)', () => {
     test.beforeEach(async ({ page }) => {
       await page.goto('/');
       await page.waitForSelector('.CodeMirror', { timeout: 15000 });
@@ -58,17 +59,19 @@ test.describe('URL Loading', () => {
       expect(isAllowed).toBe(true);
     });
 
-    test('should block untrusted domains', async ({ page }) => {
-      const untrustedDomains = [
-        'https://evil.com/malware.md',
+    test('should allow any HTTPS domain (content sanitized by DOMPurify)', async ({ page }) => {
+      // Issue #201: Domain allowlist removed - any HTTPS URL is now allowed
+      // Content is sanitized by DOMPurify, so it's safe to load from any source
+      const anyHttpsDomains = [
         'https://example.com/file.md',
-        'https://github.com/user/repo/blob/main/README.md', // Note: github.com is NOT raw
-        'https://pastebin.com/raw/abc123'
+        'https://github.com/user/repo/blob/main/README.md',
+        'https://pastebin.com/raw/abc123',
+        'https://mydomain.com/docs/readme.md'
       ];
 
-      for (const url of untrustedDomains) {
+      for (const url of anyHttpsDomains) {
         const isAllowed = await testUrlValidation(page, url);
-        expect(isAllowed).toBe(false);
+        expect(isAllowed).toBe(true);
       }
     });
   });
@@ -79,15 +82,15 @@ test.describe('URL Loading', () => {
       await page.waitForSelector('.CodeMirror', { timeout: 15000 });
     });
 
-    test('should block HTTP URLs even from allowed domains', async ({ page }) => {
+    test('should block HTTP URLs (HTTPS required)', async ({ page }) => {
       // Test URL built at runtime to avoid static analysis flagging test data
-      const httpUrl = ['http', '://', 'raw.githubusercontent.com/user/repo/main/README.md'].join('');
+      const httpUrl = ['http', '://', 'example.com/file.md'].join('');
       const isAllowed = await testUrlValidation(page, httpUrl);
       expect(isAllowed).toBe(false);
     });
 
-    test('should accept HTTPS URLs from allowed domains', async ({ page }) => {
-      const isAllowed = await testUrlValidation(page, 'https://raw.githubusercontent.com/user/repo/main/README.md');
+    test('should accept any HTTPS URL', async ({ page }) => {
+      const isAllowed = await testUrlValidation(page, 'https://example.com/any-file.md');
       expect(isAllowed).toBe(true);
     });
   });
@@ -407,7 +410,7 @@ test.describe('URL Loading', () => {
   });
 
   test.describe('Error Handling', () => {
-    test('should show error status for blocked domain', async ({ page }) => {
+    test('should block HTTP URLs and show appropriate warning', async ({ page }) => {
       const consoleMessages = [];
       page.on('console', msg => {
         if (msg.type() === 'warning') {
@@ -415,15 +418,16 @@ test.describe('URL Loading', () => {
         }
       });
 
-      await page.goto('/?url=https://evil.com/malware.md');
+      // Use HTTP (not HTTPS) to trigger blocking
+      await page.goto('/?url=http://example.com/file.md');
       await page.waitForSelector('.CodeMirror', { timeout: 15000 });
       await page.waitForTimeout(1500);
 
       // URL should NOT be cleared since load failed
       expect(page.url()).toContain('url=');
 
-      // Verify the domain was blocked via console warning
-      const blockedMessage = consoleMessages.find(msg => msg.includes('domain not in allowlist'));
+      // Verify the URL was blocked via console warning (HTTPS required)
+      const blockedMessage = consoleMessages.find(msg => msg.includes('HTTPS required'));
       expect(blockedMessage).toBeTruthy();
     });
 

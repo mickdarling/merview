@@ -201,14 +201,18 @@ export const ALLOWED_CSS_DOMAINS = [
 ];
 
 /**
- * Allowed domains for loading remote markdown (security allowlist).
- * Only HTTPS URLs from these domains are permitted.
- * Note: localhost is allowed automatically in dev mode via isAllowedMarkdownURL()
+ * REMOVED: Domain allowlist for markdown URLs (issue #201)
+ * All HTTPS URLs are now allowed - content is sanitized by DOMPurify.
+ * Security checks in isAllowedMarkdownURL() still enforce:
+ * - HTTPS protocol (localhost exempted in dev)
+ * - URL length limits
+ * - No embedded credentials
+ * - ASCII-only hostnames (prevents homograph attacks)
  */
-export const ALLOWED_MARKDOWN_DOMAINS = [
-    'raw.githubusercontent.com',
-    'gist.githubusercontent.com'
-];
+// export const ALLOWED_MARKDOWN_DOMAINS = [
+//     'raw.githubusercontent.com',
+//     'gist.githubusercontent.com'
+// ];
 
 // ==========================================
 // OAUTH CONFIGURATION

@@ -8,7 +8,7 @@
  * - Managing the private URL warning modal
  */
 
-import { ALLOWED_CSS_DOMAINS, ALLOWED_MARKDOWN_DOMAINS } from './config.js';
+import { ALLOWED_CSS_DOMAINS } from './config.js';
 import { state } from './state.js';
 
 /**
@@ -227,14 +227,15 @@ export function normalizeGitHubContentUrl(url) {
 }
 
 /**
- * Validate markdown URL against allowlist with security edge case protections
+ * Validate markdown URL with security protections
  *
  * Security checks performed:
- * 1. HTTPS protocol required
+ * 1. HTTPS protocol required (localhost exempted in dev mode)
  * 2. URL length limit (prevents DoS with extremely long URLs)
  * 3. No embedded credentials (user:pass@host)
  * 4. ASCII-only hostname (prevents IDN homograph attacks)
- * 5. Domain must be in allowlist
+ *
+ * Content is sanitized by DOMPurify, so any HTTPS URL is safe to load.
  *
  * @param {string} url - The markdown URL to validate
  * @returns {boolean} True if URL is allowed
@@ -275,14 +276,9 @@ export function isAllowedMarkdownURL(url) {
             return false;
         }
 
-        // Check against allowlist
+        // All HTTPS URLs are allowed (content is sanitized by DOMPurify)
         // Localhost is only allowed when BOTH the app AND target are localhost (prevents DNS rebinding)
-        const isAllowed = ALLOWED_MARKDOWN_DOMAINS.includes(targetHostname) ||
-                          (isLocalDev && isLocalhostTarget);
-        if (!isAllowed) {
-            console.warn('Markdown URL blocked: domain not in allowlist:', parsed.hostname);
-        }
-        return isAllowed;
+        return parsed.protocol === 'https:' || (isLocalDev && isLocalhostTarget);
     } catch (error) {
         console.warn('Markdown URL blocked: invalid URL format:', url, error.message);
         return false;
