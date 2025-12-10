@@ -77,5 +77,10 @@ export const state = {
         isPanning: false,                // Whether user is actively panning
         startX: 0,                       // Pan gesture start X position
         startY: 0                        // Pan gesture start Y position
-    }
+    },
+
+    // Session management state
+    activeSessionId: null,               // Currently active session ID
+    sessionsLoaded: false,               // Whether sessions have been loaded from storage
+    clearingAllSessions: false           // Flag to prevent race conditions during Clear All operation
 };

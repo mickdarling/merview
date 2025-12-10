@@ -247,6 +247,85 @@
             background: #c0392b;
         }
 
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 12px;
+            min-width: auto;
+        }
+
+        /* Sessions Modal Styles */
+        .sessions-stats {
+            margin-bottom: 16px;
+            padding: 10px;
+            background: #1a252f;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #95a5a6;
+        }
+
+        .sessions-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .sessions-empty {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 24px;
+            font-style: italic;
+        }
+
+        .session-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: #34495e;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .session-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .session-item-active {
+            border-left: 3px solid #27ae60;
+            padding-left: 9px;
+        }
+
+        .session-info {
+            flex: 1;
+            min-width: 0;
+            margin-right: 12px;
+        }
+
+        .session-name {
+            font-weight: 600;
+            color: #ecf0f1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .session-active-badge {
+            font-weight: normal;
+            color: #27ae60;
+            font-size: 12px;
+        }
+
+        .session-meta {
+            font-size: 12px;
+            color: #95a5a6;
+            margin-top: 2px;
+        }
+
+        .session-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
         /* Share to Gist Modal */
         .gist-modal-overlay {
             position: fixed;
@@ -1050,6 +1129,25 @@
             <div class="modal-buttons">
                 <button class="btn" id="urlModalCancel" type="button">Cancel</button>
                 <button class="btn btn-success" id="urlModalLoad" type="button">Load</button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Sessions Management Modal -->
+    <dialog class="gist-modal-overlay" id="sessionsModal" aria-labelledby="sessionsModalTitle">
+        <div class="gist-modal" style="max-width: 550px;">
+            <h2 id="sessionsModalTitle">Manage Sessions</h2>
+            <div id="sessionsModalContent">
+                <div class="sessions-stats">
+                    <span id="sessionsStorageInfo">0 sessions (0 B of 5 MB)</span>
+                </div>
+                <div id="sessionsList" class="sessions-list">
+                    <!-- Dynamically populated -->
+                </div>
+                <div class="modal-buttons" style="margin-top: 16px;">
+                    <button class="btn btn-danger" id="clearAllSessionsBtn" type="button">🗑️ Clear All</button>
+                    <button class="btn" id="closeSessionsModalBtn" type="button">Close</button>
+                </div>
             </div>
         </div>
     </dialog>

@@ -6,6 +6,7 @@
 import { state } from './state.js';
 import { getElements } from './dom.js';
 import { saveMarkdownContent } from './storage.js';
+import { updateSessionContent, isSessionsInitialized } from './sessions.js';
 import { escapeHtml, slugify } from './utils.js';
 import { validateCode } from './validation.js';
 
@@ -194,8 +195,11 @@ export async function renderMarkdown() {
             el.addEventListener('dblclick', () => expandMermaid(el.id));
         });
 
-        // Save to localStorage
+        // Save to localStorage (legacy) and update session
         saveMarkdownContent(markdown);
+        if (isSessionsInitialized()) {
+            updateSessionContent(markdown);
+        }
 
         // Trigger validation if lint panel is enabled (debounced)
         // This ensures the lint panel updates in real-time as content changes

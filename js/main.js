@@ -18,6 +18,8 @@ import { isRelativeDocPath, resolveDocUrl } from './config.js';
 import { getMarkdownContent, isFreshVisit, markSessionInitialized } from './storage.js';
 import { showStatus } from './utils.js';
 import { initResizeHandle } from './resize.js';
+import { initSessions } from './sessions.js';
+import { initSessionsModalHandlers } from './components/sessions-modal.js';
 
 /**
  * Clear the editor content
@@ -308,8 +310,14 @@ function initializeApp() {
     // Initialize file input handlers
     initFileInputHandlers();
 
+    // Initialize sessions system (before document selector)
+    initSessions();
+
     // Initialize document selector
     initDocumentSelector();
+
+    // Initialize sessions modal handlers
+    initSessionsModalHandlers();
 
     // Initialize brand home link (logo click handler)
     initBrandHomeLink();
