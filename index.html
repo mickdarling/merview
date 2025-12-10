@@ -28,14 +28,14 @@
          - CodeMirror dynamically generates inline styles for the editor
          - Mermaid.js generates inline SVG styles for diagrams
          These libraries don't support nonce-based CSP. See SECURITY.md for details. -->
-    <!-- CSP Note: connect-src includes GitHub API and the Cloudflare Worker OAuth proxy -->
+    <!-- CSP Note: connect-src allows any HTTPS for markdown loading; content is sanitized by DOMPurify -->
     <meta http-equiv="Content-Security-Policy"
           content="default-src 'self';
                    script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
                    style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://raw.githubusercontent.com https://gist.githubusercontent.com https://unpkg.com;
                    font-src 'self' data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
                    img-src 'self' data: https:;
-                   connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://raw.githubusercontent.com https://gist.githubusercontent.com https://unpkg.com https://api.github.com https://merview-github-oauth.mick-eba.workers.dev;
+                   connect-src 'self' https:;
                    frame-src 'none';
                    object-src 'none';
                    base-uri 'self';">
