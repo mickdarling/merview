@@ -168,9 +168,11 @@ test.describe('Session Management', () => {
         const raw = localStorage.getItem('merview-sessions-index');
         if (!raw) return null;
         const index = JSON.parse(raw);
-        // Get most recent session (should be Untitled)
-        const untitledSession = index.sessions.find(s => s.name.startsWith('Untitled'));
-        return untitledSession;
+        // Get most recent session (should be Untitled) - use for loop to avoid nested arrow function
+        for (const s of index.sessions) {
+          if (s.name.startsWith('Untitled')) return s;
+        }
+        return null;
       });
 
       expect(session).not.toBeNull();
