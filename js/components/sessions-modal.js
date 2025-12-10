@@ -256,7 +256,7 @@ function handlePostDeletion(isActive) {
  */
 function handleDeleteSession(sessionId) {
     const activeSession = getActiveSessionMeta();
-    const isActive = activeSession && sessionId === activeSession.id;
+    const isActive = activeSession?.id === sessionId;
 
     // Confirm deletion
     const sessions = getAllSessions();
