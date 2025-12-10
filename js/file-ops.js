@@ -149,8 +149,7 @@ export async function loadMarkdownFromURL(url) {
     const normalizedUrl = normalizeGitHubContentUrl(url);
 
     if (!isAllowedMarkdownURL(normalizedUrl)) {
-        const { ALLOWED_MARKDOWN_DOMAINS } = await import('./config.js');
-        showStatus(`URL not allowed. Trusted: ${ALLOWED_MARKDOWN_DOMAINS.join(', ')}`);
+        showStatus('URL not allowed. Must be HTTPS, no credentials, valid length.');
         return false;
     }
 

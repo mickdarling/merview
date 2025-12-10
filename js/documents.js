@@ -17,7 +17,6 @@ import { state } from './state.js';
 import { showStatus } from './utils.js';
 import { loadMarkdownFromURL, openFile } from './file-ops.js';
 import { showURLModal } from './components/url-modal.js';
-import { ALLOWED_MARKDOWN_DOMAINS } from './config.js';
 import { renderMarkdown } from './renderer.js';
 import {
     getRecentSessions,
@@ -239,11 +238,10 @@ export async function changeDocument(value) {
             break;
 
         case DOCUMENT_ACTIONS.LOAD_URL: {
-            // Show URL modal
+            // Show URL modal - any HTTPS URL is now allowed
             const url = await showURLModal({
                 title: 'Open from URL',
-                placeholder: 'https://github.com/user/repo/blob/main/README.md',
-                allowedDomains: ALLOWED_MARKDOWN_DOMAINS
+                placeholder: 'https://github.com/user/repo/blob/main/README.md'
             });
 
             // Check if this request is still current (race condition prevention)
