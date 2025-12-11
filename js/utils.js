@@ -9,6 +9,16 @@ import { getElements } from './dom.js';
 const DARK_THEME_BRIGHTNESS_THRESHOLD = 127.5;
 
 /**
+ * URL length thresholds for warnings
+ * - 2000 chars: Conservative limit that works across all major browsers
+ * - Some browsers support up to 64KB, but 2000 is a safe practical limit
+ * - IE11 had a 2083 char limit (no longer supported, but good reference point)
+ * - Very long URLs are hard to share via email/chat/social media
+ */
+const URL_LENGTH_WARNING_THRESHOLD = 2000;
+const URL_LENGTH_ERROR_THRESHOLD = 8000; // Hard limit before things break
+
+/**
  * Escape HTML entities to prevent XSS attacks
  * @param {string} text - Text to escape
  * @returns {string} Escaped HTML text
@@ -135,13 +145,69 @@ export function showStatus(message, type = 'success') {
 /**
  * Update the URL parameter in the browser address bar without page reload
  * Used to persist the source URL for sharing/bookmarking (Issue #204)
+ *
+ * CHARACTER ENCODING STRATEGY (for future maintainers):
+ * =====================================================
+ * This function uses a minimal encoding approach to balance readability with URL correctness.
+ *
+ * CHARACTERS KEPT READABLE (NOT encoded):
+ * - Alphanumeric: A-Z, a-z, 0-9
+ * - Unreserved characters (RFC 3986 Section 2.3): - _ . ~
+ * - Common URL delimiters: / : (needed for https://example.com/path structure)
+ *
+ * CHARACTERS THAT ARE ENCODED:
+ * - Spaces → %20
+ * - Query string special chars: & ? = # (would break URL parsing)
+ * - Percent sign: % (reserved for encoding itself)
+ * - Other special characters: @ ! $ ' ( ) * + , ; [ ] etc.
+ *
+ * WHY THIS APPROACH?
+ * ------------------
+ * Full encodeURIComponent() would turn:
+ *   https://raw.githubusercontent.com/user/repo/main/file.md
+ * Into:
+ *   https%3A%2F%2Fraw.githubusercontent.com%2Fuser%2Frepo%2Fmain%2Efile.md
+ *
+ * This is technically correct but hard to read, making URLs less shareable.
+ * By keeping / and : readable, the URL remains human-friendly while still
+ * being functionally correct as a query parameter value.
+ *
+ * REFERENCE:
+ * - RFC 3986 (URI Syntax): https://datatracker.ietf.org/doc/html/rfc3986
+ *   - Section 2.3: Unreserved Characters
+ *   - Section 3.4: Query component
+ *
+ * NOTE: Browser URL length limits apply (see URL_LENGTH_WARNING_THRESHOLD below)
+ *
  * @param {string} url - The URL to set in the ?url= parameter
  */
 export function setURLParameter(url) {
     try {
         const newUrl = new URL(globalThis.location.href);
-        newUrl.searchParams.set('url', url);
-        history.replaceState(null, '', newUrl.toString());
+        // Clear existing search params
+        newUrl.search = '';
+        // Manually construct search with minimal encoding
+        // Characters we KEEP readable: / : . - _ ~ (safe in query values per RFC 3986)
+        // Characters we MUST encode: space, &, #, ?, =, %, and other special chars
+        const minimallyEncoded = url.replaceAll(/[^A-Za-z0-9\-._~:/]/g, (char) => {
+            return encodeURIComponent(char);
+        });
+        newUrl.search = `?url=${minimallyEncoded}`;
+        const finalUrl = newUrl.toString();
+
+        // Check URL length (Issue #207 - URL length warnings)
+        if (finalUrl.length > URL_LENGTH_ERROR_THRESHOLD) {
+            console.error(`URL is extremely long (${finalUrl.length} chars, max recommended ${URL_LENGTH_ERROR_THRESHOLD})`);
+            console.error('This may cause issues in some browsers and sharing platforms.');
+            showStatus(`Warning: URL is very long (${finalUrl.length} chars). May not work in all browsers.`, 'warning');
+        } else if (finalUrl.length > URL_LENGTH_WARNING_THRESHOLD) {
+            console.warn(`URL is longer than recommended (${finalUrl.length} chars, recommended max ${URL_LENGTH_WARNING_THRESHOLD})`);
+            console.warn('Consider using a URL shortener or hosting the content at a shorter URL.');
+            // Only show subtle warning, don't block the user
+            showStatus(`Note: Long URL (${finalUrl.length} chars). May be hard to share.`, 'warning');
+        }
+
+        history.replaceState(null, '', finalUrl);
     } catch (error) {
         console.error('Error updating URL parameter:', error);
     }

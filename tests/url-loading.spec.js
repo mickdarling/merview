@@ -382,7 +382,11 @@ test.describe('URL Loading', () => {
 
       // URL should still contain the parameter for sharing/bookmarking
       expect(page.url()).toContain('url=');
-      expect(page.url()).toContain(encodeURIComponent(TEST_README_URL));
+      // URL should be minimally encoded (readable, not over-encoded)
+      expect(page.url()).toContain('https://raw.githubusercontent.com');
+      // Should not have percent-encoded slashes or colons
+      expect(page.url()).not.toContain('%2F');
+      expect(page.url()).not.toContain('%3A');
     });
 
     test('should persist URL parameter after loading from URL via modal', async ({ page }) => {
@@ -403,9 +407,11 @@ test.describe('URL Loading', () => {
       // Wait for load to complete
       await waitForStatusContaining(page, 'Loaded', 15000);
 
-      // URL parameter should now be in address bar
+      // URL parameter should now be in address bar (minimally encoded)
       expect(page.url()).toContain('url=');
-      expect(page.url()).toContain(encodeURIComponent(TEST_README_URL));
+      expect(page.url()).toContain('https://raw.githubusercontent.com');
+      expect(page.url()).not.toContain('%2F');
+      expect(page.url()).not.toContain('%3A');
     });
 
     test('should update URL parameter when loading different URL via modal', async ({ page }) => {
@@ -414,9 +420,9 @@ test.describe('URL Loading', () => {
       await page.waitForSelector('.CodeMirror', { timeout: 15000 });
       await waitForStatusContaining(page, 'Loaded', 15000);
 
-      // Verify first URL parameter is present
+      // Verify first URL parameter is present (minimally encoded)
       expect(page.url()).toContain('url=');
-      expect(page.url()).toContain(encodeURIComponent(TEST_README_URL));
+      expect(page.url()).toContain('README.md');
 
       // Load a different URL via modal
       const SECOND_URL = 'https://raw.githubusercontent.com/mickdarling/merview/main/docs/about.md';
@@ -434,10 +440,10 @@ test.describe('URL Loading', () => {
       // Wait for load to complete
       await waitForStatusContaining(page, 'Loaded', 15000);
 
-      // URL parameter should be updated to the new URL
+      // URL parameter should be updated to the new URL (minimally encoded)
       expect(page.url()).toContain('url=');
-      expect(page.url()).toContain(encodeURIComponent(SECOND_URL));
-      expect(page.url()).not.toContain(encodeURIComponent(TEST_README_URL));
+      expect(page.url()).toContain('docs/about.md');
+      expect(page.url()).not.toContain('README.md');
     });
 
     test('should clear URL parameter when loading local file', async ({ page }) => {

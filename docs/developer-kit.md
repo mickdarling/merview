@@ -290,6 +290,108 @@ const encodedUrl = encodeURIComponent('https://example.com/path with spaces/file
 const link = `https://merview.com/?url=${encodedUrl}`;
 ```
 
+### How Merview Keeps URLs Readable
+
+Merview uses a **minimal encoding strategy** to keep URLs human-readable while maintaining correctness. Unlike standard `encodeURIComponent()`, which encodes almost everything, Merview only encodes characters that would actually break the URL.
+
+#### Characters That Stay Readable
+
+Merview keeps these characters readable (NOT encoded):
+
+- **Alphanumeric**: A-Z, a-z, 0-9
+- **Unreserved characters** (RFC 3986): `-` `_` `.` `~`
+- **URL structure**: `/` `:` (needed for `https://` and path separators)
+
+This means a typical URL looks clean in your browser's address bar:
+```
+https://merview.com/?url=https://raw.githubusercontent.com/user/repo/main/docs/guide.md
+```
+
+#### Characters That Get Encoded
+
+These characters MUST be encoded to prevent URL parsing errors:
+
+| Character | Encoded As | Why |
+|-----------|------------|-----|
+| Space | `%20` | Would break the URL structure |
+| `&` | `%26` | Query string separator |
+| `?` | `%3F` | Query string start marker |
+| `#` | `%23` | Fragment identifier |
+| `=` | `%3D` | Query parameter assignment |
+| `%` | `%25` | Reserved for encoding itself |
+| `@` | `%40` | Reserved character |
+| `!` `$` `'` `(` `)` `*` `+` `,` `;` `[` `]` | Various | Special URL characters |
+
+#### Why This Approach?
+
+**Standard encoding** (encodeURIComponent):
+```
+https://merview.com/?url=https%3A%2F%2Fraw.githubusercontent.com%2Fuser%2Frepo%2Fmain%2Ffile.md
+```
+Technically correct but hard to read and share.
+
+**Merview's minimal encoding**:
+```
+https://merview.com/?url=https://raw.githubusercontent.com/user/repo/main/file.md
+```
+Human-readable, shareable, and still functionally correct.
+
+### URL Length Considerations
+
+#### Browser URL Length Limits
+
+Different browsers have different URL length limits:
+
+- **Chrome/Edge**: ~32,000 characters (very generous)
+- **Firefox**: ~65,000 characters (most generous)
+- **Safari**: ~80,000 characters (extremely generous)
+- **Historic IE11**: 2,083 characters (no longer supported, but a good baseline)
+
+**Merview's thresholds**:
+
+| Length | Behavior |
+|--------|----------|
+| < 2,000 chars | No warning (safe for all browsers and sharing) |
+| 2,000 - 8,000 chars | Console warning + subtle status message |
+| > 8,000 chars | Console error + prominent warning message |
+
+#### Why Length Matters
+
+Very long URLs cause practical problems:
+
+1. **Sharing limitations**: Email clients, chat apps, and social media may truncate or break long URLs
+2. **Readability**: Humans can't easily verify or edit extremely long URLs
+3. **Server logs**: Some servers truncate URLs in logs, making debugging harder
+4. **Proxy/firewall issues**: Corporate proxies may reject very long URLs
+5. **Mobile issues**: Long URLs are hard to work with on mobile devices
+
+#### Best Practices for Long Content URLs
+
+If your markdown source URL is long, consider these alternatives:
+
+1. **Use URL shorteners**: bit.ly, tinyurl.com, or your own domain
+   ```
+   Original: https://merview.com/?url=https://example.com/very/long/path/to/document.md
+   Shortened: https://bit.ly/abc123 → redirects to the Merview URL
+   ```
+
+2. **Host at shorter paths**: Use CDNs or reorganize your content structure
+   ```
+   Long:  https://cdn.example.com/documentation/2024/project-name/guides/getting-started.md
+   Short: https://cdn.example.com/docs/start.md
+   ```
+
+3. **Use GitHub releases or tags** instead of long branch names:
+   ```
+   Long:  https://raw.githubusercontent.com/org/repo/feature/very-long-branch-name/file.md
+   Short: https://raw.githubusercontent.com/org/repo/v1.0/file.md
+   ```
+
+4. **GitHub Gists** for standalone documents (short, clean URLs):
+   ```
+   https://gist.githubusercontent.com/username/gist-id/raw/file.md
+   ```
+
 ### Common Encoding Issues
 
 | Character | Unencoded | Encoded |
@@ -298,27 +400,85 @@ const link = `https://merview.com/?url=${encodedUrl}`;
 | `?` | `?` | `%3F` |
 | `&` | `&` | `%26` |
 | `=` | `=` | `%3D` |
-| `/` | `/` | `%2F` (in query params) |
+| `/` | `/` | Kept readable in Merview |
+| `:` | `:` | Kept readable in Merview |
 
 ### Manual Construction
 
 Most languages provide URL encoding utilities:
 
 ```javascript
-// JavaScript
+// JavaScript - full encoding (less readable)
 const url = encodeURIComponent(rawUrl);
+
+// JavaScript - using URLSearchParams (recommended)
+const params = new URLSearchParams({ url: rawUrl });
+const merviewLink = `https://merview.com/?${params.toString()}`;
 ```
 
 ```python
 # Python
 from urllib.parse import quote
 url = quote(raw_url, safe='')
+
+# Python - using urlencode (recommended)
+from urllib.parse import urlencode
+params = urlencode({'url': raw_url})
+merview_link = f'https://merview.com/?{params}'
 ```
 
 ```bash
 # Shell (jq)
 echo "https://example.com/file.md" | jq -sRr @uri
 ```
+
+### Examples: Encoded vs Readable
+
+#### Example 1: Simple GitHub URL
+
+**Input URL**: `https://raw.githubusercontent.com/user/repo/main/README.md`
+
+**Standard encoding**:
+```
+https://merview.com/?url=https%3A%2F%2Fraw.githubusercontent.com%2Fuser%2Frepo%2Fmain%2FREADME.md
+```
+
+**Merview (minimal encoding)**:
+```
+https://merview.com/?url=https://raw.githubusercontent.com/user/repo/main/README.md
+```
+
+#### Example 2: URL with Spaces
+
+**Input URL**: `https://example.com/My Documents/guide.md`
+
+**Standard encoding**:
+```
+https://merview.com/?url=https%3A%2F%2Fexample.com%2FMy%20Documents%2Fguide.md
+```
+
+**Merview (minimal encoding)**:
+```
+https://merview.com/?url=https://example.com/My%20Documents/guide.md
+```
+
+Notice: Spaces are encoded (`%20`), but `/` and `:` stay readable.
+
+#### Example 3: URL with Query Parameters
+
+**Input URL**: `https://example.com/api/content?id=123&format=markdown`
+
+**Standard encoding**:
+```
+https://merview.com/?url=https%3A%2F%2Fexample.com%2Fapi%2Fcontent%3Fid%3D123%26format%3Dmarkdown
+```
+
+**Merview (minimal encoding)**:
+```
+https://merview.com/?url=https://example.com/api/content%3Fid%3D123%26format%3Dmarkdown
+```
+
+Notice: `?` `=` `&` are encoded (they would break the query string), but `/` and `:` stay readable.
 
 ---
 
