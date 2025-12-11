@@ -166,6 +166,7 @@ Here are some recommended combinations:
 
 - [← Back to Welcome](/?sample)
 - [About Merview](/?url=docs/about.md)
+- [Developer Kit](/?url=docs/developer-kit.md)
 - [Security](/?url=docs/security.md)
 - [Contributing](/?url=docs/contributing.md)
 - [Support the Project](/?url=docs/sponsor.md)

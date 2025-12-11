@@ -110,6 +110,7 @@ Your sponsorship helps me dedicate more time to open source projects like this.
 
 - [← Back to Welcome](/?sample)
 - [About Merview](/?url=docs/about.md)
+- [Developer Kit](/?url=docs/developer-kit.md)
 - [Theme Guide](/?url=docs/themes.md)
 - [Security](/?url=docs/security.md)
 - [Contributing](/?url=docs/contributing.md)

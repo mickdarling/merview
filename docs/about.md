@@ -136,6 +136,7 @@ It turned out to be a useful tool in its own right, so it's now available as a s
 ## Navigation
 
 - [← Back to Welcome](/?sample)
+- [Developer Kit](/?url=docs/developer-kit.md)
 - [Theme Guide](/?url=docs/themes.md)
 - [Security](/?url=docs/security.md)
 - [Contributing](/?url=docs/contributing.md)

@@ -177,6 +177,7 @@ We actively maintain security:
 
 - [← Back to Welcome](/?sample)
 - [About Merview](/?url=docs/about.md)
+- [Developer Kit](/?url=docs/developer-kit.md)
 - [Theme Guide](/?url=docs/themes.md)
 - [Contributing](/?url=docs/contributing.md)
 - [Support the Project](/?url=docs/sponsor.md)

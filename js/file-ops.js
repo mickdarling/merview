@@ -360,10 +360,11 @@ graph LR
     subgraph Merview Documentation
         A[Welcome<br/>You Are Here]
         B[About]
-        C[Themes]
-        D[Security]
-        E[Contributing]
-        F[Sponsor]
+        C[Developer Kit]
+        D[Themes]
+        E[Security]
+        F[Contributing]
+        G[Sponsor]
     end
 
     A --- B
@@ -371,12 +372,14 @@ graph LR
     A --- D
     A --- E
     A --- F
+    A --- G
 
     click B "/?url=docs/about.md" "About Merview"
-    click C "/?url=docs/themes.md" "Theme Guide"
-    click D "/?url=docs/security.md" "Security"
-    click E "/?url=docs/contributing.md" "Contributing"
-    click F "/?url=docs/sponsor.md" "Support the Project"
+    click C "/?url=docs/developer-kit.md" "Developer Kit"
+    click D "/?url=docs/themes.md" "Theme Guide"
+    click E "/?url=docs/security.md" "Security"
+    click F "/?url=docs/contributing.md" "Contributing"
+    click G "/?url=docs/sponsor.md" "Support the Project"
 \`\`\`
 
 ---
@@ -384,6 +387,7 @@ graph LR
 ## Quick Links
 
 - [About Merview](/?url=docs/about.md) - Features, technology, and how it works
+- [Developer Kit](/?url=docs/developer-kit.md) - Integration guide and URL patterns
 - [Theme Guide](/?url=docs/themes.md) - 37 document styles and customization
 - [Security](/?url=docs/security.md) - Privacy-first design and protections
 - [Contributing](/?url=docs/contributing.md) - How to help improve Merview
