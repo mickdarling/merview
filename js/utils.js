@@ -135,12 +135,26 @@ export function showStatus(message, type = 'success') {
 /**
  * Update the URL parameter in the browser address bar without page reload
  * Used to persist the source URL for sharing/bookmarking (Issue #204)
+ *
+ * Uses minimal encoding to keep URLs readable while maintaining functionality.
+ * Only encodes characters that MUST be encoded (space, &, #, ?, etc. that would
+ * break query string parsing) while keeping common URL characters (/, :, .)
+ * readable for better UX and shareability.
+ *
  * @param {string} url - The URL to set in the ?url= parameter
  */
 export function setURLParameter(url) {
     try {
         const newUrl = new URL(globalThis.location.href);
-        newUrl.searchParams.set('url', url);
+        // Clear existing search params
+        newUrl.search = '';
+        // Manually construct search with minimal encoding
+        // Characters we KEEP readable: / : . - _ ~ (safe in query values per RFC 3986)
+        // Characters we MUST encode: space, &, #, ?, =, %, and other special chars
+        const minimallyEncoded = url.replace(/[^A-Za-z0-9\-._~:/]/g, (char) => {
+            return encodeURIComponent(char);
+        });
+        newUrl.search = `?url=${minimallyEncoded}`;
         history.replaceState(null, '', newUrl.toString());
     } catch (error) {
         console.error('Error updating URL parameter:', error);

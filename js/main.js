@@ -16,7 +16,7 @@ import { initMermaidFullscreen } from './mermaid-fullscreen.js';
 import { isAllowedMarkdownURL, isAllowedCSSURL, stripGitHubToken, showPrivateUrlModal, initPrivateUrlModalHandlers, normalizeGistUrl, normalizeGitHubContentUrl } from './security.js';
 import { isRelativeDocPath, resolveDocUrl } from './config.js';
 import { getMarkdownContent, isFreshVisit, markSessionInitialized } from './storage.js';
-import { showStatus } from './utils.js';
+import { showStatus, setURLParameter, clearURLParameter } from './utils.js';
 import { initResizeHandle } from './resize.js';
 import { initSessions } from './sessions.js';
 import { initSessionsModalHandlers } from './components/sessions-modal.js';
@@ -91,6 +91,8 @@ function exposeGlobalFunctions() {
 
     // Utility functions
     globalThis.showStatus = showStatus;
+    globalThis.setURLParameter = setURLParameter;
+    globalThis.clearURLParameter = clearURLParameter;
     globalThis.changeStyle = changeStyle;
     globalThis.changeSyntaxTheme = changeSyntaxTheme;
     globalThis.changeEditorTheme = changeEditorTheme;
