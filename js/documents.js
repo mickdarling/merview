@@ -14,7 +14,7 @@
  */
 
 import { state } from './state.js';
-import { showStatus } from './utils.js';
+import { showStatus, clearURLParameter } from './utils.js';
 import { loadMarkdownFromURL, openFile } from './file-ops.js';
 import { showURLModal } from './components/url-modal.js';
 import { renderMarkdown } from './renderer.js';
@@ -306,6 +306,9 @@ export function newDocument() {
 
     state.currentFilename = null;
     state.loadedFromURL = null;
+
+    // Clear URL parameter when creating new document (Issue #204)
+    clearURLParameter();
 
     // Create a new session for the empty document
     if (isSessionsInitialized()) {

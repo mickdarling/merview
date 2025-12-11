@@ -16,7 +16,7 @@ import { initMermaidFullscreen } from './mermaid-fullscreen.js';
 import { isAllowedMarkdownURL, isAllowedCSSURL, stripGitHubToken, showPrivateUrlModal, initPrivateUrlModalHandlers, normalizeGistUrl, normalizeGitHubContentUrl } from './security.js';
 import { isRelativeDocPath, resolveDocUrl } from './config.js';
 import { getMarkdownContent, isFreshVisit, markSessionInitialized } from './storage.js';
-import { showStatus } from './utils.js';
+import { showStatus, clearURLParameter } from './utils.js';
 import { initResizeHandle } from './resize.js';
 import { initSessions } from './sessions.js';
 import { initSessionsModalHandlers } from './components/sessions-modal.js';
@@ -31,6 +31,10 @@ function clearEditor() {
         }
         state.currentFilename = null;
         state.loadedFromURL = null;
+
+        // Clear URL parameter when clearing editor (Issue #204)
+        clearURLParameter();
+
         updateDocumentSelector();
         renderMarkdown();
         showStatus('Editor cleared');

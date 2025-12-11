@@ -131,3 +131,32 @@ export function showStatus(message, type = 'success') {
         statusDiv.classList.remove('show', 'warning');
     }, duration);
 }
+
+/**
+ * Update the URL parameter in the browser address bar without page reload
+ * Used to persist the source URL for sharing/bookmarking (Issue #204)
+ * @param {string} url - The URL to set in the ?url= parameter
+ */
+export function setURLParameter(url) {
+    try {
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('url', url);
+        history.replaceState(null, '', newUrl.toString());
+    } catch (error) {
+        console.error('Error updating URL parameter:', error);
+    }
+}
+
+/**
+ * Clear the URL parameter from the browser address bar
+ * Called when loading local content or starting fresh (Issue #204)
+ */
+export function clearURLParameter() {
+    try {
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('url');
+        history.replaceState(null, '', newUrl.toString());
+    } catch (error) {
+        console.error('Error clearing URL parameter:', error);
+    }
+}

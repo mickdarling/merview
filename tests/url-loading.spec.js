@@ -371,7 +371,7 @@ test.describe('URL Loading', () => {
     }
   });
 
-  test.describe('URL Parameter Behavior', () => {
+  test.describe('URL Parameter Behavior (Issue #204)', () => {
     // Common test URL used across multiple tests
     const TEST_README_URL = 'https://raw.githubusercontent.com/mickdarling/merview/main/README.md';
 
@@ -383,6 +383,104 @@ test.describe('URL Loading', () => {
       // URL should still contain the parameter for sharing/bookmarking
       expect(page.url()).toContain('url=');
       expect(page.url()).toContain(encodeURIComponent(TEST_README_URL));
+    });
+
+    test('should persist URL parameter after loading from URL via modal', async ({ page }) => {
+      // Start without URL parameter
+      await page.goto('/');
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+
+      // Open the "Load from URL" modal via document selector
+      await page.selectOption('#documentSelector', '__load_url__');
+
+      // Wait for modal to appear (note: modal ID is 'urlModal', not 'urlInputModal')
+      await page.waitForSelector('#urlModal[open]', { timeout: 5000 });
+
+      // Enter URL and submit
+      await page.fill('#urlInput', TEST_README_URL);
+      await page.click('#urlModalLoad');
+
+      // Wait for load to complete
+      await waitForStatusContaining(page, 'Loaded', 15000);
+
+      // URL parameter should now be in address bar
+      expect(page.url()).toContain('url=');
+      expect(page.url()).toContain(encodeURIComponent(TEST_README_URL));
+    });
+
+    test('should clear URL parameter when loading local file', async ({ page }) => {
+      // Start with URL parameter
+      await page.goto(`/?url=${encodeURIComponent(TEST_README_URL)}`);
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+      await waitForStatusContaining(page, 'Loaded', 15000);
+
+      // Verify URL parameter is present
+      expect(page.url()).toContain('url=');
+
+      // Create a test file and load it programmatically
+      const testContent = '# Test Local File\n\nThis is test content.';
+      const testFile = new File([testContent], 'test.md', { type: 'text/markdown' });
+
+      // Simulate file loading (since we can't easily trigger file picker in tests)
+      await page.evaluate((content) => {
+        if (globalThis.state.cmEditor) {
+          globalThis.state.cmEditor.setValue(content);
+        }
+        globalThis.state.currentFilename = 'test.md';
+        globalThis.state.loadedFromURL = null;
+        // Simulate the clearURLParameter call that happens in loadMarkdownFile
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('url');
+        history.replaceState(null, '', newUrl.toString());
+      }, testContent);
+
+      // Wait a moment for URL to update
+      await page.waitForTimeout(500);
+
+      // URL parameter should be cleared
+      expect(page.url()).not.toContain('url=');
+    });
+
+    test('should clear URL parameter when loading sample document', async ({ page }) => {
+      // Start with URL parameter
+      await page.goto(`/?url=${encodeURIComponent(TEST_README_URL)}`);
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+      await waitForStatusContaining(page, 'Loaded', 15000);
+
+      // Verify URL parameter is present
+      expect(page.url()).toContain('url=');
+
+      // Load sample by clicking the logo/brand link
+      await page.click('#brandHomeLink');
+      await page.waitForTimeout(500);
+
+      // URL parameter should be cleared
+      expect(page.url()).not.toContain('url=');
+
+      // Content should be the sample
+      const content = await page.evaluate(() => globalThis.getEditorContent());
+      expect(content).toContain('Welcome to Merview');
+    });
+
+    test('should clear URL parameter when creating new document', async ({ page }) => {
+      // Start with URL parameter
+      await page.goto(`/?url=${encodeURIComponent(TEST_README_URL)}`);
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+      await waitForStatusContaining(page, 'Loaded', 15000);
+
+      // Verify URL parameter is present
+      expect(page.url()).toContain('url=');
+
+      // Create new document via selector
+      await page.selectOption('#documentSelector', '__new__');
+      await page.waitForTimeout(500);
+
+      // URL parameter should be cleared
+      expect(page.url()).not.toContain('url=');
+
+      // Editor should be empty
+      const content = await page.evaluate(() => globalThis.getEditorContent());
+      expect(content).toBe('');
     });
 
     test('should load content from URL parameter', async ({ page }) => {
