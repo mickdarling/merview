@@ -408,6 +408,38 @@ test.describe('URL Loading', () => {
       expect(page.url()).toContain(encodeURIComponent(TEST_README_URL));
     });
 
+    test('should update URL parameter when loading different URL via modal', async ({ page }) => {
+      // Start with first URL
+      await page.goto(`/?url=${encodeURIComponent(TEST_README_URL)}`);
+      await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+      await waitForStatusContaining(page, 'Loaded', 15000);
+
+      // Verify first URL parameter is present
+      expect(page.url()).toContain('url=');
+      expect(page.url()).toContain(encodeURIComponent(TEST_README_URL));
+
+      // Load a different URL via modal
+      const SECOND_URL = 'https://raw.githubusercontent.com/mickdarling/merview/main/docs/about.md';
+
+      // Open the "Load from URL" modal via document selector
+      await page.selectOption('#documentSelector', '__load_url__');
+
+      // Wait for modal to appear
+      await page.waitForSelector('#urlModal[open]', { timeout: 5000 });
+
+      // Enter new URL and submit
+      await page.fill('#urlInput', SECOND_URL);
+      await page.click('#urlModalLoad');
+
+      // Wait for load to complete
+      await waitForStatusContaining(page, 'Loaded', 15000);
+
+      // URL parameter should be updated to the new URL
+      expect(page.url()).toContain('url=');
+      expect(page.url()).toContain(encodeURIComponent(SECOND_URL));
+      expect(page.url()).not.toContain(encodeURIComponent(TEST_README_URL));
+    });
+
     test('should clear URL parameter when loading local file', async ({ page }) => {
       // Start with URL parameter
       await page.goto(`/?url=${encodeURIComponent(TEST_README_URL)}`);
@@ -417,9 +449,8 @@ test.describe('URL Loading', () => {
       // Verify URL parameter is present
       expect(page.url()).toContain('url=');
 
-      // Create a test file and load it programmatically
+      // Create test content for loading
       const testContent = '# Test Local File\n\nThis is test content.';
-      const testFile = new File([testContent], 'test.md', { type: 'text/markdown' });
 
       // Simulate file loading (since we can't easily trigger file picker in tests)
       await page.evaluate((content) => {
@@ -429,7 +460,7 @@ test.describe('URL Loading', () => {
         globalThis.state.currentFilename = 'test.md';
         globalThis.state.loadedFromURL = null;
         // Simulate the clearURLParameter call that happens in loadMarkdownFile
-        const newUrl = new URL(window.location.href);
+        const newUrl = new URL(globalThis.location.href);
         newUrl.searchParams.delete('url');
         history.replaceState(null, '', newUrl.toString());
       }, testContent);

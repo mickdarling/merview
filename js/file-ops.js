@@ -292,6 +292,9 @@ function downloadFile(filename) {
     a.remove();
     URL.revokeObjectURL(url);
 
+    // Clear URL parameter when saving (user is taking ownership of content) (Issue #204)
+    clearURLParameter();
+
     showStatus(`Saved: ${filename}`);
 }
 

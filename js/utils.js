@@ -139,7 +139,7 @@ export function showStatus(message, type = 'success') {
  */
 export function setURLParameter(url) {
     try {
-        const newUrl = new URL(window.location.href);
+        const newUrl = new URL(globalThis.location.href);
         newUrl.searchParams.set('url', url);
         history.replaceState(null, '', newUrl.toString());
     } catch (error) {
@@ -153,7 +153,7 @@ export function setURLParameter(url) {
  */
 export function clearURLParameter() {
     try {
-        const newUrl = new URL(window.location.href);
+        const newUrl = new URL(globalThis.location.href);
         newUrl.searchParams.delete('url');
         history.replaceState(null, '', newUrl.toString());
     } catch (error) {
