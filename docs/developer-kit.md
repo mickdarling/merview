@@ -38,7 +38,7 @@ Merview is a client-side markdown and Mermaid diagram renderer. It runs entirely
 Merview can load and render any publicly accessible markdown file via the `?url=` parameter:
 
 ```
-https://merview.zonca.dev/?url=YOUR_MARKDOWN_URL
+https://your-merview-instance.com/?url=YOUR_MARKDOWN_URL
 ```
 
 ### Requirements
@@ -73,12 +73,12 @@ For GitHub repository files:
 4. Construct your Merview link:
 
 ```
-https://merview.zonca.dev/?url=https://raw.githubusercontent.com/user/repo/main/README.md
+https://your-merview-instance.com/?url=https://raw.githubusercontent.com/user/repo/main/README.md
 ```
 
 **Example:**
 ```
-https://merview.zonca.dev/?url=https://raw.githubusercontent.com/mickdarling/merview/main/README.md
+https://your-merview-instance.com/?url=https://raw.githubusercontent.com/mickdarling/merview/main/README.md
 ```
 
 ### GitHub Gists
@@ -91,7 +91,7 @@ For Gist files:
 4. Construct your Merview link:
 
 ```
-https://merview.zonca.dev/?url=https://gist.githubusercontent.com/user/gist-id/raw/file.md
+https://your-merview-instance.com/?url=https://gist.githubusercontent.com/user/gist-id/raw/file.md
 ```
 
 ### CDN-Hosted Files
@@ -99,7 +99,7 @@ https://merview.zonca.dev/?url=https://gist.githubusercontent.com/user/gist-id/r
 If you host markdown on a CDN:
 
 ```
-https://merview.zonca.dev/?url=https://cdn.jsdelivr.net/gh/user/repo@version/file.md
+https://your-merview-instance.com/?url=https://cdn.jsdelivr.net/gh/user/repo@version/file.md
 ```
 
 ---
@@ -111,7 +111,7 @@ https://merview.zonca.dev/?url=https://cdn.jsdelivr.net/gh/user/repo@version/fil
 Add a "View in Merview" button to your documentation:
 
 ```html
-<a href="https://merview.zonca.dev/?url=https://raw.githubusercontent.com/user/repo/main/docs/guide.md"
+<a href="https://your-merview-instance.com/?url=https://raw.githubusercontent.com/user/repo/main/docs/guide.md"
    target="_blank"
    rel="noopener noreferrer">
     View in Merview
@@ -123,7 +123,7 @@ Add a "View in Merview" button to your documentation:
 Create a clickable badge in your README:
 
 ```markdown
-[![View in Merview](https://img.shields.io/badge/View%20in-Merview-blue?logo=markdown)](https://merview.zonca.dev/?url=https://raw.githubusercontent.com/user/repo/main/README.md)
+[![View in Merview](https://img.shields.io/badge/View%20in-Merview-blue?logo=markdown)](https://your-merview-instance.com/?url=https://raw.githubusercontent.com/user/repo/main/README.md)
 ```
 
 ### JavaScript Function
@@ -137,7 +137,7 @@ Generate Merview links programmatically:
  * @returns {string} Merview preview URL
  */
 function generateMerviewLink(rawUrl) {
-    const baseUrl = 'https://merview.zonca.dev/';
+    const baseUrl = 'https://your-merview-instance.com/';
     const params = new URLSearchParams({ url: rawUrl });
     return `${baseUrl}?${params.toString()}`;
 }
@@ -146,7 +146,7 @@ function generateMerviewLink(rawUrl) {
 const readmeUrl = 'https://raw.githubusercontent.com/user/repo/main/README.md';
 const merviewLink = generateMerviewLink(readmeUrl);
 console.log(merviewLink);
-// Output: https://merview.zonca.dev/?url=https%3A%2F%2Fraw.githubusercontent.com%2Fuser%2Frepo%2Fmain%2FREADME.md
+// Output: https://your-merview-instance.com/?url=https%3A%2F%2Fraw.githubusercontent.com%2Fuser%2Frepo%2Fmain%2FREADME.md
 ```
 
 ### Python Script
@@ -158,7 +158,7 @@ from urllib.parse import urlencode
 
 def generate_merview_link(raw_url):
     """Generate a Merview link for a markdown file"""
-    base_url = 'https://merview.zonca.dev/'
+    base_url = 'https://your-merview-instance.com/'
     params = urlencode({'url': raw_url})
     return f'{base_url}?{params}'
 
@@ -179,7 +179,7 @@ Add "Preview" links to your documentation:
 ```markdown
 ## API Reference
 
-[View API Docs](docs/api.md) | [Preview in Merview](https://merview.zonca.dev/?url=https://raw.githubusercontent.com/user/repo/main/docs/api.md)
+[View API Docs](docs/api.md) | [Preview in Merview](https://your-merview-instance.com/?url=https://raw.githubusercontent.com/user/repo/main/docs/api.md)
 ```
 
 ### 2. GitHub Issues/PRs
@@ -188,7 +188,7 @@ Share rendered versions of documentation changes:
 
 ```markdown
 I've updated the guide. Preview the changes here:
-https://merview.zonca.dev/?url=https://raw.githubusercontent.com/user/repo/feature-branch/GUIDE.md
+https://your-merview-instance.com/?url=https://raw.githubusercontent.com/user/repo/feature-branch/GUIDE.md
 ```
 
 ### 3. Email/Chat Links
@@ -258,11 +258,11 @@ Always URL-encode the markdown URL when constructing Merview links:
 
 ```javascript
 // Wrong - special characters can break the URL
-const link = `https://merview.zonca.dev/?url=https://example.com/path with spaces/file.md`;
+const link = `https://your-merview-instance.com/?url=https://example.com/path with spaces/file.md`;
 
 // Correct - URL encoded
 const encodedUrl = encodeURIComponent('https://example.com/path with spaces/file.md');
-const link = `https://merview.zonca.dev/?url=${encodedUrl}`;
+const link = `https://your-merview-instance.com/?url=${encodedUrl}`;
 ```
 
 ### Common Encoding Issues
@@ -383,7 +383,7 @@ When sharing Merview links, explain what they are:
 ```markdown
 ## Documentation
 
-View the [User Guide](https://merview.zonca.dev/?url=...)
+View the [User Guide](https://your-merview-instance.com/?url=...)
 (rendered version via Merview)
 ```
 
@@ -460,7 +460,7 @@ While Merview doesn't have a formal API, you can construct URLs programmatically
 ### URL Structure
 
 ```
-https://merview.zonca.dev/[?parameter]
+https://your-merview-instance.com/[?parameter]
 ```
 
 ### Parameters
@@ -489,7 +489,7 @@ These are planned but not yet available:
 ```markdown
 # My Project
 
-[![View in Merview](https://img.shields.io/badge/View-Merview-blue)](https://merview.zonca.dev/?url=https://raw.githubusercontent.com/user/project/main/README.md)
+[![View in Merview](https://img.shields.io/badge/View-Merview-blue)](https://your-merview-instance.com/?url=https://raw.githubusercontent.com/user/project/main/README.md)
 
 Quick documentation preview without leaving GitHub.
 ```
@@ -499,9 +499,9 @@ Quick documentation preview without leaving GitHub.
 ```markdown
 # Learning Series
 
-1. [Introduction](tutorial/intro.md) - [Preview](https://merview.zonca.dev/?url=https://raw.githubusercontent.com/user/repo/main/tutorial/intro.md)
-2. [Getting Started](tutorial/getting-started.md) - [Preview](https://merview.zonca.dev/?url=https://raw.githubusercontent.com/user/repo/main/tutorial/getting-started.md)
-3. [Advanced Topics](tutorial/advanced.md) - [Preview](https://merview.zonca.dev/?url=https://raw.githubusercontent.com/user/repo/main/tutorial/advanced.md)
+1. [Introduction](tutorial/intro.md) - [Preview](https://your-merview-instance.com/?url=https://raw.githubusercontent.com/user/repo/main/tutorial/intro.md)
+2. [Getting Started](tutorial/getting-started.md) - [Preview](https://your-merview-instance.com/?url=https://raw.githubusercontent.com/user/repo/main/tutorial/getting-started.md)
+3. [Advanced Topics](tutorial/advanced.md) - [Preview](https://your-merview-instance.com/?url=https://raw.githubusercontent.com/user/repo/main/tutorial/advanced.md)
 ```
 
 ### Example 3: Documentation Hub
@@ -510,9 +510,9 @@ Quick documentation preview without leaving GitHub.
 <div class="docs-hub">
   <h2>Documentation</h2>
   <ul>
-    <li><a href="https://merview.zonca.dev/?url=https://raw.githubusercontent.com/org/repo/main/docs/api.md">API Reference</a></li>
-    <li><a href="https://merview.zonca.dev/?url=https://raw.githubusercontent.com/org/repo/main/docs/guides.md">User Guides</a></li>
-    <li><a href="https://merview.zonca.dev/?url=https://raw.githubusercontent.com/org/repo/main/docs/faq.md">FAQ</a></li>
+    <li><a href="https://your-merview-instance.com/?url=https://raw.githubusercontent.com/org/repo/main/docs/api.md">API Reference</a></li>
+    <li><a href="https://your-merview-instance.com/?url=https://raw.githubusercontent.com/org/repo/main/docs/guides.md">User Guides</a></li>
+    <li><a href="https://your-merview-instance.com/?url=https://raw.githubusercontent.com/org/repo/main/docs/faq.md">FAQ</a></li>
   </ul>
 </div>
 ```
@@ -593,7 +593,7 @@ Want to improve this documentation?
 
 ### Official Links
 
-- **Website**: [merview.zonca.dev](https://merview.zonca.dev)
+- **Website**: [your-merview-instance.com](https://your-merview-instance.com)
 - **Source Code**: [github.com/mickdarling/merview](https://github.com/mickdarling/merview)
 - **Issues**: [github.com/mickdarling/merview/issues](https://github.com/mickdarling/merview/issues)
 
