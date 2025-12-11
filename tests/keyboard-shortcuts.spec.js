@@ -6,6 +6,111 @@ const { test, expect } = require('@playwright/test');
 const { waitForPageReady } = require('./helpers/test-utils');
 
 /**
+ * Helper function to test if file input click is triggered by keyboard shortcut
+ * @param {boolean} useMetaKey - Use Meta key (Cmd) instead of Ctrl
+ * @returns {Promise<boolean>} - Whether the file input was clicked
+ */
+function testFileInputClick(useMetaKey = false) {
+  const fileInput = document.getElementById('mdFileInput');
+  if (!fileInput) {
+    return Promise.resolve(false);
+  }
+
+  let clicked = false;
+  const originalClick = fileInput.click.bind(fileInput);
+  fileInput.click = function() {
+    clicked = true;
+    // Don't actually trigger the file picker in tests
+  };
+
+  // Wait a bit for keyboard shortcut to execute
+  setTimeout(() => {
+    fileInput.click = originalClick;
+  }, 500);
+
+  // Trigger keyboard shortcut
+  const event = new KeyboardEvent('keydown', {
+    key: 'o',
+    ...(useMetaKey ? { metaKey: true } : { ctrlKey: true }),
+    bubbles: true
+  });
+  document.dispatchEvent(event);
+
+  return new Promise(resolve => {
+    setTimeout(() => resolve(clicked), 500);
+  });
+}
+
+/**
+ * Helper function to test if print is triggered by keyboard shortcut
+ * @param {boolean} useMetaKey - Use Meta key (Cmd) instead of Ctrl
+ * @returns {Promise<boolean>} - Whether print was called
+ */
+function testPrintCalled(useMetaKey = false) {
+  const originalPrint = globalThis.print;
+  let wasCalled = false;
+
+  globalThis.print = function() {
+    wasCalled = true;
+  };
+
+  // Trigger keyboard shortcut
+  const event = new KeyboardEvent('keydown', {
+    key: 'p',
+    ...(useMetaKey ? { metaKey: true } : { ctrlKey: true }),
+    bubbles: true
+  });
+  document.dispatchEvent(event);
+
+  return new Promise(resolve => {
+    setTimeout(() => {
+      globalThis.print = originalPrint;
+      resolve(wasCalled);
+    }, 300);
+  });
+}
+
+/**
+ * Helper function to test export PDF with no content
+ * @returns {Promise<{printCalled: boolean, errorStatus: string|null}>}
+ */
+function testExportWithNoContent() {
+  const originalPrint = globalThis.print;
+  let printCalled = false;
+  let errorStatus = null;
+
+  globalThis.print = function() {
+    printCalled = true;
+  };
+
+  // Watch for error status
+  const statusElement = document.getElementById('status');
+  const observer = new MutationObserver(() => {
+    const text = statusElement.textContent;
+    if (text?.includes('Error')) {
+      errorStatus = text;
+    }
+  });
+  observer.observe(statusElement, { childList: true, subtree: true, characterData: true });
+
+  // Trigger keyboard shortcut
+  const event = new KeyboardEvent('keydown', {
+    key: 'p',
+    ctrlKey: true,
+    bubbles: true
+  });
+  document.dispatchEvent(event);
+
+  return new Promise(resolve => {
+    setTimeout(() => {
+      observer.disconnect();
+      globalThis.print = originalPrint;
+      resolve({ printCalled, errorStatus });
+    }, 300);
+  });
+}
+
+/**
  * Tests for keyboard shortcuts functionality
  *
  * Keyboard shortcuts defined in js/main.js:
@@ -87,68 +192,13 @@ test.describe('Keyboard Shortcuts', () => {
   test.describe('Open File Shortcut (Ctrl/Cmd + O)', () => {
     test('Ctrl+O should trigger file picker', async ({ page }) => {
       // Create a spy to check if file input was clicked
-      const fileInputClicked = await page.evaluate(() => {
-        return new Promise(resolve => {
-          const fileInput = document.getElementById('mdFileInput');
-          if (!fileInput) {
-            resolve(false);
-            return;
-          }
-
-          let clicked = false;
-          const originalClick = fileInput.click.bind(fileInput);
-          fileInput.click = function() {
-            clicked = true;
-            // Don't actually trigger the file picker in tests
-          };
-
-          // Wait a bit for keyboard shortcut to execute
-          setTimeout(() => {
-            fileInput.click = originalClick;
-            resolve(clicked);
-          }, 500);
-
-          // Trigger keyboard shortcut
-          const event = new KeyboardEvent('keydown', {
-            key: 'o',
-            ctrlKey: true,
-            bubbles: true
-          });
-          document.dispatchEvent(event);
-        });
-      });
+      const fileInputClicked = await page.evaluate(testFileInputClick, false);
 
       expect(fileInputClicked).toBe(true);
     });
 
     test('Cmd+O should trigger file picker on Mac', async ({ page }) => {
-      const fileInputClicked = await page.evaluate(() => {
-        return new Promise(resolve => {
-          const fileInput = document.getElementById('mdFileInput');
-          if (!fileInput) {
-            resolve(false);
-            return;
-          }
-
-          let clicked = false;
-          const originalClick = fileInput.click.bind(fileInput);
-          fileInput.click = function() {
-            clicked = true;
-          };
-
-          setTimeout(() => {
-            fileInput.click = originalClick;
-            resolve(clicked);
-          }, 500);
-
-          const event = new KeyboardEvent('keydown', {
-            key: 'o',
-            metaKey: true,
-            bubbles: true
-          });
-          document.dispatchEvent(event);
-        });
-      });
+      const fileInputClicked = await page.evaluate(testFileInputClick, true);
 
       expect(fileInputClicked).toBe(true);
     });
@@ -190,29 +240,7 @@ test.describe('Keyboard Shortcuts', () => {
       });
 
       // Mock window.print to verify it gets called
-      const printCalled = await page.evaluate(() => {
-        return new Promise(resolve => {
-          const originalPrint = globalThis.print;
-          let wasCalled = false;
-
-          globalThis.print = function() {
-            wasCalled = true;
-          };
-
-          // Trigger keyboard shortcut
-          const event = new KeyboardEvent('keydown', {
-            key: 'p',
-            ctrlKey: true,
-            bubbles: true
-          });
-          document.dispatchEvent(event);
-
-          setTimeout(() => {
-            globalThis.print = originalPrint;
-            resolve(wasCalled);
-          }, 300);
-        });
-      });
+      const printCalled = await page.evaluate(testPrintCalled, false);
 
       expect(printCalled).toBe(true);
     });
@@ -226,28 +254,7 @@ test.describe('Keyboard Shortcuts', () => {
         globalThis.loadSample();
       });
 
-      const printCalled = await page.evaluate(() => {
-        return new Promise(resolve => {
-          const originalPrint = globalThis.print;
-          let wasCalled = false;
-
-          globalThis.print = function() {
-            wasCalled = true;
-          };
-
-          const event = new KeyboardEvent('keydown', {
-            key: 'p',
-            metaKey: true,
-            bubbles: true
-          });
-          document.dispatchEvent(event);
-
-          setTimeout(() => {
-            globalThis.print = originalPrint;
-            resolve(wasCalled);
-          }, 300);
-        });
-      });
+      const printCalled = await page.evaluate(testPrintCalled, true);
 
       expect(printCalled).toBe(true);
     });
@@ -262,41 +269,7 @@ test.describe('Keyboard Shortcuts', () => {
       });
 
       // Mock window.print to verify it doesn't get called
-      const result = await page.evaluate(() => {
-        return new Promise(resolve => {
-          const originalPrint = globalThis.print;
-          let printCalled = false;
-          let errorStatus = null;
-
-          globalThis.print = function() {
-            printCalled = true;
-          };
-
-          // Watch for error status
-          const statusElement = document.getElementById('status');
-          const observer = new MutationObserver(() => {
-            const text = statusElement.textContent;
-            if (text && text.includes('Error')) {
-              errorStatus = text;
-            }
-          });
-          observer.observe(statusElement, { childList: true, subtree: true, characterData: true });
-
-          // Trigger keyboard shortcut
-          const event = new KeyboardEvent('keydown', {
-            key: 'p',
-            ctrlKey: true,
-            bubbles: true
-          });
-          document.dispatchEvent(event);
-
-          setTimeout(() => {
-            observer.disconnect();
-            globalThis.print = originalPrint;
-            resolve({ printCalled, errorStatus });
-          }, 300);
-        });
-      });
+      const result = await page.evaluate(testExportWithNoContent);
 
       expect(result.printCalled).toBe(false);
       expect(result.errorStatus).toContain('Error');
