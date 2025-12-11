@@ -89,58 +89,6 @@ function browserValidatePrintContent() {
 }
 
 /**
- * Browser-side helper: Validate content before open export
- */
-function browserValidateOpenContent() {
-  const wrapper = document.getElementById('wrapper');
-  const originalContent = wrapper.innerHTML;
-  wrapper.innerHTML = '   ';
-
-  const state = { openCalled: false };
-  const originalOpen = globalThis.open;
-
-  function mockOpenValidation() {
-    state.openCalled = true;
-    return { document: { open() {}, write() {}, close() {} }, onload: null };
-  }
-
-  globalThis.open = mockOpenValidation;
-  globalThis.exportToPDFDirect();
-  globalThis.open = originalOpen;
-  wrapper.innerHTML = originalContent;
-
-  return !state.openCalled;
-}
-
-/**
- * Browser-side helper: Test style element access during export
- */
-function browserTestStyleAccess() {
-  globalThis.loadSample();
-
-  try {
-    const wrapper = document.getElementById('wrapper');
-    if (!wrapper?.innerHTML.trim()) {
-      return { success: false, error: 'No content in wrapper' };
-    }
-
-    const originalOpen = globalThis.open;
-
-    function mockOpenStyleTest() {
-      return { document: { open() {}, write() {}, close() {} }, onload: null };
-    }
-
-    globalThis.open = mockOpenStyleTest;
-    globalThis.exportToPDFDirect();
-    globalThis.open = originalOpen;
-
-    return { success: true, error: null };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-}
-
-/**
  * Browser-side helper: Observe status message during export
  * @param {Object} opts - Configuration
  * @param {'print'|'open'} opts.mockType - Which function to mock
@@ -191,33 +139,24 @@ function browserObserveStatusMessage({ mockType, searchText, exportFn }) {
 test.describe('Export PDF Functionality', () => {
   test.beforeEach(async ({ page }) => {
     await waitForPageReady(page);
-    await waitForGlobalFunctions(page, ['exportToPDF', 'exportToPDFDirect']);
+    await waitForGlobalFunctions(page, ['exportToPDF']);
   });
 
   test.describe('Export Buttons', () => {
-    const buttons = [
-      { selector: 'button[onclick="exportToPDF()"]', handler: 'exportToPDF()', name: 'Print/PDF' },
-      { selector: 'button[onclick="exportToPDFDirect()"]', handler: 'exportToPDFDirect()', name: 'Print (New Tab)' }
-    ];
+    test('Save as PDF button should exist in toolbar', async ({ page }) => {
+      expect(await page.$('button[onclick="exportToPDF()"]')).not.toBeNull();
+    });
 
-    for (const btn of buttons) {
-      test(`${btn.name} button should exist in toolbar`, async ({ page }) => {
-        expect(await page.$(btn.selector)).not.toBeNull();
-      });
-
-      test(`${btn.name} button should have correct onclick handler`, async ({ page }) => {
-        const onclick = await page.$eval(btn.selector, el => el.getAttribute('onclick'));
-        expect(onclick).toBe(btn.handler);
-      });
-    }
+    test('Save as PDF button should have correct onclick handler', async ({ page }) => {
+      const onclick = await page.$eval('button[onclick="exportToPDF()"]', el => el.getAttribute('onclick'));
+      expect(onclick).toBe('exportToPDF()');
+    });
   });
 
   test.describe('Global Functions', () => {
-    for (const fnName of ['exportToPDF', 'exportToPDFDirect']) {
-      test(`${fnName} function should be globally available`, async ({ page }) => {
-        expect(await isGlobalFunctionAvailable(page, fnName)).toBe(true);
-      });
-    }
+    test('exportToPDF function should be globally available', async ({ page }) => {
+      expect(await isGlobalFunctionAvailable(page, 'exportToPDF')).toBe(true);
+    });
   });
 
   test.describe('Dependencies', () => {
@@ -260,33 +199,6 @@ test.describe('Export PDF Functionality', () => {
     });
   });
 
-  test.describe('exportToPDFDirect() Behavior', () => {
-    test('exportToPDFDirect should open new window when content exists', async ({ page }) => {
-      await loadSampleContent(page);
-      const result = await page.evaluate(browserTestExport, { mockType: 'open', exportFn: 'exportToPDFDirect', clearContent: false });
-      expect(result.functionCalled).toBe(true);
-      expect(result.errorStatus).toBeNull();
-    });
-
-    test('exportToPDFDirect should show error when no content exists', async ({ page }) => {
-      const result = await page.evaluate(browserTestExport, { mockType: 'open', exportFn: 'exportToPDFDirect', clearContent: true });
-      expect(result.functionCalled).toBe(false);
-      expect(result.errorStatus).toContain('Error');
-      expect(result.errorStatus).toContain('No content');
-    });
-
-    test('exportToPDFDirect should validate wrapper content before proceeding', async ({ page }) => {
-      const validatesContent = await page.evaluate(browserValidateOpenContent);
-      expect(validatesContent).toBe(true);
-    });
-
-    test('exportToPDFDirect should access current style and syntax theme elements', async ({ page }) => {
-      const result = await page.evaluate(browserTestStyleAccess);
-      expect(result.success).toBe(true);
-      expect(result.error).toBeNull();
-    });
-  });
-
   test.describe('Status Messages', () => {
     test('exportToPDF should show status message before opening print dialog', async ({ page }) => {
       await loadSampleContent(page);
@@ -297,38 +209,8 @@ test.describe('Export PDF Functionality', () => {
       expect(statusShown).not.toBeNull();
       expect(statusShown.toLowerCase()).toContain('print');
     });
-
-    test('exportToPDFDirect should show status message when generating PDF', async ({ page }) => {
-      await loadSampleContent(page);
-      const statusShown = await page.evaluate(
-        browserObserveStatusMessage,
-        { mockType: 'open', searchText: 'PDF', exportFn: 'exportToPDFDirect' }
-      );
-      expect(statusShown).not.toBeNull();
-    });
   });
 });
-
-/**
- * Browser-side helper: Capture exported PDF content by mocking window.open
- * @returns {string} The HTML content that would be written to the PDF window
- */
-function browserCaptureExportContent() {
-  let capturedContent = '';
-  const originalOpen = globalThis.open;
-
-  globalThis.open = function mockOpenForCapture() {
-    return {
-      document: { open() {}, write(content) { capturedContent = content; }, close() {} },
-      onload: null
-    };
-  };
-
-  globalThis.exportToPDFDirect();
-  globalThis.open = originalOpen;
-
-  return capturedContent;
-}
 
 /**
  * Browser-side helper: Check if a print CSS rule exists matching given criteria
@@ -368,7 +250,6 @@ function browserFindPrintCssRule({ selectorContains, styleProperty, styleValue }
 test.describe('PDF Page Break Functionality', () => {
   test.beforeEach(async ({ page }) => {
     await waitForPageReady(page);
-    await waitForGlobalFunctions(page, ['exportToPDFDirect']);
   });
 
   test.describe('Print CSS Rules', () => {
@@ -483,19 +364,6 @@ test.describe('PDF Page Break Functionality', () => {
     });
   });
 
-  test.describe('Export Content Includes Page Break Styles', () => {
-    test('exportToPDFDirect should include page break CSS in exported HTML', async ({ page }) => {
-      await setCodeMirrorContent(page, '# Slide 1\n\n---\n\n# Slide 2');
-      await renderMarkdownAndWait(page, WAIT_TIMES.LONG);
-
-      const exportedContent = await page.evaluate(browserCaptureExportContent);
-
-      // Verify page break CSS is included
-      expect(exportedContent).toContain('page-break-after');
-      expect(exportedContent).toContain('<hr');
-    });
-  });
-
   test.describe('Print Media Emulation', () => {
     test('hr elements should have correct computed styles with print media emulation', async ({ page }) => {
       // Set content with horizontal rule
@@ -526,27 +394,6 @@ test.describe('PDF Page Break Functionality', () => {
   });
 
   test.describe('Utility Classes in Export', () => {
-    test('utility classes should appear in exported HTML content', async ({ page }) => {
-      // Create content with utility classes
-      const content = `# Test Document
-
-<div class="page-break-before">Content with page break before</div>
-
-<div class="page-break-after">Content with page break after</div>
-
-<div class="page-break-avoid">Content that avoids page breaks</div>`;
-
-      await setCodeMirrorContent(page, content);
-      await renderMarkdownAndWait(page, WAIT_TIMES.LONG);
-
-      const exportedContent = await page.evaluate(browserCaptureExportContent);
-
-      // Verify utility classes are present in exported HTML
-      expect(exportedContent).toContain('page-break-before');
-      expect(exportedContent).toContain('page-break-after');
-      expect(exportedContent).toContain('page-break-avoid');
-    });
-
     test('utility classes should apply correct styles in print', async ({ page }) => {
       await setCodeMirrorContent(page, '<div class="page-break-before">Content</div>');
       await renderMarkdownAndWait(page, WAIT_TIMES.LONG);

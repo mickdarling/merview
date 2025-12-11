@@ -842,7 +842,7 @@ async function initSyntaxThemeSelector() {
     populateSelectorWithOptgroups(
         syntaxThemeSelector,
         syntaxThemes,
-        ['Themes', 'Import'],
+        ['Code Block Theme', 'Import'],
         (theme) => {
             const option = document.createElement('option');
             option.value = theme.name;
@@ -944,7 +944,7 @@ async function initEditorThemeSelector() {
     populateSelectorWithOptgroups(
         editorThemeSelector,
         editorThemes,
-        ['Themes', 'Import'],
+        ['Editor Theme', 'Import'],
         (theme) => {
             const option = document.createElement('option');
             option.value = theme.name;
@@ -1052,7 +1052,7 @@ async function initMermaidThemeSelector() {
     populateSelectorWithOptgroups(
         mermaidThemeSelector,
         mermaidThemes,
-        ['Themes', 'Import'],
+        ['Mermaid Theme', 'Import'],
         (theme) => {
             const option = document.createElement('option');
             // Use value for regular themes, name for import actions
@@ -1122,7 +1122,7 @@ async function initStyleSelector() {
     populateSelectorWithOptgroups(
         styleSelector,
         availableStyles,
-        ['Themes', 'Options', 'Import'],
+        ['Preview Style', 'Options', 'Import'],
         (style) => {
             const option = document.createElement('option');
             option.value = style.name;

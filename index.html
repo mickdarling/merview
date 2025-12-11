@@ -1062,11 +1062,9 @@
         </header>
         <div class="toolbar-buttons">
             <button class="btn btn-success" onclick="saveFile()">💾 Save</button>
-            <button class="btn btn-success" onclick="saveFileAs()">📥 Save As</button>
             <button class="btn btn-success" onclick="shareToGist()" id="shareGistBtn" title="Share document as a GitHub Gist">🔗 Share to Gist</button>
             <button class="btn" id="lintToggle" onclick="toggleLintPanel()">🔍 Code Validation</button>
-            <button class="btn btn-success" onclick="exportToPDF()">🖨️ Print/PDF</button>
-            <button class="btn btn-success" onclick="exportToPDFDirect()">📄 Print (New Tab)</button>
+            <button class="btn btn-success" onclick="exportToPDF()">📄 Save as PDF</button>
             <button class="btn" onclick="loadSample()">📋 Load Sample</button>
             <button class="btn btn-danger" onclick="clearEditor()">🗑️ Clear</button>
         </div>
@@ -1158,11 +1156,15 @@
                 <div class="panel-title-group">
                     <span>Editor</span>
                     <select class="panel-selector" id="documentSelector" title="Current document">
-                        <option value="">Document...</option>
+                        <optgroup label="Current Document">
+                            <option value="">Document...</option>
+                        </optgroup>
                     </select>
                 </div>
                 <select class="panel-selector" id="editorThemeSelector" onchange="changeEditorTheme(this.value)" title="Editor syntax highlighting">
-                    <option value="">Theme...</option>
+                    <optgroup label="Editor Theme">
+                        <option value="">Theme...</option>
+                    </optgroup>
                 </select>
             </div>
             <div id="editor-container">
@@ -1177,13 +1179,19 @@
                 <span>Preview</span>
                 <div class="panel-selectors">
                     <select class="panel-selector" id="styleSelector" onchange="changeStyle(this.value)" title="Document style">
-                        <option value="">Style...</option>
+                        <optgroup label="Preview Style">
+                            <option value="">Style...</option>
+                        </optgroup>
                     </select>
                     <select class="panel-selector" id="syntaxThemeSelector" onchange="changeSyntaxTheme(this.value)" title="Code block theme">
-                        <option value="">Code...</option>
+                        <optgroup label="Code Block Theme">
+                            <option value="">Code...</option>
+                        </optgroup>
                     </select>
                     <select class="panel-selector" id="mermaidThemeSelector" onchange="changeMermaidTheme(this.value)" title="Mermaid diagram theme">
-                        <option value="">Diagram...</option>
+                        <optgroup label="Mermaid Theme">
+                            <option value="">Diagram...</option>
+                        </optgroup>
                     </select>
                 </div>
             </div>

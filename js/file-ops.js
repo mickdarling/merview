@@ -8,6 +8,13 @@
  * - File validation (markdown MIME types and extensions)
  * - PDF export (print dialog and new tab)
  * - Sample markdown content loading
+ *
+ * DEPRECATION NOTE (PR #203, Issue #199):
+ * The exportToPDFDirect() function was removed in this PR. It opened the preview
+ * in a new tab/window and triggered print dialog, allowing better control over
+ * what gets printed. This functionality is no longer accessible from the UI
+ * (no button or menu item calls it), but was still being maintained. The function
+ * can be restored from git history if needed in the future.
  */
 
 import { state } from './state.js';
@@ -328,174 +335,6 @@ export function exportToPDF() {
     }, 100);
 }
 
-/**
- * Alternative: Save as PDF programmatically (for browsers that support it)
- * Opens the preview in a new tab/window and triggers print dialog
- * This approach allows better control over what gets printed
- */
-export async function exportToPDFDirect() {
-    const { wrapper, currentStyleLink, currentSyntaxThemeLink } = getElements();
-
-    // Validate content exists
-    if (!wrapper.innerHTML || wrapper.innerHTML.trim() === '') {
-        showStatus('Error: No content to export');
-        return;
-    }
-
-    console.log('Starting PDF export...');
-    showStatus('Generating PDF...');
-
-    try {
-        // Get the current custom style CSS if available
-        let customStyleCSS = currentStyleLink ? currentStyleLink.textContent : '';
-
-        // The CSS is already processed (print media queries stripped, scoped)
-        // Just need to remove #wrapper scoping for the print window
-        // since the entire document IS the wrapper content
-        if (customStyleCSS) {
-            customStyleCSS = customStyleCSS.replaceAll(/#wrapper\s+/g, '');
-            customStyleCSS = customStyleCSS.replaceAll(/#preview\s+/g, '');
-        }
-
-        // Create a printable version
-        const printWindow = window.open('', '_blank');
-
-        // Build the HTML content for the print window
-        // Note: Using document.open/write/close is the standard pattern for populating
-        // a new window with content. While document.write is deprecated for inline use,
-        // this pattern for new windows is still valid and widely supported.
-        const syntaxThemeHref = currentSyntaxThemeLink?.href ||
-            'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css';
-
-        const fallbackStyles = customStyleCSS ? '' : `
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            font-size: 11pt;
-            line-height: 1.6;
-            color: #000;
-        }
-        h1 { font-size: 24pt; margin-top: 16px; margin-bottom: 12px; page-break-after: avoid; }
-        h2 { font-size: 18pt; margin-top: 14px; margin-bottom: 10px; page-break-after: avoid; }
-        h3 { font-size: 14pt; margin-top: 12px; margin-bottom: 8px; page-break-after: avoid; }
-        pre { background: #f5f5f5; padding: 12px; page-break-inside: avoid; }
-        code { background: #f5f5f5; padding: 2px 4px; }
-        `;
-
-        const htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Document</title>
-    <link rel="stylesheet" href="${syntaxThemeHref}">
-    <style>
-        /* Force color printing FIRST - preserve ALL colors and backgrounds */
-        *, *::before, *::after {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
-        }
-
-        /* Specifically force syntax highlighting colors */
-        pre, code, pre code, .hljs, .hljs * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
-        }
-
-        /* Custom Marked2 Style */
-        ${customStyleCSS}
-
-        /* Minimal fallback styles if no custom style loaded */
-        ${fallbackStyles}
-
-        /* Ensure print compatibility */
-        .mermaid {
-            margin: 16px 0;
-            text-align: center;
-            page-break-inside: avoid;
-        }
-        .mermaid svg {
-            max-width: 100%;
-            height: auto;
-        }
-        img, svg {
-            max-width: 100%;
-            height: auto;
-            page-break-inside: avoid;
-        }
-
-        @media print {
-            *, *::before, *::after {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                color-adjust: exact !important;
-            }
-
-            /* Page break support for slide decks and paginated documents */
-            /* Horizontal rules (<hr> from ---) trigger new pages */
-            hr {
-                page-break-after: always !important;
-                break-after: page !important;
-                border: none !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                visibility: hidden !important;
-                height: 0 !important;
-            }
-
-            /* Prevent headings from being orphaned */
-            h1, h2, h3, h4, h5, h6 {
-                page-break-after: avoid;
-                break-after: avoid;
-            }
-
-            /* Respect all CSS page-break properties */
-            [style*="page-break-before: always"],
-            .page-break-before {
-                page-break-before: always;
-                break-before: page;
-            }
-
-            [style*="page-break-after: always"],
-            .page-break-after {
-                page-break-after: always;
-                break-after: page;
-            }
-
-            [style*="page-break-inside: avoid"],
-            .page-break-avoid {
-                page-break-inside: avoid;
-                break-inside: avoid;
-            }
-        }
-    </style>
-</head>
-<body>
-${wrapper.innerHTML}
-</body>
-</html>`;
-
-        // Use the document's open/write/close pattern for new window content
-        // This is the standard approach and distinct from deprecated inline document.write
-        printWindow.document.open();
-        printWindow.document.write(htmlContent); // NOSONAR - Standard pattern for new window population
-        printWindow.document.close();
-
-        // Wait for content and styles to fully load then trigger print
-        printWindow.onload = function() {
-            setTimeout(() => {
-                printWindow.print();
-                showStatus('Print dialog opened');
-            }, 500);
-        };
-    } catch (error) {
-        console.error('PDF generation error:', error);
-        showStatus('Error: ' + error.message);
-    }
-}
 
 /**
  * Load sample markdown content

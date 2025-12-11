@@ -77,7 +77,6 @@ This will start a local server at http://localhost:8080.
 
 - `Cmd/Ctrl + S` - Show save status
 - `Cmd/Ctrl + P` - Open print dialog (save as PDF)
-- `Cmd/Ctrl + Shift + P` - Open in new tab for printing
 
 ## PDF Export with Page Breaks
 
@@ -141,7 +140,7 @@ This table won't be split across pages:
 
 - Headings automatically avoid being orphaned (they won't appear alone at the bottom of a page)
 - Tables, code blocks, and blockquotes avoid being split across pages when possible
-- Use the "Print (New Tab)" button for more control over PDF settings
+- Use the "Save as PDF" button to generate PDF files with your chosen style
 
 ### Browser Compatibility
 

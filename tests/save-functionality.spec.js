@@ -16,7 +16,9 @@ test.describe('Save Functionality', () => {
     await page.waitForFunction(() => typeof globalThis.setEditorContent === 'function', { timeout: 5000 });
   });
 
-  test.describe('Save As Button', () => {
+  // Skip this entire test suite - Save As button has been removed from UI
+  // The saveFileAs() function still exists for internal use, but no button
+  test.describe.skip('Save As Button (UI removed)', () => {
     test('should prompt for filename when clicking Save As', async ({ page }) => {
       // Clear the filename first (sample loads with Welcome.md)
       await page.evaluate(() => {
@@ -276,7 +278,8 @@ test.describe('Save Functionality', () => {
     });
   });
 
-  test.describe('Filename Tracking with File Drop', () => {
+  // Skip this test - it references Save As button which has been removed
+  test.describe.skip('Filename Tracking with File Drop (references removed Save As)', () => {
     test('should remember filename after Save As and use it for subsequent Save', async ({ page }) => {
       // This tests the filename tracking behavior - when a file is saved with a name,
       // subsequent saves should use that name without prompting
@@ -310,6 +313,12 @@ test.describe('Save Functionality', () => {
 
   test.describe('Clear Editor Resets Filename', () => {
     test('should reset filename when editor is cleared', async ({ page }) => {
+      // Clear the filename first (sample loads with Welcome.md)
+      await page.evaluate(() => {
+        globalThis.state.currentFilename = null;
+        globalThis.setEditorContent('# Test content');
+      });
+
       // Set up a single dialog handler that tracks prompt count
       let promptCount = 0;
 
@@ -323,9 +332,9 @@ test.describe('Save Functionality', () => {
         }
       });
 
-      // Save to establish a filename
+      // Save to establish a filename (using Save button which prompts on first save)
       let downloadPromise = page.waitForEvent('download');
-      await page.click('button[onclick="saveFileAs()"]');
+      await page.click('button[onclick="saveFile()"]');
       await downloadPromise;
       expect(promptCount).toBe(1);
 
@@ -355,6 +364,12 @@ test.describe('Save Functionality', () => {
 
   test.describe('Status Messages', () => {
     test('should show status message after save', async ({ page }) => {
+      // Clear the filename first (sample loads with Welcome.md)
+      await page.evaluate(() => {
+        globalThis.state.currentFilename = null;
+        globalThis.setEditorContent('# Test content');
+      });
+
       // Wait for initial status messages to clear
       await page.waitForTimeout(500);
 
@@ -363,7 +378,7 @@ test.describe('Save Functionality', () => {
       });
 
       const downloadPromise = page.waitForEvent('download');
-      await page.click('button[onclick="saveFileAs()"]');
+      await page.click('button[onclick="saveFile()"]');
       await downloadPromise;
 
       // Check status message appears (with retry for timing)
@@ -373,7 +388,8 @@ test.describe('Save Functionality', () => {
     });
   });
 
-  test.describe('Save As Default Value', () => {
+  // Skip this test - it references Save As button which has been removed
+  test.describe.skip('Save As Default Value (references removed Save As)', () => {
     test('should show current filename in Save As prompt after previous save', async ({ page }) => {
       // Clear the filename first (sample loads with Welcome.md)
       await page.evaluate(() => {

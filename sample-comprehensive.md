@@ -498,8 +498,7 @@ You can escape special characters: \* \_ \` \# \- \+ \! \[ \] \( \)
 3. **Drag & Drop**: Drop any `.md` file to load it instantly
 4. **Resize Panels**: Drag the handle between editor and preview to adjust sizes
 5. **Export Options**:
-   - Use **Print/PDF** for in-place printing
-   - Use **Print (New Tab)** to open in a new window first
+   - Use **Save as PDF** to export your document (Cmd/Ctrl+P)
 6. **Code Validation**: Toggle the validation panel to check your code blocks
 7. **Keyboard Shortcuts**:
    - `Cmd/Ctrl + S` - Show save status

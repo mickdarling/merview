@@ -33,18 +33,18 @@ export const syntaxThemeSRI = {
  * Themes are grouped using optgroup for better organization.
  */
 export const syntaxThemes = [
-    { name: 'GitHub Dark', file: 'github-dark', default: true, group: 'Themes' },
-    { name: 'GitHub Light', file: 'github', group: 'Themes' },
-    { name: 'VS Code Dark+', file: 'vs2015', group: 'Themes' },
-    { name: 'Monokai', file: 'monokai', group: 'Themes' },
-    { name: 'Atom One Dark', file: 'atom-one-dark', group: 'Themes' },
-    { name: 'Atom One Light', file: 'atom-one-light', group: 'Themes' },
-    { name: 'Nord', file: 'nord', group: 'Themes' },
-    { name: 'Tokyo Night Dark', file: 'tokyo-night-dark', group: 'Themes' },
-    { name: 'Tokyo Night Light', file: 'tokyo-night-light', group: 'Themes' },
-    { name: 'Night Owl', file: 'night-owl', group: 'Themes' },
-    { name: 'Obsidian', file: 'obsidian', group: 'Themes' },
-    { name: 'Agate', file: 'agate', group: 'Themes' },
+    { name: 'GitHub Dark', file: 'github-dark', default: true, group: 'Code Block Theme' },
+    { name: 'GitHub Light', file: 'github', group: 'Code Block Theme' },
+    { name: 'VS Code Dark+', file: 'vs2015', group: 'Code Block Theme' },
+    { name: 'Monokai', file: 'monokai', group: 'Code Block Theme' },
+    { name: 'Atom One Dark', file: 'atom-one-dark', group: 'Code Block Theme' },
+    { name: 'Atom One Light', file: 'atom-one-light', group: 'Code Block Theme' },
+    { name: 'Nord', file: 'nord', group: 'Code Block Theme' },
+    { name: 'Tokyo Night Dark', file: 'tokyo-night-dark', group: 'Code Block Theme' },
+    { name: 'Tokyo Night Light', file: 'tokyo-night-light', group: 'Code Block Theme' },
+    { name: 'Night Owl', file: 'night-owl', group: 'Code Block Theme' },
+    { name: 'Obsidian', file: 'obsidian', group: 'Code Block Theme' },
+    { name: 'Agate', file: 'agate', group: 'Code Block Theme' },
     { name: 'Load from file...', source: 'file', group: 'Import' },
     { name: 'Load from URL...', source: 'url', group: 'Import' }
 ];
@@ -58,12 +58,12 @@ export const syntaxThemes = [
  * Themes are grouped using optgroup for better organization.
  */
 export const editorThemes = [
-    { name: 'Material Darker', file: 'material-darker', default: true, group: 'Themes' },
-    { name: 'GitHub Dark', file: 'github-dark', group: 'Themes' },
-    { name: 'Monokai', file: 'monokai', group: 'Themes' },
-    { name: 'Dracula', file: 'dracula', group: 'Themes' },
-    { name: 'Solarized Dark', file: 'solarized-dark', group: 'Themes' },
-    { name: 'Solarized Light', file: 'solarized-light', group: 'Themes' },
+    { name: 'Material Darker', file: 'material-darker', default: true, group: 'Editor Theme' },
+    { name: 'GitHub Dark', file: 'github-dark', group: 'Editor Theme' },
+    { name: 'Monokai', file: 'monokai', group: 'Editor Theme' },
+    { name: 'Dracula', file: 'dracula', group: 'Editor Theme' },
+    { name: 'Solarized Dark', file: 'solarized-dark', group: 'Editor Theme' },
+    { name: 'Solarized Light', file: 'solarized-light', group: 'Editor Theme' },
     { name: 'Load from file...', source: 'file', group: 'Import' },
     { name: 'Load from URL...', source: 'url', group: 'Import' }
 ];
@@ -78,12 +78,12 @@ export const editorThemes = [
  * Themes are grouped using optgroup for better organization.
  */
 export const mermaidThemes = [
-    { name: 'Auto', value: 'auto', default: true, description: 'Auto-detect based on preview background', group: 'Themes' },
-    { name: 'Default', value: 'default', description: 'Blue/gray tones (light)', group: 'Themes' },
-    { name: 'Forest', value: 'forest', description: 'Green tones', group: 'Themes' },
-    { name: 'Dark', value: 'dark', description: 'Dark background', group: 'Themes' },
-    { name: 'Neutral', value: 'neutral', description: 'Grayscale', group: 'Themes' },
-    { name: 'Base', value: 'base', description: 'Minimal, customizable', group: 'Themes' },
+    { name: 'Auto', value: 'auto', default: true, description: 'Auto-detect based on preview background', group: 'Mermaid Theme' },
+    { name: 'Default', value: 'default', description: 'Blue/gray tones (light)', group: 'Mermaid Theme' },
+    { name: 'Forest', value: 'forest', description: 'Green tones', group: 'Mermaid Theme' },
+    { name: 'Dark', value: 'dark', description: 'Dark background', group: 'Mermaid Theme' },
+    { name: 'Neutral', value: 'neutral', description: 'Grayscale', group: 'Mermaid Theme' },
+    { name: 'Base', value: 'base', description: 'Minimal, customizable', group: 'Mermaid Theme' },
     { name: 'Load from file...', source: 'file', group: 'Import' },
     { name: 'Load from URL...', source: 'url', group: 'Import' }
 ];
@@ -98,13 +98,13 @@ export const mermaidThemes = [
  * Separators are no longer needed as optgroups provide visual separation.
  */
 export const availableStyles = [
-    { name: 'None (No CSS)', file: '', source: 'none', group: 'Themes' },
-    { name: 'Clean', file: 'styles/clean.css', source: 'local', default: true, group: 'Themes' },
-    { name: 'Academic', file: 'styles/academic.css', source: 'local', group: 'Themes' },
-    { name: 'GitHub', file: 'styles/github.css', source: 'local', group: 'Themes' },
-    { name: 'Dark Mode', file: 'styles/dark.css', source: 'local', group: 'Themes' },
-    { name: 'Monospace', file: 'styles/monospace.css', source: 'local', group: 'Themes' },
-    { name: 'Newspaper', file: 'styles/newspaper.css', source: 'local', group: 'Themes' },
+    { name: 'None (No CSS)', file: '', source: 'none', group: 'Preview Style' },
+    { name: 'Clean', file: 'styles/clean.css', source: 'local', default: true, group: 'Preview Style' },
+    { name: 'Academic', file: 'styles/academic.css', source: 'local', group: 'Preview Style' },
+    { name: 'GitHub', file: 'styles/github.css', source: 'local', group: 'Preview Style' },
+    { name: 'Dark Mode', file: 'styles/dark.css', source: 'local', group: 'Preview Style' },
+    { name: 'Monospace', file: 'styles/monospace.css', source: 'local', group: 'Preview Style' },
+    { name: 'Newspaper', file: 'styles/newspaper.css', source: 'local', group: 'Preview Style' },
     { name: 'Respect Style Layout', file: '', source: 'toggle', group: 'Options' },
     { name: 'Load from file...', file: '', source: 'file', group: 'Import' },
     { name: 'Load from URL...', file: '', source: 'url', group: 'Import' },

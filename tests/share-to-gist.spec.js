@@ -192,13 +192,14 @@ test.describe('Share to Gist', () => {
       await expect(button).toHaveClass(/btn-success/);
     });
 
-    test('should have Share to Gist button positioned after Save As', async ({ page }) => {
+    test('should have Share to Gist button positioned after Save button', async ({ page }) => {
       const buttons = await page.locator('.toolbar-buttons button').allTextContents();
-      const saveAsIndex = buttons.findIndex(text => text.includes('Save As'));
+      // Find the Save button (not "Save as PDF")
+      const saveIndex = buttons.findIndex(text => text && text.trim() === '💾 Save');
       const shareIndex = buttons.findIndex(text => text.includes('Share to Gist'));
 
-      expect(saveAsIndex).toBeGreaterThanOrEqual(0);
-      expect(shareIndex).toBe(saveAsIndex + 1);
+      expect(saveIndex).toBeGreaterThanOrEqual(0);
+      expect(shareIndex).toBe(saveIndex + 1);
     });
 
     test('should show status message when editor is empty', async ({ page }) => {

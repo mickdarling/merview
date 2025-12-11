@@ -197,7 +197,7 @@ From the [Marked2 Styles Repository](https://github.com/ttscoff/MarkedCustomStyl
 **PDF export style issues?**
 - Use browser's Print dialog, not direct save
 - Some styles work better in print mode
-- Try "Print (New Tab)" option for preview
+- Use "Save as PDF" button or Cmd/Ctrl+P for best results
 
 ## Future Enhancements
 

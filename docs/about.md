@@ -75,8 +75,7 @@ def fibonacci(n):
 
 ### Export Options
 
-- **Print/PDF** - Export using your browser's print dialog
-- **Print (New Tab)** - Opens preview in new tab before printing
+- **Save as PDF** - Export using your browser's print dialog (Cmd/Ctrl+P)
 
 **Tips for better PDF exports:**
 - Use the browser's print preview to adjust settings

@@ -378,16 +378,27 @@ function browserCheckImportFileOption(selectorId) {
 }
 
 /**
- * Browser-side helper: Check Themes optgroup has options
+ * Browser-side helper: Check main theme optgroup has options
  * @param {string} selectorId - The selector ID
- * @returns {boolean} True if Themes group has options
+ * @returns {boolean} True if main theme group has options
  */
 function browserCheckThemesGroup(selectorId) {
   const select = document.getElementById(selectorId);
   if (!select) return false;
 
+  // Map selector IDs to their expected main optgroup label
+  const themeGroupLabels = {
+    'styleSelector': 'Preview Style',
+    'syntaxThemeSelector': 'Code Block Theme',
+    'editorThemeSelector': 'Editor Theme',
+    'mermaidThemeSelector': 'Mermaid Theme'
+  };
+
+  const expectedLabel = themeGroupLabels[selectorId];
+  if (!expectedLabel) return false;
+
   const themesGroup = Array.from(select.querySelectorAll('optgroup'))
-    .find(function findThemes(g) { return g.label === 'Themes'; });
+    .find(function findThemes(g) { return g.label === expectedLabel; });
 
   return themesGroup && themesGroup.querySelectorAll('option').length > 0;
 }
@@ -538,10 +549,10 @@ const MODAL_BUTTONS = [
  * Configuration for selectors that should have optgroups
  */
 const SELECTORS_WITH_OPTGROUPS = [
-  { id: 'styleSelector', name: 'Style', expectedGroups: ['Themes', 'Options', 'Import'] },
-  { id: 'syntaxThemeSelector', name: 'Syntax Theme', expectedGroups: ['Themes', 'Import'] },
-  { id: 'editorThemeSelector', name: 'Editor Theme', expectedGroups: ['Themes', 'Import'] },
-  { id: 'mermaidThemeSelector', name: 'Mermaid Theme', expectedGroups: ['Themes', 'Import'] }
+  { id: 'styleSelector', name: 'Style', expectedGroups: ['Preview Style', 'Options', 'Import'] },
+  { id: 'syntaxThemeSelector', name: 'Syntax Theme', expectedGroups: ['Code Block Theme', 'Import'] },
+  { id: 'editorThemeSelector', name: 'Editor Theme', expectedGroups: ['Editor Theme', 'Import'] },
+  { id: 'mermaidThemeSelector', name: 'Mermaid Theme', expectedGroups: ['Mermaid Theme', 'Import'] }
 ];
 
 /**
@@ -872,7 +883,7 @@ test.describe('Theme Selector Optgroups', () => {
         expect(hasLoadFromFile).toBe(true);
       });
 
-      test('themes should be in Themes optgroup', async ({ page }) => {
+      test('themes should be in main optgroup', async ({ page }) => {
         const themesInGroup = await page.evaluate(browserCheckThemesGroup, selector.id);
         expect(themesInGroup).toBe(true);
       });
