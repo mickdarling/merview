@@ -157,8 +157,7 @@ marked.setOptions({ renderer });
 const YAML_SECURITY_LIMITS = {
     MAX_VALUE_LENGTH: 10000,  // Maximum length of any single value in characters
     MAX_KEYS: 100,            // Maximum number of keys in the YAML object
-    MAX_ARRAY_ITEMS: 500,     // Maximum number of items in an array
-    MAX_NESTING_DEPTH: 5      // Maximum depth for nested structures
+    MAX_ARRAY_ITEMS: 500      // Maximum number of items in an array
 };
 
 /**
@@ -229,7 +228,6 @@ function parseSimpleYAML(yamlText) {
     const result = {};
     const lines = yamlText.split('\n');
     let currentArray = null;
-    let currentArrayKey = null;
     let keyCount = 0;
 
     for (const line of lines) {
@@ -241,22 +239,26 @@ function parseSimpleYAML(yamlText) {
         }
 
         // Security: Reject dangerous YAML patterns that could enable attacks
-        // - Anchors (&ref) can be used for billion laughs attacks
-        // - Aliases (*ref) can reference anchors causing exponential expansion
-        // - Custom tags (!tag) can execute arbitrary code in some YAML parsers
-        if (trimmedLine.includes('&') || trimmedLine.includes('*') || trimmedLine.includes('!')) {
+        // - Anchors (&name) can be used for billion laughs attacks
+        // - Aliases (*name) can reference anchors causing exponential expansion
+        // - Custom tags (!tag or !!type) can execute arbitrary code in some YAML parsers
+        // Note: We use targeted patterns to avoid rejecting legitimate content like
+        // "John & Jane" or "5-star rating" - only reject YAML syntax patterns where
+        // the special character is followed by a word character (anchor/alias/tag names)
+        const dangerousPatterns = /&\w|\*\w|!\w|!!/;
+        if (dangerousPatterns.test(trimmedLine)) {
             console.warn('YAML security: Skipping line with potentially dangerous pattern (anchor/alias/tag):', trimmedLine);
             continue;
         }
 
         // Check for array items (starting with - )
         if (trimmedLine.startsWith('- ')) {
-            const value = trimmedLine.substring(2).trim();
+            let value = trimmedLine.substring(2).trim();
 
-            // Security: Enforce value length limit
+            // Security: Enforce value length limit (truncate to match key-value handling)
             if (value.length > YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH) {
                 console.warn(`YAML security: Array item exceeds MAX_VALUE_LENGTH (${YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH}), truncating`);
-                continue;
+                value = value.substring(0, YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH) + '... [truncated]';
             }
 
             if (currentArray) {
@@ -285,13 +287,11 @@ function parseSimpleYAML(yamlText) {
             if (value === '') {
                 // Key with no value - might be starting an array or object
                 currentArray = [];
-                currentArrayKey = key;
                 result[key] = currentArray;
                 keyCount++;
             } else {
                 // Key with value - reset array tracking
                 currentArray = null;
-                currentArrayKey = null;
 
                 // Remove quotes if present
                 let cleanValue = value;
