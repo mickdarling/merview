@@ -28,32 +28,11 @@ let cachedIndex = null;
 let cacheValid = false;
 
 /**
- * Generate a unique session ID with collision check
- * Uses timestamp + random suffix, with a loop to ensure uniqueness
- * @returns {string} Unique ID (e.g., "session-abc123xyz")
+ * Generate a unique session ID using crypto.randomUUID()
+ * @returns {string} Unique ID (e.g., "session-550e8400-e29b-41d4-a716-446655440000")
  */
 function generateSessionId() {
-    const maxAttempts = 10;
-    const index = loadSessionsIndex();
-    const existingIds = new Set(index.sessions.map(s => s.id));
-
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const timestamp = Date.now().toString(36);
-        const random = Math.random().toString(36).substring(2, 10);
-        const id = `session-${timestamp}${random}`;
-
-        if (!existingIds.has(id) && !localStorage.getItem(`${SESSION_KEY_PREFIX}${id}`)) {
-            return id;
-        }
-    }
-
-    // Fallback with crypto if available for guaranteed uniqueness
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-        return `session-${crypto.randomUUID()}`;
-    }
-
-    // Ultimate fallback: timestamp with high-resolution time
-    return `session-${Date.now()}-${performance.now().toString(36)}`;
+    return `session-${crypto.randomUUID()}`;
 }
 
 /**
