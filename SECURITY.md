@@ -195,6 +195,67 @@ When users paste raw URLs from private GitHub repositories, those URLs contain t
   - Users can manually copy the token before the modal appears (edge case)
   - Only protects `raw.githubusercontent.com` URLs (where GitHub puts tokens)
 
+**6. Content-Type Validation (Defense-in-Depth)**
+
+When loading remote markdown via the `?url=` parameter, Merview validates the HTTP Content-Type header to provide an additional security layer beyond DOMPurify sanitization.
+
+- **What it does:**
+  - Inspects the Content-Type header from the remote server
+  - Blocks content types that are inherently executable or binary
+  - Allows only text-based content types suitable for markdown
+  - Works as defense-in-depth alongside DOMPurify sanitization
+
+- **What it blocks:**
+  - JavaScript types: `application/javascript`, `text/javascript`, `application/x-javascript`
+  - HTML content: `text/html` (could contain inline scripts before sanitization)
+  - VBScript: `text/vbscript` (legacy Windows IE scripting)
+  - Binary content: Any MIME type not explicitly allowed (e.g., `image/*`, `application/zip`)
+
+- **What it allows:**
+  - All text types: `text/*` (including `text/plain`, `text/markdown`, `text/x-markdown`)
+  - Generic binary: `application/octet-stream` (GitHub's default for raw files)
+  - Missing headers: Servers that don't send Content-Type headers (graceful handling)
+
+- **Defense-in-depth context:**
+  - This is NOT the primary security control (DOMPurify sanitization is)
+  - Provides an early rejection layer before content reaches the sanitizer
+  - Complements other security layers:
+    1. HTTPS enforcement (prevents MITM attacks)
+    2. URL validation (blocks credentials, IDN homographs, excessive length)
+    3. Fetch limits (10-second timeout, 10 MB size limit)
+    4. **Content-Type validation** (blocks executable/binary types)
+    5. DOMPurify sanitization (removes dangerous HTML/scripts from content)
+
+- **Limitations:**
+  - Relies on server sending truthful Content-Type headers
+  - A malicious server could send executable JavaScript with `Content-Type: text/plain`
+  - This is why DOMPurify sanitization is still essential (defense-in-depth)
+  - Does not protect against social engineering (users loading malicious content intentionally)
+
+**Implementation:**
+```javascript
+// In file-ops.js
+export function isValidMarkdownContentType(contentType) {
+    if (!contentType) return true;  // No header is acceptable
+
+    const mimeType = contentType.split(';')[0].trim().toLowerCase();
+
+    // Block dangerous types
+    const blockedTypes = [
+        'application/javascript',
+        'text/javascript',
+        'text/html',
+        'application/x-javascript',
+        'text/vbscript'
+    ];
+    if (blockedTypes.includes(mimeType)) return false;
+
+    // Allow text/* and application/octet-stream
+    return mimeType.startsWith('text/') ||
+           mimeType === 'application/octet-stream';
+}
+```
+
 ## Security Levels
 
 ### Level 1: Basic (Current - Default)
