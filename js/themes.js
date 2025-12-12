@@ -23,7 +23,11 @@ function isDebugMermaidTheme() {
     return localStorage.getItem('debug-mermaid-theme') === 'true';
 }
 
-// Local state for theme management
+// Local state for theme management (module-local)
+// Note: These are intentionally NOT in state.js because:
+// - They're only used within this module for UI caching and file uploads
+// - No other modules need to read or write these values
+// - Keeping them local reduces coupling and makes the code easier to reason about
 let layoutToggleOption = null; // Cached reference for performance
 let fileInput = null; // Hidden file input for CSS uploads
 

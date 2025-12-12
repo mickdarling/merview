@@ -47,10 +47,6 @@ export const state = {
 
     // Layout state
     respectStyleLayout: localStorage.getItem('respect-style-layout') === 'true', // Whether to respect loaded style's layout constraints
-    layoutToggleOption: null,            // Cached reference to layout toggle option (performance)
-
-    // Panel resize state
-    isResizing: false,                   // Whether user is actively dragging resize handle
 
     // GitHub Gist OAuth state
     gistAuthState: {

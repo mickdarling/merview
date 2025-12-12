@@ -6,7 +6,11 @@
 
 import { getElements } from './dom.js';
 
-// Track resize state
+// Track resize state (module-local)
+// Note: This is intentionally NOT in state.js because:
+// - It's only used within this module (startResize, handleResize, stopResize)
+// - No other modules need to read or write this value
+// - Keeping it local reduces coupling and makes the code easier to reason about
 let isResizing = false;
 
 /**
