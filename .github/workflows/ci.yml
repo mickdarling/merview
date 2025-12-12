@@ -19,6 +19,9 @@ jobs:
       - run: npm run lint
 
   test:
+    # Only run full E2E tests on push to main (e.g., merge from develop)
+    # PRs can run tests locally - saves CI minutes
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
