@@ -1,6 +1,11 @@
 /**
  * storage.js - LocalStorage management for Merview
  * Handles persistent storage of user preferences, content, and GitHub tokens
+ *
+ * localStorage Key Naming Convention:
+ * - All keys use kebab-case (e.g., 'markdown-content', 'cached-bg-color')
+ * - Multi-word keys are separated by hyphens
+ * - Session-specific keys use 'merview-' prefix (e.g., 'merview-sessions-index')
  */
 
 import { TOKEN_EXPIRY_BUFFER_MS } from './config.js';
@@ -125,7 +130,18 @@ export function saveHRAsPageBreak(enabled) {
  */
 export function getGitHubToken() {
     try {
-        const stored = localStorage.getItem('github_gist_token');
+        // Migration: Check for old snake_case key and migrate to kebab-case
+        const oldKey = 'github_gist_token';
+        const newKey = 'github-gist-token';
+        const oldStored = localStorage.getItem(oldKey);
+
+        if (oldStored && !localStorage.getItem(newKey)) {
+            // Migrate old token to new key
+            localStorage.setItem(newKey, oldStored);
+            localStorage.removeItem(oldKey);
+        }
+
+        const stored = localStorage.getItem(newKey);
         if (!stored) return null;
 
         const data = JSON.parse(stored);
@@ -161,7 +177,7 @@ export function saveGitHubToken(tokenData) {
     // 2. No sensitive user data is stored
     // 3. Token expires and can be revoked on GitHub
     // For higher security needs, consider sessionStorage or in-memory only.
-    localStorage.setItem('github_gist_token', JSON.stringify({
+    localStorage.setItem('github-gist-token', JSON.stringify({
         accessToken: tokenData.access_token,
         expiresAt: expiresAt,
         scope: tokenData.scope
@@ -172,7 +188,7 @@ export function saveGitHubToken(tokenData) {
  * Clear stored GitHub access token
  */
 export function clearGitHubToken() {
-    localStorage.removeItem('github_gist_token');
+    localStorage.removeItem('github-gist-token');
 }
 
 /**
@@ -181,7 +197,7 @@ export function clearGitHubToken() {
  */
 export function isTokenExpired() {
     try {
-        const stored = localStorage.getItem('github_gist_token');
+        const stored = localStorage.getItem('github-gist-token');
         if (!stored) return true;
 
         const data = JSON.parse(stored);

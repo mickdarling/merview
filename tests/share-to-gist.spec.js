@@ -157,7 +157,7 @@ async function setEditorContent(page, content) {
  */
 async function setValidToken(page) {
   await page.evaluate(() => {
-    localStorage.setItem('github_gist_token', JSON.stringify({
+    localStorage.setItem('github-gist-token', JSON.stringify({
       accessToken: 'valid-test-token',
       expiresAt: Date.now() + 3600000,
       scope: 'gist'
@@ -278,7 +278,7 @@ test.describe('Share to Gist', () => {
 
     test('should store token in localStorage after successful auth', async ({ page }) => {
       await page.evaluate(() => {
-        localStorage.setItem('github_gist_token', JSON.stringify({
+        localStorage.setItem('github-gist-token', JSON.stringify({
           accessToken: 'test-access-token',
           expiresAt: Date.now() + 3600000,
           scope: 'gist'
@@ -286,7 +286,7 @@ test.describe('Share to Gist', () => {
       });
 
       const stored = await page.evaluate(() => {
-        const data = localStorage.getItem('github_gist_token');
+        const data = localStorage.getItem('github-gist-token');
         return data ? JSON.parse(data) : null;
       });
 
@@ -297,7 +297,7 @@ test.describe('Share to Gist', () => {
     test('should clear expired tokens', async ({ page }) => {
       // Set an expired token
       await page.evaluate(() => {
-        localStorage.setItem('github_gist_token', JSON.stringify({
+        localStorage.setItem('github-gist-token', JSON.stringify({
           accessToken: 'expired-token',
           expiresAt: Date.now() - 1000,
           scope: 'gist'
@@ -316,7 +316,7 @@ test.describe('Share to Gist', () => {
 
     test('should disconnect GitHub when disconnectGitHub is called', async ({ page }) => {
       await page.evaluate(() => {
-        localStorage.setItem('github_gist_token', JSON.stringify({
+        localStorage.setItem('github-gist-token', JSON.stringify({
           accessToken: 'test-token',
           expiresAt: Date.now() + 3600000,
           scope: 'gist'
@@ -328,7 +328,7 @@ test.describe('Share to Gist', () => {
         globalThis.disconnectGitHub();
       });
 
-      const token = await page.evaluate(() => localStorage.getItem('github_gist_token'));
+      const token = await page.evaluate(() => localStorage.getItem('github-gist-token'));
       expect(token).toBeNull();
     });
   });
@@ -437,7 +437,7 @@ test.describe('Share to Gist', () => {
       const modal = page.locator('#gistModal .gist-modal');
       await expect(modal).toContainText('authorization expired', { timeout: 10000 });
 
-      const token = await page.evaluate(() => localStorage.getItem('github_gist_token'));
+      const token = await page.evaluate(() => localStorage.getItem('github-gist-token'));
       expect(token).toBeNull();
     });
 
