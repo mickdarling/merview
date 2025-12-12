@@ -341,5 +341,19 @@ module.exports = {
   clickAndWaitForTransition,
 
   // Browser-side helpers
-  createStatusObserverScript
+  createStatusObserverScript,
+
+  // Security testing helpers
+  setupDialogListener
 };
+
+/**
+ * Set up dialog listener to detect script execution (for XSS testing)
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @returns {{wasTriggered: () => boolean}} Object with trigger check function
+ */
+function setupDialogListener(page) {
+  let triggered = false;
+  page.on('dialog', async d => { triggered = true; await d.dismiss(); });
+  return { wasTriggered: () => triggered };
+}

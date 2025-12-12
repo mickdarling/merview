@@ -7,6 +7,7 @@ const {
   waitForPageReady,
   setCodeMirrorContent,
   renderMarkdownAndWait,
+  setupDialogListener,
   WAIT_TIMES
 } = require('./helpers/test-utils');
 
@@ -18,13 +19,6 @@ async function renderAndGetHtml(page, markdown) {
   await setCodeMirrorContent(page, markdown);
   await renderMarkdownAndWait(page, WAIT_TIMES.LONG);
   return page.$eval('#wrapper', el => el.innerHTML.toLowerCase());
-}
-
-/** Set up dialog listener to detect script execution */
-function setupDialogListener(page) {
-  let triggered = false;
-  page.on('dialog', async d => { triggered = true; await d.dismiss(); });
-  return { wasTriggered: () => triggered };
 }
 
 test.describe('XSS Prevention', () => {
