@@ -151,6 +151,155 @@ renderer.code = function(code, language) {
 marked.setOptions({ renderer });
 
 /**
+ * Parse YAML front matter from markdown content
+ * Extracts YAML between --- delimiters at start of file
+ * @param {string} markdown - The markdown content
+ * @returns {Object} Object with frontMatter (parsed object), yamlText (raw YAML string), and remainingMarkdown
+ */
+function parseYAMLFrontMatter(markdown) {
+    // Check if content starts with ---
+    if (!markdown.trimStart().startsWith('---')) {
+        return { frontMatter: null, yamlText: '', remainingMarkdown: markdown };
+    }
+
+    const lines = markdown.split('\n');
+    let yamlStartIndex = -1;
+    let yamlEndIndex = -1;
+
+    // Find the YAML delimiters
+    for (let i = 0; i < lines.length; i++) {
+        const trimmedLine = lines[i].trim();
+        if (trimmedLine === '---') {
+            if (yamlStartIndex === -1) {
+                yamlStartIndex = i;
+            } else {
+                yamlEndIndex = i;
+                break;
+            }
+        }
+    }
+
+    // No valid YAML front matter found
+    if (yamlStartIndex === -1 || yamlEndIndex === -1 || yamlEndIndex <= yamlStartIndex + 1) {
+        return { frontMatter: null, yamlText: '', remainingMarkdown: markdown };
+    }
+
+    // Extract YAML and remaining markdown
+    const yamlLines = lines.slice(yamlStartIndex + 1, yamlEndIndex);
+    const yamlText = yamlLines.join('\n');
+    const remainingLines = lines.slice(yamlEndIndex + 1);
+    const remainingMarkdown = remainingLines.join('\n');
+
+    // Parse YAML into object (simple key-value parser)
+    const frontMatter = parseSimpleYAML(yamlText);
+
+    return { frontMatter, yamlText, remainingMarkdown };
+}
+
+/**
+ * Simple YAML parser for common cases
+ * Handles basic key: value pairs, arrays, and simple nested structures
+ * @param {string} yamlText - The YAML text to parse
+ * @returns {Object} Parsed YAML object
+ */
+function parseSimpleYAML(yamlText) {
+    const result = {};
+    const lines = yamlText.split('\n');
+    let currentArray = null;
+
+    for (const line of lines) {
+        const trimmedLine = line.trim();
+
+        // Skip empty lines and comments
+        if (!trimmedLine || trimmedLine.startsWith('#')) {
+            continue;
+        }
+
+        // Check for array items (starting with - )
+        if (trimmedLine.startsWith('- ')) {
+            const value = trimmedLine.substring(2).trim();
+            if (currentArray) {
+                currentArray.push(value);
+            }
+            continue;
+        }
+
+        // Check for key-value pairs
+        const colonIndex = trimmedLine.indexOf(':');
+        if (colonIndex > 0) {
+            const key = trimmedLine.substring(0, colonIndex).trim();
+            const value = trimmedLine.substring(colonIndex + 1).trim();
+
+            if (value === '') {
+                // Key with no value - might be starting an array or object
+                currentArray = [];
+                result[key] = currentArray;
+            } else {
+                // Key with value - reset array tracking
+                currentArray = null;
+
+                // Remove quotes if present
+                let cleanValue = value;
+                if ((value.startsWith('"') && value.endsWith('"')) ||
+                    (value.startsWith("'") && value.endsWith("'"))) {
+                    cleanValue = value.substring(1, value.length - 1);
+                }
+
+                result[key] = cleanValue;
+            }
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Render YAML front matter as a collapsible HTML panel
+ * @param {Object} frontMatter - Parsed YAML object
+ * @returns {string} HTML string for the front matter panel
+ */
+function renderYAMLFrontMatter(frontMatter) {
+    if (!frontMatter || Object.keys(frontMatter).length === 0) {
+        return '';
+    }
+
+    let tableRows = '';
+    for (const [key, value] of Object.entries(frontMatter)) {
+        const escapedKey = escapeHtml(key);
+        let escapedValue;
+
+        if (Array.isArray(value)) {
+            // Render arrays as a list
+            const listItems = value.map(item => `<li>${escapeHtml(String(item))}</li>`).join('');
+            escapedValue = `<ul style="margin: 0; padding-left: 20px;">${listItems}</ul>`;
+        } else if (typeof value === 'object' && value !== null) {
+            // Render objects as nested key-value pairs
+            const nested = Object.entries(value)
+                .map(([k, v]) => `${escapeHtml(k)}: ${escapeHtml(String(v))}`)
+                .join('<br>');
+            escapedValue = nested;
+        } else {
+            escapedValue = escapeHtml(String(value));
+        }
+
+        tableRows += `<tr>
+            <td style="font-weight: 600; padding: 8px 12px; vertical-align: top; border-bottom: 1px solid rgba(0,0,0,0.1);">${escapedKey}</td>
+            <td style="padding: 8px 12px; vertical-align: top; border-bottom: 1px solid rgba(0,0,0,0.1);">${escapedValue}</td>
+        </tr>`;
+    }
+
+    return `<details class="yaml-front-matter" style="margin: 20px 0; border: 1px solid rgba(0,0,0,0.15); border-radius: 6px; background: rgba(0,0,0,0.02); overflow: hidden;">
+        <summary style="padding: 12px 16px; cursor: pointer; font-weight: 600; background: rgba(0,0,0,0.05); user-select: none; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 14px;">📋</span>
+            <span>Document Metadata</span>
+        </summary>
+        <table style="width: 100%; border-collapse: collapse; margin: 0; font-size: 14px;">
+            ${tableRows}
+        </table>
+    </details>`;
+}
+
+/**
  * Render markdown with mermaid diagrams
  * Main rendering function that converts markdown to HTML, applies syntax highlighting,
  * and renders all mermaid diagrams in the content.
@@ -164,12 +313,19 @@ export async function renderMarkdown() {
         // Reset mermaid counter for consistent diagram IDs
         state.mermaidCounter = 0;
 
+        // Parse YAML front matter if present
+        const { frontMatter, remainingMarkdown } = parseYAMLFrontMatter(markdown);
+
+        // Render YAML front matter panel
+        const frontMatterHTML = renderYAMLFrontMatter(frontMatter);
+
         // Convert markdown to HTML and sanitize to prevent XSS attacks
         // DOMPurify removes dangerous elements like <script>, event handlers, and javascript: URLs
         // Using DOMPurify defaults (intentional) - they provide comprehensive protection while
         // preserving all safe HTML elements, classes (for syntax highlighting), and IDs (for anchors)
-        const html = marked.parse(markdown);
-        wrapper.innerHTML = DOMPurify.sanitize(html);
+        const markdownHTML = marked.parse(remainingMarkdown);
+        const combinedHTML = frontMatterHTML + markdownHTML;
+        wrapper.innerHTML = DOMPurify.sanitize(combinedHTML);
 
         // Render mermaid diagrams
         const mermaidElements = wrapper.querySelectorAll('.mermaid');

@@ -805,6 +805,58 @@
             justify-content: center;
         }
 
+        /* YAML Front Matter Panel Styles */
+        .yaml-front-matter {
+            margin: 20px 0 !important;
+            border: 1px solid rgba(0,0,0,0.15) !important;
+            border-radius: 6px !important;
+            background: rgba(0,0,0,0.02) !important;
+            overflow: hidden !important;
+        }
+
+        .yaml-front-matter summary {
+            padding: 12px 16px !important;
+            cursor: pointer !important;
+            font-weight: 600 !important;
+            background: rgba(0,0,0,0.05) !important;
+            user-select: none !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            transition: background 0.2s !important;
+        }
+
+        .yaml-front-matter summary:hover {
+            background: rgba(0,0,0,0.08) !important;
+        }
+
+        .yaml-front-matter table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            margin: 0 !important;
+            font-size: 14px !important;
+        }
+
+        .yaml-front-matter table td {
+            padding: 8px 12px !important;
+            vertical-align: top !important;
+            border-bottom: 1px solid rgba(0,0,0,0.1) !important;
+        }
+
+        .yaml-front-matter table td:first-child {
+            font-weight: 600 !important;
+            width: 30% !important;
+        }
+
+        .yaml-front-matter table tr:last-child td {
+            border-bottom: none !important;
+        }
+
+        .yaml-front-matter ul {
+            margin: 0 !important;
+            padding-left: 20px !important;
+        }
+
         .status {
             position: fixed;
             bottom: 20px;
