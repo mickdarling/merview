@@ -3,8 +3,7 @@
  * Handles persistent storage of user preferences, content, and GitHub tokens
  */
 
-// Token expiry buffer - check if token expires within this time window
-const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000; // 5 minutes
+import { TOKEN_EXPIRY_BUFFER_MS } from './config.js';
 
 /**
  * Get saved markdown content from localStorage
