@@ -140,6 +140,172 @@ This protection applies to:
 - Content loaded via `?url=` parameter from GitHub/Gist
 - Any markdown file opened via the Open button
 
+### ✅ URL Validation Security Strategy
+
+Merview implements a defense-in-depth approach to URL validation, combining multiple security layers to protect users from malicious content while allowing legitimate markdown files from any HTTPS source.
+
+#### **Architecture: Any HTTPS URL Allowed (Issue #201)**
+
+As of issue #201, Merview **no longer uses a domain allowlist** for markdown URLs. Any HTTPS URL can be loaded because:
+- All content is sanitized by DOMPurify (removes scripts, dangerous elements, and XSS vectors)
+- Multiple validation layers catch malicious URLs before fetch
+- Content-Type validation prevents executable content
+
+This makes Merview more useful (can load from any markdown source) while maintaining security through content sanitization rather than source restriction.
+
+#### **URL Loading Security Checks**
+
+**Markdown URLs** (`?url=` parameter) undergo these validations (in `js/security.js`):
+
+1. **HTTPS Protocol Required**
+   - All URLs must use HTTPS (encrypted transport)
+   - Exception: `localhost` URLs allowed when running in local development
+   - Prevents DNS rebinding attacks (localhost-to-localhost only)
+
+2. **URL Length Limit (2048 bytes)**
+   - Prevents DoS attacks using extremely long URLs
+   - Follows de facto browser/server standards (IE: 2083 chars, most browsers: 32KB+)
+   - Checked before URL parsing for efficiency
+
+3. **Credentials Blocked**
+   - URLs with embedded credentials (`user:pass@host`) are rejected
+   - Security risk: credentials can leak in logs, browser history, referrer headers
+   - Enforced via `URL.username` and `URL.password` checks
+
+4. **IDN Homograph Protection**
+   - Hostnames must be ASCII-only (no Unicode/punycode)
+   - Prevents homograph attacks like `rаw.githubusercontent.com` (Cyrillic 'а' U+0430)
+   - Checked **before** URL parsing (browser auto-converts to punycode)
+   - Example blocked: `https://rаw.githubusercontent.com/...` (looks like raw.githubusercontent.com)
+
+5. **Fetch Timeout (10 seconds)**
+   - Prevents hanging on slow/malicious endpoints
+   - Implemented in `js/file-ops.js` using `AbortController`
+
+6. **Content Size Limit (10 MB)**
+   - Prevents loading extremely large files
+   - Checked during fetch with streaming validation
+   - Protects against memory exhaustion attacks
+
+7. **Content-Type Validation**
+   - **Allowed types:**
+     - `text/*` (text/plain, text/markdown, text/x-markdown)
+     - `application/octet-stream` (GitHub's default for raw files)
+     - No Content-Type header (some servers don't send it)
+   - **Blocked types:**
+     - `application/javascript`, `text/javascript` (executable code)
+     - `text/html` (could contain scripts)
+     - Binary types (application/zip, image/*, etc.)
+   - Defense-in-depth check (content still sanitized by DOMPurify)
+
+**CSS URLs** (custom theme loading) use a **stricter allowlist** (in `js/config.js`):
+
+```javascript
+export const ALLOWED_CSS_DOMAINS = [
+    'cdn.jsdelivr.net',
+    'cdnjs.cloudflare.com',
+    'raw.githubusercontent.com',
+    'gist.githubusercontent.com',
+    'unpkg.com'
+];
+```
+
+CSS uses an allowlist because:
+- CSS can't be sanitized by DOMPurify (not HTML content)
+- CSS injection can leak data via `url()` (CSS injection attacks)
+- Custom properties can exfiltrate data to attacker-controlled servers
+- Allowlist ensures CSS comes from trusted CDN/GitHub sources only
+
+#### **GitHub Token Handling (Private Repository Protection)**
+
+When users paste raw URLs from private GitHub repositories, those URLs contain temporary access tokens (`?token=...`). If users share Merview links containing these tokens, they accidentally expose private repository access.
+
+**Protection Measures:**
+
+1. **Token Detection**
+   - Merview detects `raw.githubusercontent.com` URLs with `?token=` parameters
+   - Detection happens immediately when URL is loaded
+
+2. **Automatic Token Stripping**
+   - A security modal immediately appears
+   - The token is **immediately stripped from the browser URL bar** (before user can copy it)
+   - Uses `history.replaceState()` to replace URL without page reload
+
+3. **User Education Modal**
+   - Modal presents two options:
+     - **"View Locally Only"**: Content loads without shareable URL
+     - **"Share Securely via Gist"**: Creates a public/secret Gist (safe copy)
+   - Modal cannot be dismissed without choosing (blocking dialog)
+
+4. **Token Never in Shareable URLs**
+   - The `?token=` parameter is stripped before any URL is shareable
+   - Prevents accidental token exposure in browser history, copy/paste, or shared links
+
+**What This Protects:**
+- Accidental URL sharing with embedded tokens
+- Token exposure in browser history
+- Copy/paste of tokenized URLs (modal educates users)
+
+**Expected Limitations:**
+- Token is still used in the fetch request (required for access, encrypted via HTTPS)
+- Users can manually copy the token before modal appears (edge case, requires deliberate action)
+- Only protects `raw.githubusercontent.com` URLs (where GitHub puts tokens)
+
+Implementation in `js/security.js`:
+```javascript
+export function stripGitHubToken(url) {
+    try {
+        const parsed = new URL(url);
+        if (parsed.hostname === 'raw.githubusercontent.com' && parsed.searchParams.has('token')) {
+            parsed.searchParams.delete('token');
+            return { cleanUrl: parsed.toString(), hadToken: true };
+        }
+        return { cleanUrl: url, hadToken: false };
+    } catch {
+        return { cleanUrl: url, hadToken: false };
+    }
+}
+```
+
+#### **Subresource Integrity (SRI)**
+
+All CDN resources are verified using SRI hashes to ensure integrity:
+
+**Libraries Protected:**
+- Marked.js (markdown parser)
+- Mermaid.js (diagram rendering)
+- DOMPurify (HTML sanitization)
+- CodeMirror (editor)
+- Highlight.js (syntax highlighting)
+- All syntax highlighting theme CSS files
+
+**Example SRI Implementation:**
+```html
+<script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"
+        integrity="sha384-zbcZAIxlvJtNE3Dp5nxLXdXtXyxwOdnILY1TDPVmKFhl4r4nSUG1r8bcFXGVa4Te"
+        crossorigin="anonymous"></script>
+```
+
+**What SRI Prevents:**
+- CDN compromise (attacker replaces CDN files)
+- Man-in-the-middle attacks (modified files in transit)
+- Accidental file corruption
+- Supply chain attacks via CDN
+
+**How It Works:**
+- Browser calculates SHA-384 hash of downloaded file
+- If hash doesn't match the `integrity` attribute, browser blocks the file
+- Application fails safely (no execution of tampered code)
+
+**Syntax Theme SRI Hashes** (in `js/config.js`):
+```javascript
+export const syntaxThemeSRI = {
+    "github-dark": "sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH",
+    "github": "sha384-eFTL69TLRZTkNfYZOLM+G04821K1qZao/4QLJbet1pP4tcF+fdXq/9CdqAbWRl/L",
+    // ... additional themes with hashes
+};
+```
+
 ### ⚠️ Security Considerations
 
 **1. Content Security Policy (CSP) - `unsafe-inline` Required**
@@ -177,23 +343,7 @@ The CSP includes `'unsafe-inline'` for both `script-src` and `style-src`. This i
 
 **5. Private Repository Token Protection**
 
-When users paste raw URLs from private GitHub repositories, those URLs contain temporary access tokens (`?token=...`). If users share Merview links containing these tokens, they accidentally expose private repo access.
-
-- **Protection measures:**
-  - Merview detects GitHub raw URLs with `?token=` parameters
-  - A security modal immediately appears, stripping the token from the browser URL bar
-  - Users choose: "View Locally Only" (no shareable URL) or "Share Securely via Gist" (creates safe copy)
-  - The token is never included in shareable Merview URLs
-
-- **What this protects against:**
-  - Accidental URL sharing with embedded tokens
-  - Token exposure in browser history (URL stripped immediately)
-  - Copy/paste of tokenized URLs (modal educates users)
-
-- **Limitations (expected behavior):**
-  - Token is still used in the fetch request (required for access, encrypted via HTTPS)
-  - Users can manually copy the token before the modal appears (edge case)
-  - Only protects `raw.githubusercontent.com` URLs (where GitHub puts tokens)
+See the comprehensive "GitHub Token Handling (Private Repository Protection)" section above for full details on how Merview protects users from accidentally exposing private repository access tokens.
 
 ## Security Levels
 
