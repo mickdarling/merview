@@ -151,6 +151,16 @@ renderer.code = function(code, language) {
 marked.setOptions({ renderer });
 
 /**
+ * Security limits for YAML front matter parsing
+ * These limits prevent resource exhaustion attacks through malicious YAML content
+ */
+const YAML_SECURITY_LIMITS = {
+    MAX_VALUE_LENGTH: 10000,  // Maximum length of any single value in characters
+    MAX_KEYS: 100,            // Maximum number of keys in the YAML object
+    MAX_ARRAY_ITEMS: 500      // Maximum number of items in an array
+};
+
+/**
  * Parse YAML front matter from markdown content
  * Extracts YAML between --- delimiters at start of file
  * @param {string} markdown - The markdown content
@@ -197,15 +207,28 @@ function parseYAMLFrontMatter(markdown) {
 }
 
 /**
- * Simple YAML parser for common cases
+ * Simple YAML parser for common cases with security hardening
  * Handles basic key: value pairs, arrays, and simple nested structures
+ *
+ * Security Considerations:
+ * - Rejects YAML anchors (&), aliases (*), and custom tags (!) to prevent injection attacks
+ * - Enforces size limits on values, keys, and arrays to prevent resource exhaustion
+ * - Does not support advanced YAML features (multiline strings, nested objects, etc.)
+ * - All values are treated as strings and escaped during rendering
+ *
+ * Limitations:
+ * - This is a simple parser, not a full YAML implementation
+ * - Does not handle complex nested structures or multiline values
+ * - Primarily designed for basic document metadata (title, author, date, tags, etc.)
+ *
  * @param {string} yamlText - The YAML text to parse
- * @returns {Object} Parsed YAML object
+ * @returns {Object} Parsed YAML object with security checks applied
  */
 function parseSimpleYAML(yamlText) {
     const result = {};
     const lines = yamlText.split('\n');
     let currentArray = null;
+    let keyCount = 0;
 
     for (const line of lines) {
         const trimmedLine = line.trim();
@@ -215,10 +238,35 @@ function parseSimpleYAML(yamlText) {
             continue;
         }
 
+        // Security: Reject dangerous YAML patterns that could enable attacks
+        // - Anchors (&name) can be used for billion laughs attacks
+        // - Aliases (*name) can reference anchors causing exponential expansion
+        // - Custom tags (!tag or !!type) can execute arbitrary code in some YAML parsers
+        // Note: We use targeted patterns to avoid rejecting legitimate content like
+        // "John & Jane" or "5-star rating" - only reject YAML syntax patterns where
+        // the special character is followed by a word character (anchor/alias/tag names)
+        const dangerousPatterns = /&\w|\*\w|!\w|!!/;
+        if (dangerousPatterns.test(trimmedLine)) {
+            console.warn('YAML security: Skipping line with potentially dangerous pattern (anchor/alias/tag):', trimmedLine);
+            continue;
+        }
+
         // Check for array items (starting with - )
         if (trimmedLine.startsWith('- ')) {
-            const value = trimmedLine.substring(2).trim();
+            let value = trimmedLine.substring(2).trim();
+
+            // Security: Enforce value length limit (truncate to match key-value handling)
+            if (value.length > YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH) {
+                console.warn(`YAML security: Array item exceeds MAX_VALUE_LENGTH (${YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH}), truncating`);
+                value = value.substring(0, YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH) + '... [truncated]';
+            }
+
             if (currentArray) {
+                // Security: Enforce array size limit
+                if (currentArray.length >= YAML_SECURITY_LIMITS.MAX_ARRAY_ITEMS) {
+                    console.warn(`YAML security: Array exceeds MAX_ARRAY_ITEMS (${YAML_SECURITY_LIMITS.MAX_ARRAY_ITEMS}), ignoring additional items`);
+                    continue;
+                }
                 currentArray.push(value);
             }
             continue;
@@ -230,10 +278,17 @@ function parseSimpleYAML(yamlText) {
             const key = trimmedLine.substring(0, colonIndex).trim();
             const value = trimmedLine.substring(colonIndex + 1).trim();
 
+            // Security: Enforce key count limit
+            if (keyCount >= YAML_SECURITY_LIMITS.MAX_KEYS) {
+                console.warn(`YAML security: Exceeded MAX_KEYS (${YAML_SECURITY_LIMITS.MAX_KEYS}), ignoring additional keys`);
+                break;
+            }
+
             if (value === '') {
                 // Key with no value - might be starting an array or object
                 currentArray = [];
                 result[key] = currentArray;
+                keyCount++;
             } else {
                 // Key with value - reset array tracking
                 currentArray = null;
@@ -245,7 +300,14 @@ function parseSimpleYAML(yamlText) {
                     cleanValue = value.substring(1, value.length - 1);
                 }
 
+                // Security: Enforce value length limit
+                if (cleanValue.length > YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH) {
+                    console.warn(`YAML security: Value for key "${key}" exceeds MAX_VALUE_LENGTH (${YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH}), truncating`);
+                    cleanValue = cleanValue.substring(0, YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH) + '... [truncated]';
+                }
+
                 result[key] = cleanValue;
+                keyCount++;
             }
         }
     }
@@ -254,9 +316,16 @@ function parseSimpleYAML(yamlText) {
 }
 
 /**
- * Render YAML front matter as a collapsible HTML panel
- * @param {Object} frontMatter - Parsed YAML object
- * @returns {string} HTML string for the front matter panel
+ * Render YAML front matter as a collapsible HTML panel with XSS protection
+ *
+ * Security Notes:
+ * - All keys and values are escaped using escapeHtml() to prevent XSS attacks
+ * - Arrays and nested objects are sanitized before rendering
+ * - The entire output is further sanitized by DOMPurify in renderMarkdown()
+ * - No user input is rendered as raw HTML
+ *
+ * @param {Object} frontMatter - Parsed YAML object (already validated by parseSimpleYAML)
+ * @returns {string} HTML string for the front matter panel (will be sanitized by DOMPurify)
  */
 function renderYAMLFrontMatter(frontMatter) {
     if (!frontMatter || Object.keys(frontMatter).length === 0) {
@@ -265,20 +334,22 @@ function renderYAMLFrontMatter(frontMatter) {
 
     let tableRows = '';
     for (const [key, value] of Object.entries(frontMatter)) {
+        // Security: Escape all keys to prevent XSS
         const escapedKey = escapeHtml(key);
         let escapedValue;
 
         if (Array.isArray(value)) {
-            // Render arrays as a list
+            // Security: Escape each array item to prevent XSS
             const listItems = value.map(item => `<li>${escapeHtml(String(item))}</li>`).join('');
             escapedValue = `<ul>${listItems}</ul>`;
         } else if (typeof value === 'object' && value !== null) {
-            // Render objects as nested key-value pairs
+            // Security: Escape nested object keys and values to prevent XSS
             const nested = Object.entries(value)
                 .map(([k, v]) => `${escapeHtml(k)}: ${escapeHtml(String(v))}`)
                 .join('<br>');
             escapedValue = nested;
         } else {
+            // Security: Escape scalar values to prevent XSS
             escapedValue = escapeHtml(String(value));
         }
 
