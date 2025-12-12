@@ -21,7 +21,7 @@ COPY --chmod=755 images/ ./images/
 COPY --chmod=755 js/ ./js/
 
 # Copy custom nginx configuration
-COPY --chmod=644 nginx.conf /etc/nginx/conf.d/default.conf
+COPY --chmod=644 docs/deployment/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Ensure proper permissions
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
