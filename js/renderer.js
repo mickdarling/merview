@@ -271,7 +271,7 @@ function renderYAMLFrontMatter(frontMatter) {
         if (Array.isArray(value)) {
             // Render arrays as a list
             const listItems = value.map(item => `<li>${escapeHtml(String(item))}</li>`).join('');
-            escapedValue = `<ul style="margin: 0; padding-left: 20px;">${listItems}</ul>`;
+            escapedValue = `<ul>${listItems}</ul>`;
         } else if (typeof value === 'object' && value !== null) {
             // Render objects as nested key-value pairs
             const nested = Object.entries(value)
@@ -283,17 +283,17 @@ function renderYAMLFrontMatter(frontMatter) {
         }
 
         tableRows += `<tr>
-            <td style="font-weight: 600; padding: 8px 12px; vertical-align: top; border-bottom: 1px solid rgba(0,0,0,0.1);">${escapedKey}</td>
-            <td style="padding: 8px 12px; vertical-align: top; border-bottom: 1px solid rgba(0,0,0,0.1);">${escapedValue}</td>
+            <td>${escapedKey}</td>
+            <td>${escapedValue}</td>
         </tr>`;
     }
 
-    return `<details class="yaml-front-matter" style="margin: 20px 0; border: 1px solid rgba(0,0,0,0.15); border-radius: 6px; background: rgba(0,0,0,0.02); overflow: hidden;">
-        <summary style="padding: 12px 16px; cursor: pointer; font-weight: 600; background: rgba(0,0,0,0.05); user-select: none; display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 14px;">📋</span>
-            <span>Document Metadata</span>
+    return `<details class="yaml-front-matter">
+        <summary>
+            <span class="yaml-icon">📋</span>
+            <span class="yaml-label">Document Metadata</span>
         </summary>
-        <table style="width: 100%; border-collapse: collapse; margin: 0; font-size: 14px;">
+        <table>
             ${tableRows}
         </table>
     </details>`;
