@@ -7,6 +7,7 @@ const {
   waitForPageReady,
   setCodeMirrorContent,
   renderMarkdownAndWait,
+  setupDialogListener,
   WAIT_TIMES
 } = require('./helpers/test-utils');
 
@@ -39,17 +40,6 @@ async function yamlPanelExists(page) {
  */
 async function getYamlPanelContent(page) {
   return page.$eval('.yaml-front-matter', el => el.innerHTML);
-}
-
-/**
- * Set up dialog listener to detect script execution
- * @param {import('@playwright/test').Page} page - Playwright page object
- * @returns {{wasTriggered: () => boolean}} Object with trigger check function
- */
-function setupDialogListener(page) {
-  let triggered = false;
-  page.on('dialog', async d => { triggered = true; await d.dismiss(); });
-  return { wasTriggered: () => triggered };
 }
 
 test.describe('YAML Front Matter', () => {
