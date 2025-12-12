@@ -500,6 +500,16 @@
             border-color: #2ecc71;
         }
 
+        .private-url-modal .learn-more-container {
+            margin: 8px 0 12px 0;
+            font-size: 12px;
+        }
+
+        .private-url-modal .learn-more-link {
+            color: #3498db;
+            text-decoration: none;
+        }
+
         .container {
             display: flex;
             flex: 1;
@@ -1144,7 +1154,7 @@
             <div class="security-icon" aria-hidden="true">🔒</div>
             <h2 id="privateUrlModalTitle">Private Repository Detected</h2>
             <p id="privateUrlModalDesc">This URL contains a private access token. To protect your security, choose how you'd like to proceed:</p>
-            <p style="margin: 8px 0 12px 0; font-size: 12px;"><a href="/?url=SECURITY.md#private-repository-token-protection" target="_blank" rel="noopener noreferrer" style="color: #3498db; text-decoration: none;">Learn more about private repo tokens</a></p>
+            <p class="learn-more-container"><a href="/?url=SECURITY.md#private-repository-token-protection" target="_blank" rel="noopener noreferrer" class="learn-more-link">Learn more about private repo tokens</a></p>
             <div class="option-buttons">
                 <button class="option-btn" data-action="view-local" type="button" aria-label="View Locally Only - Render content without a shareable URL">
                     <span class="option-title">View Locally Only</span>
