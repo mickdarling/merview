@@ -366,6 +366,59 @@ export function resetPrivateUrlState() {
 }
 
 /**
+ * Detect if an error is a CORS error
+ *
+ * CORS errors manifest as TypeErrors in fetch() with specific patterns:
+ * - "Failed to fetch" - most common CORS error message
+ * - "NetworkError" - Firefox CORS error
+ * - "Load failed" - Safari CORS error
+ * - "Network request failed" - general network/CORS error
+ *
+ * Note: Browsers intentionally make CORS errors indistinguishable from network errors
+ * for security reasons. This detection uses common patterns but may have false positives.
+ *
+ * @param {Error} error - The error object from fetch()
+ * @param {Response|null} response - The response object (null if fetch failed)
+ * @returns {boolean} True if error appears to be a CORS error
+ */
+export function isCorsError(error, response) {
+    // If we have a response, it's not a CORS error (CORS fails before response)
+    if (response && response.ok) {
+        return false;
+    }
+
+    // Check error type and message for CORS patterns
+    if (error.name === 'TypeError') {
+        const message = error.message.toLowerCase();
+        const corsPatterns = [
+            'failed to fetch',
+            'networkerror',
+            'load failed',
+            'network request failed',
+            'cross-origin'
+        ];
+        return corsPatterns.some(pattern => message.includes(pattern));
+    }
+
+    return false;
+}
+
+/**
+ * Get user-friendly CORS error message with helpful guidance
+ *
+ * @param {string} url - The URL that caused the CORS error
+ * @returns {string} Formatted error message with link to documentation
+ */
+export function getCorsErrorMessage(url) {
+    try {
+        const hostname = new URL(url).hostname;
+        return `CORS Error: The server at ${hostname} doesn't allow cross-origin requests. See CORS documentation: /?url=docs/cors-configuration.md`;
+    } catch {
+        return 'CORS Error: This server doesn\'t allow cross-origin requests. See CORS documentation: /?url=docs/cors-configuration.md';
+    }
+}
+
+/**
  * Initialize private URL modal event handlers
  * Sets up button clicks and backdrop close handling
  * Should be called once during app initialization

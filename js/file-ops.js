@@ -20,7 +20,7 @@
 import { state } from './state.js';
 import { getElements } from './dom.js';
 import { showStatus, setURLParameter, clearURLParameter } from './utils.js';
-import { isAllowedMarkdownURL, normalizeGitHubContentUrl } from './security.js';
+import { isAllowedMarkdownURL, normalizeGitHubContentUrl, isCorsError, getCorsErrorMessage } from './security.js';
 import { renderMarkdown } from './renderer.js';
 
 /**
@@ -167,9 +167,10 @@ export async function loadMarkdownFromURL(url) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
+    let response = null;
     try {
         showStatus('Loading from URL...');
-        const response = await fetch(normalizedUrl, { signal: controller.signal });
+        response = await fetch(normalizedUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
 
         if (!response.ok) {
@@ -226,6 +227,11 @@ export async function loadMarkdownFromURL(url) {
         if (error.name === 'AbortError') {
             console.error('Error loading URL: Request timed out');
             showStatus('Error loading URL: Request timed out (10s limit)');
+        } else if (isCorsError(error, response)) {
+            // CORS-specific error with helpful guidance
+            const corsMessage = getCorsErrorMessage(normalizedUrl);
+            console.error('CORS error loading URL:', error);
+            showStatus(corsMessage);
         } else {
             console.error('Error loading URL:', error);
             showStatus(`Error loading URL: ${error.message}`);
