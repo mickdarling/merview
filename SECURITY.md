@@ -492,7 +492,7 @@ export function isValidMarkdownContentType(contentType) {
 - ❌ No rate limiting
 - ❌ No CSP
 
-**Use:** `nginx.conf` (current default)
+**Use:** `docs/deployment/nginx.conf` (current default)
 
 ---
 
@@ -507,7 +507,7 @@ export function isValidMarkdownContentType(contentType) {
 - ✅ Version hiding
 - ❌ No authentication
 
-**Use:** `nginx-secure.conf`
+**Use:** `docs/deployment/nginx-secure.conf`
 
 ---
 
@@ -519,7 +519,7 @@ export function isValidMarkdownContentType(contentType) {
 - ✅ Basic HTTP authentication (username/password)
 - ✅ Locked down access
 
-**Use:** `nginx-with-auth.conf`
+**Use:** `docs/deployment/nginx-with-auth.conf`
 
 ---
 
@@ -529,10 +529,10 @@ export function isValidMarkdownContentType(contentType) {
 
 ```dockerfile
 # Edit Dockerfile, change line:
-COPY --chmod=644 nginx.conf /etc/nginx/conf.d/default.conf
+COPY --chmod=644 docs/deployment/nginx.conf /etc/nginx/conf.d/default.conf
 
 # To:
-COPY --chmod=644 nginx-secure.conf /etc/nginx/conf.d/default.conf
+COPY --chmod=644 docs/deployment/nginx-secure.conf /etc/nginx/conf.d/default.conf
 ```
 
 Then rebuild:
@@ -558,7 +558,7 @@ htpasswd -c .htpasswd yourusername
 **Step 2:** Update Dockerfile
 ```dockerfile
 # Add after the COPY commands:
-COPY --chmod=644 nginx-with-auth.conf /etc/nginx/conf.d/default.conf
+COPY --chmod=644 docs/deployment/nginx-with-auth.conf /etc/nginx/conf.d/default.conf
 COPY --chmod=644 .htpasswd /etc/nginx/.htpasswd
 ```
 
@@ -657,13 +657,13 @@ Set proper caching:
 ## Recommended Setup for Cloudflare Tunnel
 
 **For Public Sharing (anyone can use):**
-1. Use `nginx-secure.conf` (Enhanced security)
+1. Use `docs/deployment/nginx-secure.conf` (Enhanced security)
 2. Enable Cloudflare WAF
 3. Monitor usage in Cloudflare Analytics
 4. Set up rate limiting in Cloudflare
 
 **For Private Use (only you/team):**
-1. Use `nginx-with-auth.conf` OR Cloudflare Access
+1. Use `docs/deployment/nginx-with-auth.conf` OR Cloudflare Access
 2. Cloudflare Access is better (SSO, audit logs)
 3. Still enable WAF and monitoring
 
@@ -701,6 +701,6 @@ Before exposing via Cloudflare:
 - Monitor bandwidth usage
 - Use Cloudflare's security features
 
-**Recommendation:** Use Enhanced security (`nginx-secure.conf`) for public exposure, or add Cloudflare Access for private use.
+**Recommendation:** Use Enhanced security (`docs/deployment/nginx-secure.conf`) for public exposure, or add Cloudflare Access for private use.
 
 The application itself is secure - the main consideration is controlling WHO can access it and preventing bandwidth abuse.

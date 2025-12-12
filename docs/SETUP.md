@@ -59,7 +59,7 @@ You only need these files (everything else is optional):
 - ✅ `index.html` - The app
 - ✅ `Dockerfile` - How to build it
 - ✅ `docker-compose.yml` - Easy startup
-- ✅ `nginx.conf` - Web server config
+- ✅ `docs/deployment/nginx.conf` - Web server config
 - ✅ `start.command` - Mac double-click startup
 - ✅ `start.sh` - Mac/Linux terminal startup
 - ✅ `start.bat` - Windows double-click startup
