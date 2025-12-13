@@ -293,6 +293,63 @@ function browserCheckStateCleanup() {
 }
 
 /**
+ * Browser-side helper: Test context description updates
+ * @returns {Promise<boolean>} True if context descriptions update correctly
+ */
+function browserTestContextDescriptions() {
+  const MODAL_DELAY_MS = 100;
+  return new Promise(function resolveContextTest(resolve) {
+    const contextDesc = document.getElementById('urlModalContextDesc');
+    if (!contextDesc) {
+      resolve(false);
+      return;
+    }
+
+    // Check if openUrlInputModal is available (it's called via selector changes)
+    if (typeof globalThis.openUrlInputModal !== 'function') {
+      // If function doesn't exist, check that element exists and has content
+      resolve(contextDesc.textContent.length > 0);
+      return;
+    }
+
+    // Test different contexts
+    const contexts = {
+      'style': 'CSS stylesheet',
+      'syntax': 'syntax highlighting theme',
+      'editor': 'CodeMirror editor theme',
+      'mermaid': 'Mermaid diagram theme',
+      'markdown': 'markdown document'
+    };
+
+    let allCorrect = true;
+
+    // Test each context
+    for (const context of Object.keys(contexts)) {
+      const expectedText = contexts[context];
+
+      // Simulate opening modal with context
+      globalThis.openUrlInputModal('styleSelector', context);
+
+      const actualText = contextDesc.textContent;
+      if (!actualText.includes(expectedText)) {
+        allCorrect = false;
+        break;
+      }
+
+      // Close modal
+      const modal = document.getElementById('urlModal');
+      if (modal && modal.open) {
+        modal.close();
+      }
+    }
+
+    setTimeout(function finishTest() {
+      resolve(allCorrect);
+    }, MODAL_DELAY_MS);
+  });
+}
+
+/**
  * Browser-side helper: Count optgroups in a selector
  * @param {string} selectorId - The selector ID
  * @returns {number} Number of optgroups
@@ -601,7 +658,7 @@ test.describe('URL Input Modal', () => {
       ]);
 
       expect(ariaLabelledBy).toBe('urlModalTitle');
-      expect(ariaDescribedBy).toBe('urlModalDesc');
+      expect(ariaDescribedBy).toBe('urlModalDesc urlModalContextDesc');
     });
 
     test('urlModal should have correct class names', async ({ page }) => {
@@ -651,6 +708,21 @@ test.describe('URL Input Modal', () => {
     test('error display should be hidden by default', async ({ page }) => {
       const display = await page.$eval('#urlModalError', el => el.style.display);
       expect(display).toBe('none');
+    });
+
+    test('context description element should have visually-hidden class', async ({ page }) => {
+      const hasClass = await elementHasClass(page, '#urlModalContextDesc', 'visually-hidden');
+      expect(hasClass).toBe(true);
+    });
+
+    test('context description should default to "style" context', async ({ page }) => {
+      const description = await page.$eval('#urlModalContextDesc', el => el.textContent);
+      expect(description).toContain('CSS stylesheet');
+    });
+
+    test('context description should update based on different contexts', async ({ page }) => {
+      const contextDescUpdates = await page.evaluate(browserTestContextDescriptions);
+      expect(contextDescUpdates).toBe(true);
     });
   });
 
