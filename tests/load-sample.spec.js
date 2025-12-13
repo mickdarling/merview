@@ -31,13 +31,13 @@ const EXPECTED_CONTENT = {
 };
 
 /**
- * Browser-side helper: Load sample and wait for content
+ * Browser-side helper: Load welcome page and wait for content
  * @param {number} waitTime - Time to wait after loading
  * @returns {Promise<string>} Editor content after loading
  */
-async function browserLoadSampleAndWait(waitTime) {
-  if (typeof globalThis.loadSample === 'function') {
-    globalThis.loadSample();
+async function browserLoadWelcomePageAndWait(waitTime) {
+  if (typeof globalThis.loadWelcomePage === 'function') {
+    globalThis.loadWelcomePage();
   }
 
   await new Promise(function resolveAfterWait(resolve) {
@@ -52,31 +52,31 @@ async function browserLoadSampleAndWait(waitTime) {
 /**
  * Tests for Load Sample functionality
  *
- * These tests ensure the Load Sample button and loadSample() function work correctly
+ * These tests ensure the Load Sample button and loadWelcomePage() function work correctly
  * to populate the editor with comprehensive demo content including markdown,
  * code blocks, tables, and mermaid diagrams.
  */
 test.describe('Load Sample Functionality', () => {
   test.beforeEach(async ({ page }) => {
     await waitForPageReady(page);
-    await waitForGlobalFunction(page, 'loadSample');
+    await waitForGlobalFunction(page, 'loadWelcomePage');
   });
 
   test.describe('Load Sample Button', () => {
     test('Load Sample button should exist in toolbar', async ({ page }) => {
-      const loadSampleButton = await page.$('button[onclick="loadSample()"]');
+      const loadSampleButton = await page.$('button[onclick="loadWelcomePage()"]');
       expect(loadSampleButton).not.toBeNull();
     });
 
-    test('Load Sample button should have loadSample onclick handler', async ({ page }) => {
-      const onclick = await page.$eval('button[onclick="loadSample()"]', el => el.getAttribute('onclick'));
-      expect(onclick).toBe('loadSample()');
+    test('Load Sample button should have loadWelcomePage onclick handler', async ({ page }) => {
+      const onclick = await page.$eval('button[onclick="loadWelcomePage()"]', el => el.getAttribute('onclick'));
+      expect(onclick).toBe('loadWelcomePage()');
     });
 
     test('Load Sample button should be visible and clickable', async ({ page }) => {
       const [isVisible, isEnabled] = await Promise.all([
-        page.isVisible('button[onclick="loadSample()"]'),
-        page.isEnabled('button[onclick="loadSample()"]')
+        page.isVisible('button[onclick="loadWelcomePage()"]'),
+        page.isEnabled('button[onclick="loadWelcomePage()"]')
       ]);
 
       expect(isVisible).toBe(true);
@@ -85,20 +85,20 @@ test.describe('Load Sample Functionality', () => {
   });
 
   test.describe('Global Function', () => {
-    test('loadSample() function should be globally available', async ({ page }) => {
-      const isFunction = await isGlobalFunctionAvailable(page, 'loadSample');
+    test('loadWelcomePage() function should be globally available', async ({ page }) => {
+      const isFunction = await isGlobalFunctionAvailable(page, 'loadWelcomePage');
       expect(isFunction).toBe(true);
     });
 
-    test('loadSample() should be callable without errors', async ({ page }) => {
+    test('loadWelcomePage() should be callable without errors', async ({ page }) => {
       await clearCodeMirrorContent(page);
 
       const didExecute = await page.evaluate(() => {
         try {
-          globalThis.loadSample();
+          globalThis.loadWelcomePage();
           return true;
         } catch (error) {
-          console.error('loadSample error:', error);
+          console.error('loadWelcomePage error:', error);
           return false;
         }
       });
@@ -118,7 +118,7 @@ test.describe('Load Sample Functionality', () => {
       const emptyContent = await getCodeMirrorContent(page);
       expect(emptyContent).toBe('');
 
-      await page.click('button[onclick="loadSample()"]');
+      await page.click('button[onclick="loadWelcomePage()"]');
       await page.waitForTimeout(WAIT_TIMES.MEDIUM);
 
       const loadedContent = await getCodeMirrorContent(page);
@@ -126,7 +126,7 @@ test.describe('Load Sample Functionality', () => {
     });
 
     test('editor should not be empty after loading sample', async ({ page }) => {
-      const content = await page.evaluate(browserLoadSampleAndWait, WAIT_TIMES.MEDIUM);
+      const content = await page.evaluate(browserLoadWelcomePageAndWait, WAIT_TIMES.MEDIUM);
 
       expect(content).not.toBe('');
       expect(content.trim().length).toBeGreaterThan(MIN_SAMPLE_CONTENT_LENGTH);
@@ -134,7 +134,7 @@ test.describe('Load Sample Functionality', () => {
 
     // Data-driven test for expected content elements
     test('sample content should include expected elements', async ({ page }) => {
-      const content = await page.evaluate(browserLoadSampleAndWait, WAIT_TIMES.MEDIUM);
+      const content = await page.evaluate(browserLoadWelcomePageAndWait, WAIT_TIMES.MEDIUM);
 
       // Check main heading
       expect(content).toContain(EXPECTED_CONTENT.mainHeading);
@@ -146,7 +146,7 @@ test.describe('Load Sample Functionality', () => {
     });
 
     test('sample content should include code blocks with various languages', async ({ page }) => {
-      const content = await page.evaluate(browserLoadSampleAndWait, WAIT_TIMES.MEDIUM);
+      const content = await page.evaluate(browserLoadWelcomePageAndWait, WAIT_TIMES.MEDIUM);
 
       for (const codeBlock of EXPECTED_CONTENT.codeBlocks) {
         expect(content).toContain(codeBlock);
@@ -154,7 +154,7 @@ test.describe('Load Sample Functionality', () => {
     });
 
     test('sample content should include mermaid diagram blocks', async ({ page }) => {
-      const content = await page.evaluate(browserLoadSampleAndWait, WAIT_TIMES.MEDIUM);
+      const content = await page.evaluate(browserLoadWelcomePageAndWait, WAIT_TIMES.MEDIUM);
 
       for (const mermaidElement of EXPECTED_CONTENT.mermaidElements) {
         expect(content).toContain(mermaidElement);
@@ -162,7 +162,7 @@ test.describe('Load Sample Functionality', () => {
     });
 
     test('sample content should include markdown tables', async ({ page }) => {
-      const content = await page.evaluate(browserLoadSampleAndWait, WAIT_TIMES.MEDIUM);
+      const content = await page.evaluate(browserLoadWelcomePageAndWait, WAIT_TIMES.MEDIUM);
 
       for (const tableMarker of EXPECTED_CONTENT.tableMarkers) {
         expect(content).toContain(tableMarker);
@@ -181,7 +181,7 @@ test.describe('Load Sample Functionality', () => {
     ];
 
     test('markdown should be rendered in preview after loading sample', async ({ page }) => {
-      await page.click('button[onclick="loadSample()"]');
+      await page.click('button[onclick="loadWelcomePage()"]');
       await page.waitForTimeout(WAIT_TIMES.EXTRA_LONG);
 
       const previewHTML = await page.$eval('#wrapper', el => el.innerHTML);
@@ -194,7 +194,7 @@ test.describe('Load Sample Functionality', () => {
     });
 
     test('preview should contain rendered headings from sample', async ({ page }) => {
-      await page.click('button[onclick="loadSample()"]');
+      await page.click('button[onclick="loadWelcomePage()"]');
       await page.waitForTimeout(WAIT_TIMES.EXTRA_LONG);
 
       const [hasMainHeading, hasSubHeadings] = await Promise.all([
@@ -214,7 +214,7 @@ test.describe('Load Sample Functionality', () => {
     });
 
     test('preview should contain syntax-highlighted code blocks', async ({ page }) => {
-      await page.click('button[onclick="loadSample()"]');
+      await page.click('button[onclick="loadWelcomePage()"]');
       await page.waitForTimeout(WAIT_TIMES.EXTRA_LONG + WAIT_TIMES.LONG);
 
       const hasCodeBlocks = await page.evaluate(() => {
@@ -225,7 +225,7 @@ test.describe('Load Sample Functionality', () => {
     });
 
     test('preview should contain rendered mermaid diagrams', async ({ page }) => {
-      await page.click('button[onclick="loadSample()"]');
+      await page.click('button[onclick="loadWelcomePage()"]');
       await page.waitForTimeout(WAIT_TIMES.CONTENT_LOAD);
 
       const hasMermaidDiagrams = await page.evaluate(() => {
@@ -237,7 +237,7 @@ test.describe('Load Sample Functionality', () => {
     });
 
     test('preview should contain rendered tables', async ({ page }) => {
-      await page.click('button[onclick="loadSample()"]');
+      await page.click('button[onclick="loadWelcomePage()"]');
       await page.waitForTimeout(WAIT_TIMES.EXTRA_LONG);
 
       const hasTables = await page.evaluate(() => {
@@ -260,7 +260,7 @@ test.describe('Load Sample Functionality', () => {
       const initialContent = await getCodeMirrorContent(page);
       expect(initialContent).toContain('Initial Content');
 
-      await page.click('button[onclick="loadSample()"]');
+      await page.click('button[onclick="loadWelcomePage()"]');
       await page.waitForTimeout(WAIT_TIMES.MEDIUM);
 
       const newContent = await getCodeMirrorContent(page);
@@ -270,11 +270,11 @@ test.describe('Load Sample Functionality', () => {
 
     test('loading sample multiple times should work consistently', async ({ page }) => {
       // First load
-      const firstLoad = await page.evaluate(browserLoadSampleAndWait, WAIT_TIMES.MEDIUM);
+      const firstLoad = await page.evaluate(browserLoadWelcomePageAndWait, WAIT_TIMES.MEDIUM);
 
       // Wait a bit, then second load
       await page.waitForTimeout(WAIT_TIMES.SHORT);
-      const secondLoad = await page.evaluate(browserLoadSampleAndWait, WAIT_TIMES.MEDIUM);
+      const secondLoad = await page.evaluate(browserLoadWelcomePageAndWait, WAIT_TIMES.MEDIUM);
 
       expect(firstLoad).toBe(secondLoad);
       expect(firstLoad.length).toBeGreaterThan(MIN_CONTENT_LENGTH);
@@ -286,7 +286,7 @@ test.describe('Load Sample Functionality', () => {
 
       const initialPreview = await page.$eval('#wrapper', el => el.innerHTML.trim());
 
-      await page.click('button[onclick="loadSample()"]');
+      await page.click('button[onclick="loadWelcomePage()"]');
       await page.waitForTimeout(WAIT_TIMES.EXTRA_LONG + WAIT_TIMES.LONG);
 
       const newPreview = await page.$eval('#wrapper', el => el.innerHTML.trim());
@@ -298,7 +298,7 @@ test.describe('Load Sample Functionality', () => {
     test('sample content should be valid markdown', async ({ page }) => {
       const EVEN_BACKTICK_COUNT_DIVISOR = 2;
 
-      const content = await page.evaluate(browserLoadSampleAndWait, WAIT_TIMES.MEDIUM);
+      const content = await page.evaluate(browserLoadWelcomePageAndWait, WAIT_TIMES.MEDIUM);
 
       // Basic markdown validation checks
       expect(content).toMatch(/^#\s/m);
@@ -319,7 +319,7 @@ test.describe('Load Sample Functionality', () => {
       await setCodeMirrorContent(page, '# My Document\n\nSome initial content.');
       await page.waitForTimeout(WAIT_TIMES.SHORT);
 
-      await page.click('button[onclick="loadSample()"]');
+      await page.click('button[onclick="loadWelcomePage()"]');
       await page.waitForTimeout(WAIT_TIMES.MEDIUM);
 
       const content = await getCodeMirrorContent(page);
@@ -328,7 +328,7 @@ test.describe('Load Sample Functionality', () => {
     });
 
     test('sample content should render with current style theme', async ({ page }) => {
-      await page.click('button[onclick="loadSample()"]');
+      await page.click('button[onclick="loadWelcomePage()"]');
       await page.waitForTimeout(WAIT_TIMES.EXTRA_LONG + WAIT_TIMES.LONG);
 
       const wrapperExists = await page.evaluate(() => {

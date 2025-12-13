@@ -413,7 +413,7 @@ test.describe('Fresh Visit Behavior', () => {
       });
 
       // Click Load Sample
-      await page.click('button[onclick="loadSample()"]');
+      await page.click('button[onclick="loadWelcomePage()"]');
       await page.waitForTimeout(WAIT_TIMES.MEDIUM);
 
       const content = await getCodeMirrorContent(page);

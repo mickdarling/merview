@@ -331,7 +331,7 @@ export function newDocument() {
  *
  * Note: This only sets up the event handler, NOT the initial content.
  * The selector content is populated by updateDocumentSelector() which is called
- * after content is loaded (e.g., by loadSample() or loadMarkdownFromURL()).
+ * after content is loaded (e.g., by loadWelcomePage() or loadMarkdownFromURL()).
  * This ensures the document name is correctly displayed on initial load.
  */
 export function initDocumentSelector() {
@@ -358,7 +358,7 @@ export function initDocumentSelector() {
     });
 
     // Note: We don't call updateDocumentSelector() here because state.currentFilename
-    // won't be set until content is loaded. The content loading functions (loadSample,
+    // won't be set until content is loaded. The content loading functions (loadWelcomePage,
     // loadMarkdownFromURL, loadMarkdownFile) call updateDocumentSelector() after
     // setting the filename.
 

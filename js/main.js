@@ -8,7 +8,7 @@ import { state } from './state.js';
 import { initCodeMirror, getEditorContent, setEditorContent } from './editor.js';
 import { renderMarkdown, scheduleRender } from './renderer.js';
 import { initStyleSelector, initSyntaxThemeSelector, initEditorThemeSelector, initMermaidThemeSelector, initPreviewDragDrop, initURLModalHandlers, changeStyle, changeSyntaxTheme, changeEditorTheme, changeMermaidTheme, applyPreviewBackground, applyCachedBackground } from './themes.js';
-import { loadMarkdownFromURL, loadSample, openFile, saveFile, saveFileAs, isValidMarkdownFile, isValidMarkdownContentType, exportToPDF, initFileInputHandlers } from './file-ops.js';
+import { loadMarkdownFromURL, loadWelcomePage, openFile, saveFile, saveFileAs, isValidMarkdownFile, isValidMarkdownContentType, exportToPDF, initFileInputHandlers } from './file-ops.js';
 import { initDocumentSelector, changeDocument, updateDocumentSelector } from './documents.js';
 import { shareToGist, hideGistModal, openGitHubAuth, startDeviceFlow, copyGistUrl, disconnectGitHub } from './gist.js';
 import { toggleLintPanel, validateCode } from './validation.js';
@@ -53,7 +53,7 @@ function exposeGlobalFunctions() {
 
     // Rendering functions
     globalThis.renderMarkdown = renderMarkdown;
-    globalThis.loadSample = loadSample;
+    globalThis.loadWelcomePage = loadWelcomePage;
 
     // Gist/sharing functions
     globalThis.shareToGist = shareToGist;
@@ -197,7 +197,7 @@ function handleURLParameters() {
 
     // Check for sample parameter - explicitly load the sample/welcome document
     if (urlParams.has('sample')) {
-        loadSample();
+        loadWelcomePage();
         markSessionInitialized();
         return;
     }
@@ -238,18 +238,18 @@ function applyStyleParam(urlParams) {
 }
 
 /**
- * Load saved content from localStorage or load sample
- * Fresh visits (new tab/window) always load the sample document.
+ * Load saved content from localStorage or load welcome page
+ * Fresh visits (new tab/window) always load the welcome document.
  * Same-session refreshes preserve the user's localStorage content.
  *
  * Note: markSessionInitialized() is called by handleURLParameters() after
  * this function returns, so we don't call it here.
  */
 function loadSavedContentOrSample() {
-    // Fresh visit = new tab/window, always show sample for predictable UX
+    // Fresh visit = new tab/window, always show welcome page for predictable UX
     // This also addresses minor security concern of cached content persisting
     if (isFreshVisit()) {
-        loadSample();
+        loadWelcomePage();
         return;
     }
 
@@ -259,13 +259,13 @@ function loadSavedContentOrSample() {
         setEditorContent(saved);
         renderMarkdown();
     } else {
-        loadSample();
+        loadWelcomePage();
     }
 }
 
 /**
  * Initialize brand home link click handler
- * Provides smooth UX by loading sample without page reload,
+ * Provides smooth UX by loading welcome page without page reload,
  * while keeping href as fallback for accessibility (right-click, new tab)
  */
 function initBrandHomeLink() {
@@ -273,8 +273,8 @@ function initBrandHomeLink() {
     if (brandHomeLink) {
         brandHomeLink.addEventListener('click', (e) => {
             e.preventDefault();
-            loadSample();
-            showStatus('Welcome document loaded');
+            loadWelcomePage();
+            showStatus('Welcome page loaded');
         });
     }
 }

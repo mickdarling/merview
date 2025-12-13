@@ -228,7 +228,7 @@ test.describe('Open Functionality', () => {
       // This test verifies the fix for the race condition where the selector
       // showed "Untitled" instead of "Welcome.md" on initial load.
       // The fix removed premature updateDocumentSelector() call from initDocumentSelector(),
-      // allowing loadSample() to set the filename before the selector is populated.
+      // allowing loadWelcomePage() to set the filename before the selector is populated.
 
       // Clear sessionStorage to simulate fresh visit, then reload
       await page.evaluate(() => {
@@ -245,7 +245,7 @@ test.describe('Open Functionality', () => {
         { timeout: 10000 }
       );
 
-      // The selector should show "Welcome.md" (from loadSample)
+      // The selector should show "Welcome.md" (from loadWelcomePage)
       const selectedText = await page.$eval('#documentSelector', getSelectedOptionText);
       expect(selectedText).toBe('Welcome.md');
     });

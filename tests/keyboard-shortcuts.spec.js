@@ -236,7 +236,7 @@ test.describe('Keyboard Shortcuts', () => {
     test('Ctrl+P should trigger exportToPDF()', async ({ page }) => {
       // Set up content
       await page.evaluate(() => {
-        globalThis.loadSample();
+        globalThis.loadWelcomePage();
       });
 
       // Mock window.print to verify it gets called
@@ -251,7 +251,7 @@ test.describe('Keyboard Shortcuts', () => {
       }
 
       await page.evaluate(() => {
-        globalThis.loadSample();
+        globalThis.loadWelcomePage();
       });
 
       const printCalled = await page.evaluate(testPrintCalled, true);

@@ -231,7 +231,7 @@ const WRAPPER_POPULATION_TIMEOUT_MS = 5000;
  * @returns {Promise<void>}
  */
 async function loadSampleContent(page, waitTime = WAIT_TIMES.LONG) {
-  await page.evaluate(() => globalThis.loadSample());
+  await page.evaluate(() => globalThis.loadWelcomePage());
   // Use waitForFunction instead of arbitrary timeout where possible
   await page.waitForFunction(() => {
     const minLength = 0;
