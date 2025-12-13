@@ -98,6 +98,12 @@ function validateJavaScript(_code, _blockIndex) {
  * @param {number} blockIndex - The index of the code block
  */
 function validateHTML(code, blockIndex) {
+    // HTML5 void elements that don't have closing tags
+    const VOID_ELEMENTS = new Set([
+        'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+        'link', 'meta', 'param', 'source', 'track', 'wbr'
+    ]);
+
     // Check for common issues
     const issues = [];
 
@@ -106,7 +112,24 @@ function validateHTML(code, blockIndex) {
     const openTags = code.match(/<(\w+)(?:\s[^>]*?)?>/g) || [];
     const closeTags = code.match(/<\/(\w+)>/g) || [];
 
-    if (openTags.length !== closeTags.length) {
+    // Filter out void elements and self-closing tags from open tags count
+    const nonVoidOpenTags = openTags.filter(tag => {
+        // Extract tag name from opening tag
+        const tagNameMatch = tag.match(/<(\w+)/);
+        if (!tagNameMatch) return true;
+
+        const tagName = tagNameMatch[1].toLowerCase();
+
+        // Exclude void elements
+        if (VOID_ELEMENTS.has(tagName)) return false;
+
+        // Exclude self-closing tags (e.g., <br />)
+        if (tag.endsWith('/>')) return false;
+
+        return true;
+    });
+
+    if (nonVoidOpenTags.length !== closeTags.length) {
         issues.push('Possible unclosed HTML tags');
     }
 
