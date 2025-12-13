@@ -123,12 +123,14 @@ function highlightYAMLFrontMatter(code) {
 
         // Handle empty or whitespace-only YAML content
         // This handles the edge case of "---\n---" or "---\n  \n---" with no actual YAML
-        if (!yamlContent || !yamlContent.trim()) {
+        if (!yamlContent?.trim()) {
             const delimiterClass = 'hljs-meta';
-            const highlightedMd = mdContent.trim()
+            const hasMdContent = mdContent.trim();
+            const highlightedMd = hasMdContent
                 ? hljs.highlight(mdContent, { language: 'markdown', ignoreIllegals: true })
                 : { value: '' };
-            return `<pre><code class="hljs language-markdown" data-language="markdown"><span class="${delimiterClass}">---</span>\n<span class="${delimiterClass}">---</span>${highlightedMd.value ? '\n' + highlightedMd.value : ''}</code></pre>`;
+            const mdOutput = highlightedMd.value ? '\n' + highlightedMd.value : '';
+            return `<pre><code class="hljs language-markdown" data-language="markdown"><span class="${delimiterClass}">---</span>\n<span class="${delimiterClass}">---</span>${mdOutput}</code></pre>`;
         }
 
         // Highlight each section with appropriate language
@@ -230,7 +232,7 @@ marked.setOptions({ renderer });
  * Pre-compiled regex for YAML front matter detection
  * Used by highlightYAMLFrontMatter() - compiled once for performance
  *
- * Pattern: /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/m
+ * Pattern: /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/
  *
  * Delimiter Handling:
  * - Opening delimiter (---\n): Requires a newline after '---' because YAML front matter
@@ -256,7 +258,7 @@ marked.setOptions({ renderer });
  * These guards ensure the regex operates on validated, bounded inputs, making catastrophic
  * backtracking practically impossible.
  */
-const YAML_FRONTMATTER_REGEX = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/m;
+const YAML_FRONTMATTER_REGEX = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/;
 
 /**
  * Security limits for YAML front matter parsing
