@@ -5,7 +5,9 @@
 const { test, expect } = require('@playwright/test');
 const {
   waitForPageReady,
-  setCodeMirrorContent,
+  getLineTokens,
+  lineHasTokenType,
+  setContentAndWait,
   WAIT_TIMES
 } = require('./helpers/test-utils');
 
@@ -29,60 +31,6 @@ async function getTokenAt(page, line, ch) {
       string: token.string
     };
   }, { line, ch });
-}
-
-/**
- * Helper to get all tokens for a specific line
- * @param {import('@playwright/test').Page} page - Playwright page object
- * @param {number} line - Line number (0-indexed)
- * @returns {Promise<Array<{type: string, string: string}>>} Array of tokens
- */
-async function getLineTokens(page, line) {
-  return page.evaluate((lineNum) => {
-    const cmElement = document.querySelector('.CodeMirror');
-    const cm = cmElement?.CodeMirror;
-    if (!cm) {
-      throw new Error('CodeMirror instance not found');
-    }
-    const lineContent = cm.getLine(lineNum);
-    if (lineContent === undefined) {
-      return [];
-    }
-    const tokens = [];
-    let pos = 0;
-    while (pos < lineContent.length) {
-      const token = cm.getTokenAt({ line: lineNum, ch: pos + 1 });
-      tokens.push({
-        type: token.type || '',
-        string: token.string
-      });
-      pos = token.end;
-    }
-    return tokens;
-  }, line);
-}
-
-/**
- * Helper to check if a line has a specific token type
- * @param {import('@playwright/test').Page} page - Playwright page object
- * @param {number} line - Line number (0-indexed)
- * @param {string} tokenType - Token type to check for (e.g., "meta", "atom", "string")
- * @returns {Promise<boolean>} True if line contains the token type
- */
-async function lineHasTokenType(page, line, tokenType) {
-  const tokens = await getLineTokens(page, line);
-  return tokens.some(token => token.type?.includes(tokenType));
-}
-
-/**
- * Helper to set CodeMirror content and wait for it to be processed
- * @param {import('@playwright/test').Page} page - Playwright page object
- * @param {string} content - Content to set
- * @returns {Promise<void>}
- */
-async function setContentAndWait(page, content) {
-  await setCodeMirrorContent(page, content);
-  await page.waitForTimeout(WAIT_TIMES.SHORT);
 }
 
 test.describe('CodeMirror YAML Front Matter Editor Mode', () => {

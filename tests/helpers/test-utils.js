@@ -311,6 +311,145 @@ function createStatusObserverScript(searchText, timeout = DEFAULT_STATUS_OBSERVA
   `;
 }
 
+/**
+ * Get all tokens for a specific line from CodeMirror editor
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @param {number} line - Line number (0-indexed)
+ * @returns {Promise<Array<{type: string, string: string, start: number, end: number}>>} Array of tokens
+ */
+async function getLineTokens(page, line) {
+  return page.evaluate((lineNum) => {
+    const cmElement = document.querySelector('.CodeMirror');
+    const cm = cmElement?.CodeMirror;
+    if (!cm) {
+      throw new Error('CodeMirror instance not found');
+    }
+    const lineContent = cm.getLine(lineNum);
+    if (lineContent === undefined) {
+      return [];
+    }
+    const tokens = [];
+    let pos = 0;
+    while (pos < lineContent.length) {
+      const token = cm.getTokenAt({ line: lineNum, ch: pos + 1 });
+      tokens.push({
+        type: token.type || '',
+        string: token.string,
+        start: token.start,
+        end: token.end
+      });
+      pos = token.end;
+    }
+    return tokens;
+  }, line);
+}
+
+/**
+ * Check if a line has a specific token type
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @param {number} line - Line number (0-indexed)
+ * @param {string} tokenType - Token type to check for (can be partial match)
+ * @returns {Promise<boolean>} True if line contains the token type
+ */
+async function lineHasTokenType(page, line, tokenType) {
+  const tokens = await getLineTokens(page, line);
+  return tokens.some(token => token.type?.includes(tokenType));
+}
+
+/**
+ * Set CodeMirror content and wait for it to be processed
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @param {string} content - Content to set
+ * @returns {Promise<void>}
+ */
+async function setContentAndWait(page, content) {
+  await setCodeMirrorContent(page, content);
+  await page.waitForTimeout(WAIT_TIMES.SHORT);
+}
+
+/**
+ * Check if a specific line has syntax highlighting
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @param {number} line - Line number (0-indexed)
+ * @returns {Promise<boolean>} True if the line has highlighted tokens
+ */
+async function lineHasSyntaxHighlighting(page, line) {
+  return page.evaluate((lineNum) => {
+    const cmElement = document.querySelector('.CodeMirror');
+    const cm = cmElement?.CodeMirror;
+    if (!cm) {
+      throw new Error('CodeMirror instance not found');
+    }
+
+    const lineContent = cm.getLine(lineNum);
+    if (!lineContent) {
+      return false;
+    }
+
+    // Check if any token in this line has a type (which means it's highlighted)
+    let pos = 0;
+    while (pos < lineContent.length) {
+      const token = cm.getTokenAt({ line: lineNum, ch: pos + 1 });
+      if (token.type) {
+        return true;
+      }
+      pos = token.end;
+    }
+
+    return false;
+  }, line);
+}
+
+/**
+ * Find the line number containing specific text
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @param {string} searchText - Text to search for in line content
+ * @returns {Promise<number>} Line number (0-indexed) or -1 if not found
+ */
+async function findLineWithText(page, searchText) {
+  return page.evaluate((text) => {
+    const cmElement = document.querySelector('.CodeMirror');
+    const cm = cmElement?.CodeMirror;
+    if (!cm) {
+      throw new Error('CodeMirror instance not found');
+    }
+
+    const lineCount = cm.lineCount();
+    for (let i = 0; i < lineCount; i++) {
+      const lineContent = cm.getLine(i);
+      if (lineContent?.includes(text)) {
+        return i;
+      }
+    }
+    return -1;
+  }, searchText);
+}
+
+/**
+ * Find the nth occurrence of a line with exact text match
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @param {string} searchText - Exact text to match
+ * @param {number} occurrence - Which occurrence to find (1 = first, 2 = second, etc.)
+ * @returns {Promise<number>} Line number (0-indexed) or -1 if not found
+ */
+async function findNthLineWithText(page, searchText, occurrence = 1) {
+  return page.evaluate(({ text, n }) => {
+    const cmElement = document.querySelector('.CodeMirror');
+    const cm = cmElement?.CodeMirror;
+    if (!cm) throw new Error('CodeMirror instance not found');
+    const lineCount = cm.lineCount();
+    let foundCount = 0;
+    for (let i = 0; i < lineCount; i++) {
+      const lineContent = cm.getLine(i);
+      if (lineContent === text) {
+        foundCount++;
+        if (foundCount === n) return i;
+      }
+    }
+    return -1;
+  }, { text: searchText, n: occurrence });
+}
+
 module.exports = {
   // Constants
   WAIT_TIMES,
@@ -328,6 +467,12 @@ module.exports = {
   getCodeMirrorContent,
   setCodeMirrorContent,
   clearCodeMirrorContent,
+  getLineTokens,
+  lineHasTokenType,
+  setContentAndWait,
+  lineHasSyntaxHighlighting,
+  findLineWithText,
+  findNthLineWithText,
 
   // Element checks
   isGlobalFunctionAvailable,
