@@ -89,6 +89,85 @@ renderer.heading = function(text, level) {
 };
 
 /**
+ * Helper function to highlight markdown code blocks with YAML front matter
+ * Detects YAML front matter pattern (---\nYAML\n---) and highlights YAML and markdown separately
+ * @param {string} code - The code content to highlight
+ * @returns {string|null} HTML string with highlighted content, or null if not applicable
+ */
+function highlightYAMLFrontMatter(code) {
+    // Detect YAML front matter pattern: starts with ---, has content, ends with ---
+    const frontMatterMatch = code.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+    if (!frontMatterMatch || typeof hljs === 'undefined') {
+        return null;
+    }
+
+    try {
+        const yamlContent = frontMatterMatch[1];
+        const mdContent = frontMatterMatch[2];
+
+        // Highlight each section with appropriate language
+        const highlightedYaml = hljs.highlight(yamlContent, { language: 'yaml', ignoreIllegals: true });
+        const highlightedMd = mdContent.trim()
+            ? hljs.highlight(mdContent, { language: 'markdown', ignoreIllegals: true })
+            : { value: '' };
+
+        // Combine with styled delimiters (hljs-meta for the --- markers)
+        const delimiterClass = 'hljs-meta';
+        return `<pre><code class="hljs language-markdown" data-language="markdown"><span class="${delimiterClass}">---</span>\n${highlightedYaml.value}\n<span class="${delimiterClass}">---</span>${highlightedMd.value ? '\n' + highlightedMd.value : ''}</code></pre>`;
+    } catch (err) {
+        console.error('YAML front matter highlight error:', err);
+        return null;
+    }
+}
+
+/**
+ * Helper function to apply syntax highlighting to code blocks
+ * Handles language detection, normalization, and fallback to auto-detection
+ * @param {string} code - The code content to highlight
+ * @param {string} language - The language identifier (may be null/undefined)
+ * @returns {string} HTML string with highlighted code
+ */
+function highlightCodeBlock(code, language) {
+    // Check if highlight.js is available
+    if (typeof hljs === 'undefined') {
+        console.error('highlight.js (hljs) is not loaded!');
+        const escaped = escapeHtml(code);
+        return `<pre><code data-language="${language || 'text'}">${escaped}</code></pre>`;
+    }
+
+    // Apply syntax highlighting for specified language
+    if (language) {
+        try {
+            // Normalize language names (yaml/yml are the same)
+            const normalizedLang = language.toLowerCase();
+            const langMap = { 'yml': 'yaml' };
+            const mappedLang = langMap[normalizedLang] || normalizedLang;
+
+            if (hljs.getLanguage(mappedLang)) {
+                const highlighted = hljs.highlight(code, { language: mappedLang, ignoreIllegals: true });
+                return `<pre><code class="hljs language-${mappedLang}" data-language="${mappedLang}">${highlighted.value}</code></pre>`;
+            } else {
+                console.warn('Language not supported by highlight.js:', language);
+            }
+        } catch (err) {
+            console.error('Highlight error for language', language, ':', err);
+            // Fall through to auto-detection on error
+        }
+    }
+
+    // Fallback to auto-detection or plain rendering
+    try {
+        const highlighted = hljs.highlightAuto(code);
+        return `<pre><code class="hljs" data-language="${highlighted.language || language || 'text'}">${highlighted.value}</code></pre>`;
+    } catch (err) {
+        console.error('Auto-highlight error:', err);
+        // Final fallback to plain code block
+        const escaped = escapeHtml(code);
+        return `<pre><code data-language="${language || 'text'}">${escaped}</code></pre>`;
+    }
+}
+
+/**
  * Custom code block renderer
  * - Detects and renders Mermaid diagrams with expand buttons
  * - Applies syntax highlighting to code blocks using highlight.js
@@ -107,70 +186,15 @@ renderer.code = function(code, language) {
     }
 
     // Handle markdown with YAML front matter
-    // Detects YAML front matter pattern (---\nYAML\n---) and highlights YAML and markdown separately
     if (language === 'markdown' || language === 'md') {
-        // Detect YAML front matter pattern: starts with ---, has content, ends with ---
-        const frontMatterMatch = code.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-        if (frontMatterMatch && typeof hljs !== 'undefined') {
-            try {
-                const yamlContent = frontMatterMatch[1];
-                const mdContent = frontMatterMatch[2];
-
-                // Highlight each section with appropriate language
-                const highlightedYaml = hljs.highlight(yamlContent, { language: 'yaml', ignoreIllegals: true });
-                const highlightedMd = mdContent.trim()
-                    ? hljs.highlight(mdContent, { language: 'markdown', ignoreIllegals: true })
-                    : { value: '' };
-
-                // Combine with styled delimiters (hljs-meta for the --- markers)
-                const delimiterClass = 'hljs-meta';
-                return `<pre><code class="hljs language-markdown" data-language="markdown"><span class="${delimiterClass}">---</span>\n${highlightedYaml.value}\n<span class="${delimiterClass}">---</span>${highlightedMd.value ? '\n' + highlightedMd.value : ''}</code></pre>`;
-            } catch (err) {
-                console.error('YAML front matter highlight error:', err);
-                // Fall through to normal markdown handling on error
-            }
+        const yamlResult = highlightYAMLFrontMatter(code);
+        if (yamlResult) {
+            return yamlResult;
         }
-    }
-
-    // Check if highlight.js is available
-    if (typeof hljs === 'undefined') {
-        console.error('highlight.js (hljs) is not loaded!');
-        const escaped = escapeHtml(code);
-        return `<pre><code data-language="${language || 'text'}">${escaped}</code></pre>`;
     }
 
     // Apply syntax highlighting for other code blocks
-    try {
-        if (language) {
-            // Normalize language names (yaml/yml are the same)
-            const normalizedLang = language.toLowerCase();
-            const langMap = {
-                'yml': 'yaml'
-            };
-            const mappedLang = langMap[normalizedLang] || normalizedLang;
-
-            if (hljs.getLanguage(mappedLang)) {
-                const highlighted = hljs.highlight(code, { language: mappedLang, ignoreIllegals: true });
-                return `<pre><code class="hljs language-${mappedLang}" data-language="${mappedLang}">${highlighted.value}</code></pre>`;
-            } else {
-                console.warn('Language not supported by highlight.js:', language);
-            }
-        }
-    } catch (err) {
-        console.error('Highlight error for language', language, ':', err);
-        // Fall through to auto-detection on error
-    }
-
-    // Fallback to auto-detection or plain rendering
-    try {
-        const highlighted = hljs.highlightAuto(code);
-        return `<pre><code class="hljs" data-language="${highlighted.language || language || 'text'}">${highlighted.value}</code></pre>`;
-    } catch (err) {
-        console.error('Auto-highlight error:', err);
-        // Final fallback to plain code block
-        const escaped = escapeHtml(code);
-        return `<pre><code data-language="${language || 'text'}">${escaped}</code></pre>`;
-    }
+    return highlightCodeBlock(code, language);
 };
 
 // Apply the custom renderer to marked

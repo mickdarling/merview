@@ -75,7 +75,7 @@ async function codeBlockHasLanguage(page, language) {
   const hasLang = await page.evaluate((lang) => {
     const codeBlocks = document.querySelectorAll('#wrapper pre code');
     for (const block of codeBlocks) {
-      const dataLang = block.getAttribute('data-language');
+      const dataLang = block.dataset.language;
       const classLang = block.className.includes(`language-${lang}`);
       if (dataLang === lang || classLang) {
         return true;
