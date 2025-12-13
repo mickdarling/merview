@@ -106,6 +106,32 @@ renderer.code = function(code, language) {
         </div>`;
     }
 
+    // Handle markdown with YAML front matter
+    // Detects YAML front matter pattern (---\nYAML\n---) and highlights YAML and markdown separately
+    if (language === 'markdown' || language === 'md') {
+        // Detect YAML front matter pattern: starts with ---, has content, ends with ---
+        const frontMatterMatch = code.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+        if (frontMatterMatch && typeof hljs !== 'undefined') {
+            try {
+                const yamlContent = frontMatterMatch[1];
+                const mdContent = frontMatterMatch[2];
+
+                // Highlight each section with appropriate language
+                const highlightedYaml = hljs.highlight(yamlContent, { language: 'yaml', ignoreIllegals: true });
+                const highlightedMd = mdContent.trim()
+                    ? hljs.highlight(mdContent, { language: 'markdown', ignoreIllegals: true })
+                    : { value: '' };
+
+                // Combine with styled delimiters (hljs-meta for the --- markers)
+                const delimiterClass = 'hljs-meta';
+                return `<pre><code class="hljs language-markdown" data-language="markdown"><span class="${delimiterClass}">---</span>\n${highlightedYaml.value}\n<span class="${delimiterClass}">---</span>${highlightedMd.value ? '\n' + highlightedMd.value : ''}</code></pre>`;
+            } catch (err) {
+                console.error('YAML front matter highlight error:', err);
+                // Fall through to normal markdown handling on error
+            }
+        }
+    }
+
     // Check if highlight.js is available
     if (typeof hljs === 'undefined') {
         console.error('highlight.js (hljs) is not loaded!');
