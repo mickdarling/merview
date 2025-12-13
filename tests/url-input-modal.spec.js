@@ -338,7 +338,7 @@ function browserTestContextDescriptions() {
 
       // Close modal
       const modal = document.getElementById('urlModal');
-      if (modal && modal.open) {
+      if (modal?.open) {
         modal.close();
       }
     }
