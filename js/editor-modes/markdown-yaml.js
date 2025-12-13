@@ -2,19 +2,12 @@
  * CodeMirror mode for Markdown with YAML front matter highlighting
  * Combines GFM (GitHub Flavored Markdown) with YAML for front matter sections
  */
-(function(mod) {
-  if (typeof exports == "object" && typeof module == "object") // CommonJS
-    mod(require("codemirror/lib/codemirror"));
-  else if (typeof define == "function" && define.amd) // AMD
-    define(["codemirror/lib/codemirror"], mod);
-  else // Plain browser env
-    mod(CodeMirror);
-})(function(CodeMirror) {
+(function(CodeMirror) {
   "use strict";
 
   CodeMirror.defineMode("gfm-yaml-frontmatter", function(config) {
-    var yamlMode = CodeMirror.getMode(config, "yaml");
-    var gfmMode = CodeMirror.getMode(config, "gfm");
+    const yamlMode = CodeMirror.getMode(config, "yaml");
+    const gfmMode = CodeMirror.getMode(config, "gfm");
 
     return {
       startState: function() {
@@ -82,4 +75,4 @@
 
   // Register MIME type
   CodeMirror.defineMIME("text/x-gfm-yaml", "gfm-yaml-frontmatter");
-});
+})(CodeMirror);
