@@ -171,12 +171,13 @@ test.describe('URL Loading', () => {
       expect(isAllowed).toBe(false);
     });
 
-    test('should block URLs with other non-ASCII hostname characters', async ({ page }) => {
-      // URL with Unicode character in hostname
-      const unicodeUrl = 'https://raw.githüb.com/user/repo/main/file.md';
+    test('should allow legitimate IDN domains (non-homograph)', async ({ page }) => {
+      // URL with legitimate German umlaut (not a homograph attack)
+      // This is a legitimate internationalized domain name
+      const unicodeUrl = 'https://müller.com/file.md';
 
       const isAllowed = await testUrlValidation(page, unicodeUrl);
-      expect(isAllowed).toBe(false);
+      expect(isAllowed).toBe(true);
     });
 
     test('should allow legitimate ASCII URLs from trusted domains', async ({ page }) => {
@@ -233,7 +234,7 @@ test.describe('URL Loading', () => {
       const homographUrl = 'https://r\u0430w.githubusercontent.com/user/repo/main/file.md';
       await testUrlValidation(page, homographUrl);
 
-      const homographWarning = consoleMessages.find(msg => msg.includes('non-ASCII hostname'));
+      const homographWarning = consoleMessages.find(msg => msg.includes('homoglyphs'));
       expect(homographWarning).toBeTruthy();
     });
   });

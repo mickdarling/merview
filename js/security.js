@@ -54,10 +54,63 @@ const MAX_URL_LENGTH = 2048;
  * @param {string} str - The string to check
  * @returns {boolean} True if string contains only printable non-space ASCII
  */
-function isASCII(str) {
+function _isASCII(str) {
     // Only allow printable ASCII excluding space (0x21-0x7E)
     // Hostnames cannot contain spaces, so this is stricter than general printable ASCII
     return /^[\x21-\x7E]*$/.test(str);
+}
+
+/**
+ * Detect potential homograph attacks using mixed-script lookalike characters
+ *
+ * A homograph attack uses visually similar characters from different scripts to impersonate
+ * legitimate domains. For example: "rаw.github.com" using Cyrillic 'а' (U+0430) instead of Latin 'a'.
+ *
+ * This function detects suspicious mixing of Latin characters with Cyrillic or Greek lookalikes.
+ * Legitimate international domain names (IDN) use consistent scripts within a domain, so they pass.
+ *
+ * Detected character sets:
+ * - Cyrillic homoglyphs (lowercase): а(U+0430)=a, е(U+0435)=e, о(U+043E)=o, р(U+0440)=p,
+ *   с(U+0441)=c, х(U+0445)=x, у(U+0443)=y
+ * - Cyrillic homoglyphs (uppercase): А(U+0410)=A, В(U+0412)=B, Е(U+0415)=E, К(U+041A)=K,
+ *   М(U+041C)=M, Н(U+041D)=H, О(U+041E)=O, Р(U+0420)=P, Т(U+0422)=T, У(U+0423)=Y, Х(U+0425)=X
+ * - Greek homoglyphs (lowercase): α(U+03B1)=a, ο(U+03BF)=o, υ(U+03C5)=u, ι(U+03B9)=i
+ * - Greek homoglyphs (uppercase): Α(U+0391)=A, Β(U+0392)=B, Ε(U+0395)=E, Η(U+0397)=H,
+ *   Ι(U+0399)=I, Κ(U+039A)=K, Μ(U+039C)=M, Ν(U+039D)=N, Ο(U+039F)=O, Ρ(U+03A1)=P,
+ *   Τ(U+03A4)=T, Υ(U+03A5)=Y, Χ(U+03A7)=X
+ *
+ * Examples:
+ * - "rаw.githubusercontent.com" (Cyrillic 'а') → true (ATTACK - mixed scripts)
+ * - "gitНub.com" (Cyrillic 'Н') → true (ATTACK - mixed scripts)
+ * - "例え.jp" (Japanese) → false (safe - consistent script)
+ * - "中文.com" (Chinese) → false (safe - consistent script)
+ * - "github.com" (Latin) → false (safe - pure ASCII)
+ *
+ * @param {string} str - The hostname string to check
+ * @returns {boolean} True if the string appears to be a homograph attack
+ */
+function containsHomoglyphs(str) {
+    // Cyrillic characters that look like Latin letters
+    // Lowercase: а(U+0430)=a, е(U+0435)=e, о(U+043E)=o, р(U+0440)=p, с(U+0441)=c, х(U+0445)=x, у(U+0443)=y
+    // Uppercase: А(U+0410)=A, В(U+0412)=B, Е(U+0415)=E, К(U+041A)=K, М(U+041C)=M, Н(U+041D)=H, О(U+041E)=O, Р(U+0420)=P, Т(U+0422)=T, У(U+0423)=Y, Х(U+0425)=X
+    const cyrillicHomoglyphs = /[\u0430\u0435\u043E\u0440\u0441\u0445\u0443\u0410\u0412\u0415\u041A\u041C\u041D\u041E\u0420\u0422\u0423\u0425]/;
+
+    // Greek characters that look like Latin letters
+    // Lowercase: α(U+03B1)=a, ο(U+03BF)=o, υ(U+03C5)=u, ι(U+03B9)=i
+    // Uppercase: Α(U+0391)=A, Β(U+0392)=B, Ε(U+0395)=E, Η(U+0397)=H, Ι(U+0399)=I, Κ(U+039A)=K, Μ(U+039C)=M, Ν(U+039D)=N, Ο(U+039F)=O, Ρ(U+03A1)=P, Τ(U+03A4)=T, Υ(U+03A5)=Y, Χ(U+03A7)=X
+    const greekHomoglyphs = /[\u03B1\u03BF\u03C5\u03B9\u0391\u0392\u0395\u0397\u0399\u039A\u039C\u039D\u039F\u03A1\u03A4\u03A5\u03A7]/;
+
+    // Latin alphabet characters (a-z, A-Z)
+    const latinChars = /[a-zA-Z]/;
+
+    const hasCyrillic = cyrillicHomoglyphs.test(str);
+    const hasGreek = greekHomoglyphs.test(str);
+    const hasLatin = latinChars.test(str);
+
+    // Suspicious if mixing Latin with lookalike Cyrillic or Greek characters
+    // This catches attacks like "rаw.github.com" (mixed Latin + Cyrillic)
+    // But allows pure scripts like "例え.jp" (pure Japanese) or "中文.com" (pure Chinese)
+    return (hasCyrillic || hasGreek) && hasLatin;
 }
 
 /**
@@ -233,8 +286,9 @@ export function normalizeGitHubContentUrl(url) {
  * 1. HTTPS protocol required (localhost exempted in dev mode)
  * 2. URL length limit (prevents DoS with extremely long URLs)
  * 3. No embedded credentials (user:pass@host)
- * 4. ASCII-only hostname (prevents IDN homograph attacks)
+ * 4. Homograph attack detection (blocks mixed-script lookalikes, allows legitimate IDN)
  *
+ * International domain names (IDN) like 例え.jp or 中文.com are allowed.
  * Content is sanitized by DOMPurify, so any HTTPS URL is safe to load.
  *
  * @param {string} url - The markdown URL to validate
@@ -248,11 +302,12 @@ export function isAllowedMarkdownURL(url) {
             return false;
         }
 
-        // Check for non-ASCII hostname BEFORE URL parsing (browser converts to punycode)
-        // This catches IDN homograph attacks like rаw.githubusercontent.com (Cyrillic 'а' U+0430)
+        // Check for homograph attacks BEFORE URL parsing (browser converts to punycode)
+        // This catches mixed-script attacks like rаw.githubusercontent.com (Cyrillic 'а' U+0430)
+        // while allowing legitimate international domains like 例え.jp (Japanese) or 中文.com (Chinese)
         const rawHostname = extractHostnameFromString(url);
-        if (rawHostname && !isASCII(rawHostname)) {
-            console.warn('Markdown URL blocked: non-ASCII hostname not allowed (possible homograph attack)');
+        if (rawHostname && containsHomoglyphs(rawHostname)) {
+            console.warn('Markdown URL blocked: hostname contains mixed-script homoglyphs (possible homograph attack)');
             return false;
         }
 
