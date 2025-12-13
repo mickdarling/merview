@@ -14,7 +14,6 @@
         return {
           inFrontMatter: false,
           frontMatterEnded: false,
-          localState: null,
           yamlState: CodeMirror.startState(yamlMode),
           gfmState: CodeMirror.startState(gfmMode)
         };
@@ -24,7 +23,6 @@
         return {
           inFrontMatter: state.inFrontMatter,
           frontMatterEnded: state.frontMatterEnded,
-          localState: state.localState,
           yamlState: CodeMirror.copyState(yamlMode, state.yamlState),
           gfmState: CodeMirror.copyState(gfmMode, state.gfmState)
         };

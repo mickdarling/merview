@@ -95,8 +95,18 @@ renderer.heading = function(text, level) {
  * @returns {string|null} HTML string with highlighted content, or null if not applicable
  */
 function highlightYAMLFrontMatter(code) {
+    // Early exit if code doesn't start with YAML delimiter
+    if (!code.startsWith('---')) {
+        return null;
+    }
+
+    // Prevent ReDoS with extremely large inputs
+    if (code.length > 100000) {
+        return null;
+    }
+
     // Detect YAML front matter pattern: starts with ---, has content, ends with ---
-    const frontMatterMatch = code.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+    const frontMatterMatch = YAML_FRONTMATTER_REGEX.exec(code);
     if (!frontMatterMatch || typeof hljs === 'undefined') {
         return null;
     }
@@ -199,6 +209,12 @@ renderer.code = function(code, language) {
 
 // Apply the custom renderer to marked
 marked.setOptions({ renderer });
+
+/**
+ * Pre-compiled regex for YAML front matter detection
+ * Used by highlightYAMLFrontMatter() - compiled once for performance
+ */
+const YAML_FRONTMATTER_REGEX = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/;
 
 /**
  * Security limits for YAML front matter parsing
