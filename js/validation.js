@@ -9,6 +9,16 @@ import { state } from './state.js';
 import { getElements } from './dom.js';
 
 /**
+ * HTML5 void elements that don't require closing tags.
+ * Defined at module scope to avoid recreation on each validation call.
+ * @see https://html.spec.whatwg.org/multipage/syntax.html#void-elements
+ */
+const VOID_ELEMENTS = new Set([
+    'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+    'link', 'meta', 'param', 'source', 'track', 'wbr'
+]);
+
+/**
  * Toggle the lint panel visibility
  * Updates state and triggers validation if enabling
  */
@@ -115,12 +125,6 @@ function extractTagName(tag) {
  * @param {number} blockIndex - The index of the code block
  */
 function validateHTML(code, blockIndex) {
-    // HTML5 void elements that don't have closing tags
-    const VOID_ELEMENTS = new Set([
-        'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
-        'link', 'meta', 'param', 'source', 'track', 'wbr'
-    ]);
-
     // Check for common issues
     const issues = [];
 

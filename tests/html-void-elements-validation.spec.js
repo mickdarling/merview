@@ -149,6 +149,51 @@ This HTML uses self-closing syntax for void elements:
     expect(lintContent).not.toContain('Possible unclosed HTML tags');
   });
 
+  test('should handle self-closing tags without space before slash', async ({ page }) => {
+    // Enable lint panel
+    await page.click('#lintToggle');
+    await waitForElementClass(page, '#lintPanel', 'show');
+
+    // Test self-closing syntax WITHOUT space before slash (e.g., <br/> vs <br />)
+    // This is a common variation that should also be handled correctly
+    const markdown = `
+# No-Space Self-Closing Test
+
+Testing self-closing tags without space before slash:
+
+\`\`\`html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="style.css"/>
+    <title>No-Space Test</title>
+</head>
+<body>
+    <h1>Testing No-Space Self-Closing</h1>
+    <p>Line break:<br/>New line.</p>
+    <img src="logo.png" alt="Logo"/>
+    <hr/>
+    <input type="text" name="field"/>
+</body>
+</html>
+\`\`\`
+`;
+
+    await setCodeMirrorContent(page, markdown);
+    await renderMarkdownAndWait(page, WAIT_TIMES.LONG);
+
+    // Wait for validation to complete
+    await page.waitForTimeout(WAIT_TIMES.MEDIUM);
+
+    // Check lint panel content
+    const lintContent = await page.$eval('#lintContent', el => el.textContent);
+
+    // Should show "No issues found" - self-closing without space is also valid
+    expect(lintContent).toContain('No issues found');
+    expect(lintContent).not.toContain('Possible unclosed HTML tags');
+  });
+
   test('should handle mix of void elements and regular tags', async ({ page }) => {
     // Enable lint panel
     await page.click('#lintToggle');
@@ -206,26 +251,39 @@ This HTML uses self-closing syntax for void elements:
     // Wait for validation to complete
     await page.waitForTimeout(WAIT_TIMES.MEDIUM);
 
-    // The code-validation demo has intentionally invalid HTML blocks,
-    // but the "Valid HTML" block should not trigger void element warnings.
-    // We expect some warnings from the intentional examples, but verify that
-    // the lint panel is working and NOT all HTML blocks show unclosed tag warnings.
+    // =============================================================================
+    // COUNTING STRATEGY EXPLANATION
+    // =============================================================================
+    // The code-validation demo contains a mix of:
+    //   - Valid HTML blocks (with void elements like <meta>, <br>, <img>)
+    //   - Intentionally invalid HTML blocks (with actual unclosed tags)
+    //
+    // We use a counting strategy rather than checking specific blocks because:
+    //   1. It's more resilient to demo content changes
+    //   2. It tests the real behavior: void elements should NOT cause false positives
+    //   3. We compare unclosed-tag warnings vs total HTML warnings
+    //
+    // If void elements caused false positives, EVERY HTML block would trigger
+    // "Possible unclosed HTML tags" warnings. By verifying that unclosedWarnings
+    // is LESS than totalHtmlWarnings, we confirm some blocks pass validation.
+    // =============================================================================
+
     const lintContent = await page.$eval('#lintContent', el => el.textContent);
 
     // Verify validation is working - the demo has intentional errors, so should NOT be empty
     expect(lintContent).toBeDefined();
     expect(lintContent).not.toContain('No issues found');
 
-    // Key test: If every HTML block failed due to void elements, we'd see
-    // "Possible unclosed HTML tags" warnings in every block. Instead, verify
-    // that the valid HTML blocks (which contain void elements like <meta>, <link>, etc.)
-    // don't all have unclosed tag warnings.
-    // Count how many times "Possible unclosed HTML tags" appears
+    // Count occurrences of specific warning types:
+    // - unclosedWarnings: How many "Possible unclosed HTML tags" messages appear
+    // - totalHtmlWarnings: How many HTML blocks were validated (look for "HTML - Block #N")
     const unclosedWarnings = (lintContent.match(/Possible unclosed HTML tags/g) || []).length;
     const totalHtmlWarnings = (lintContent.match(/HTML - Block #/g) || []).length;
 
-    // If void elements were causing false positives, unclosed warnings would match
-    // total HTML warnings. Verify that's not the case - some HTML blocks should be clean.
+    // THE KEY ASSERTION:
+    // If void elements were causing false positives, unclosed warnings would equal
+    // total HTML warnings (every block would fail). Verify that's not the case -
+    // some HTML blocks (those with only void elements) should be clean.
     expect(unclosedWarnings).toBeLessThan(totalHtmlWarnings);
   });
 
