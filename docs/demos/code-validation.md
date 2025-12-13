@@ -82,6 +82,8 @@ These code blocks should pass validation with no errors:
 
 ## Invalid Code Examples
 
+> **Note:** The code blocks below contain **intentional errors** for demonstration purposes. Enable the Lint panel to see how Merview detects these issues.
+
 These code blocks contain errors that the linter will detect:
 
 ### Invalid JSON - Missing Comma
