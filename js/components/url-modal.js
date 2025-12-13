@@ -39,7 +39,7 @@ const CONTEXT_DESCRIPTIONS = {
  * @param {string} options.title - Modal title (e.g., "Load Style from URL")
  * @param {string} options.placeholder - Input placeholder text
  * @param {Array<string>} [options.allowedDomains] - List of allowed domains (defaults to ALLOWED_CSS_DOMAINS)
- * @param {string} [options.context] - Content type context for screen reader description (style, syntax, editor, mermaid, markdown)
+ * @param {('style'|'syntax'|'editor'|'mermaid'|'markdown')} [options.context] - Content type context for screen reader description
  * @returns {Promise<string|null>} Resolves with URL or null if cancelled
  */
 export function showURLModal({ title, placeholder, allowedDomains = ALLOWED_CSS_DOMAINS, context = 'style' }) {
