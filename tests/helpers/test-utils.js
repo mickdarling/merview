@@ -417,7 +417,7 @@ async function findLineWithText(page, searchText) {
     const lineCount = cm.lineCount();
     for (let i = 0; i < lineCount; i++) {
       const lineContent = cm.getLine(i);
-      if (lineContent && lineContent.includes(text)) {
+      if (lineContent?.includes(text)) {
         return i;
       }
     }
