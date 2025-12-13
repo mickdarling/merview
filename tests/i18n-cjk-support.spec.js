@@ -471,10 +471,8 @@ greeting: "Hello こんにちは 你好 안녕하세요"
           return globalThis.isAllowedMarkdownURL(testUrl);
         }, url);
 
-        // Note: The current implementation blocks non-ASCII hostnames but should allow
-        // non-ASCII path components. However, the actual validation might vary.
-        // This test documents the current behavior.
-        expect(typeof isAllowed).toBe('boolean');
+        // CJK characters in URL paths should be allowed (they get percent-encoded by browser)
+        expect(isAllowed).toBe(true);
       }
     });
 
@@ -783,6 +781,10 @@ ${longJapanese}`;
       // Verify long string is preserved
       expect(html).toContain('あ'.repeat(100)); // Check for substantial portion
       expect(html.length).toBeGreaterThan(1000);
+
+      // Verify content wasn't truncated
+      const charCount = (html.match(/あ/g) || []).length;
+      expect(charCount).toBe(1000);
     });
 
     test('handles mixed directionality (LTR CJK with RTL markers)', async ({ page }) => {
