@@ -538,7 +538,7 @@ async function handleSpecialStyleSource(style) {
         return { handled: true, success: false };
     }
     if (style.source === 'url') {
-        const success = await promptForURLWithResult();
+        const success = await promptForURLWithResult('Style', 'style');
         return { handled: true, success };
     }
     if (style.source === 'repository') {
@@ -607,13 +607,15 @@ async function loadCSSFromFile(file) {
 /**
  * Prompt user for URL to load CSS from using accessible modal
  * @param {string} context - Context for the modal title (e.g., "Style", "Syntax Theme")
+ * @param {string} contextType - Content type for screen reader description (style, syntax, editor, mermaid)
  * @returns {Promise<boolean>} True if URL was provided and loading initiated
  */
-async function promptForURLWithResult(context = 'Style') {
+async function promptForURLWithResult(context = 'Style', contextType = 'style') {
     const url = await showURLModal({
         title: `Load ${context} from URL`,
         placeholder: 'https://raw.githubusercontent.com/user/repo/main/style.css',
-        allowedDomains: ALLOWED_CSS_DOMAINS
+        allowedDomains: ALLOWED_CSS_DOMAINS,
+        context: contextType
     });
 
     if (!url) {
@@ -892,7 +894,7 @@ async function changeSyntaxTheme(themeName) {
 
     // Handle URL loading
     if (theme?.source === 'url') {
-        const success = await promptForURLWithResult('Syntax Theme');
+        const success = await promptForURLWithResult('Syntax Theme', 'syntax');
         // Revert dropdown if cancelled
         if (!success && syntaxThemeSelector) {
             syntaxThemeSelector.value = previousTheme;
@@ -996,7 +998,7 @@ async function changeEditorTheme(themeName) {
 
     // Handle URL loading
     if (theme?.source === 'url') {
-        const success = await promptForURLWithResult('Editor Theme');
+        const success = await promptForURLWithResult('Editor Theme', 'editor');
         // Revert dropdown if cancelled
         if (!success && editorThemeSelector) {
             editorThemeSelector.value = previousTheme;
@@ -1102,7 +1104,7 @@ async function changeMermaidTheme(themeValue) {
 
     // Handle URL loading
     if (theme?.source === 'url') {
-        const success = await promptForURLWithResult('Mermaid Theme');
+        const success = await promptForURLWithResult('Mermaid Theme', 'mermaid');
         // Revert dropdown if cancelled
         if (!success && mermaidThemeSelector) {
             mermaidThemeSelector.value = previousTheme;

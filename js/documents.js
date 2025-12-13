@@ -241,7 +241,8 @@ export async function changeDocument(value) {
             // Show URL modal - any HTTPS URL is now allowed
             const url = await showURLModal({
                 title: 'Open from URL',
-                placeholder: 'https://github.com/user/repo/blob/main/README.md'
+                placeholder: 'https://github.com/user/repo/blob/main/README.md',
+                context: 'markdown'
             });
 
             // Check if this request is still current (race condition prevention)

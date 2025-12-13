@@ -22,14 +22,27 @@ let currentAllowedDomains = ALLOWED_CSS_DOMAINS;
 const MODAL_FOCUS_DELAY_MS = 100;
 
 /**
+ * Context-aware descriptions for screen readers
+ * Maps content types to helpful descriptions about what will happen
+ */
+const CONTEXT_DESCRIPTIONS = {
+    'style': 'This will load a custom CSS stylesheet from an external URL',
+    'syntax': 'This will load a syntax highlighting theme from an external URL',
+    'editor': 'This will load a CodeMirror editor theme from an external URL',
+    'mermaid': 'This will load a Mermaid diagram theme configuration from an external URL',
+    'markdown': 'This will load a markdown document from an external URL'
+};
+
+/**
  * Show the URL input modal
  * @param {Object} options - Modal configuration
  * @param {string} options.title - Modal title (e.g., "Load Style from URL")
  * @param {string} options.placeholder - Input placeholder text
  * @param {Array<string>} [options.allowedDomains] - List of allowed domains (defaults to ALLOWED_CSS_DOMAINS)
+ * @param {('style'|'syntax'|'editor'|'mermaid'|'markdown')} [options.context] - Content type context for screen reader description
  * @returns {Promise<string|null>} Resolves with URL or null if cancelled
  */
-export function showURLModal({ title, placeholder, allowedDomains = ALLOWED_CSS_DOMAINS }) {
+export function showURLModal({ title, placeholder, allowedDomains = ALLOWED_CSS_DOMAINS, context = 'style' }) {
     return new Promise((resolve) => {
         const modal = document.getElementById('urlModal');
         if (!modal) {
@@ -57,6 +70,7 @@ export function showURLModal({ title, placeholder, allowedDomains = ALLOWED_CSS_
         const urlInput = document.getElementById('urlInput');
         const domainList = document.getElementById('urlModalDomains');
         const errorDiv = document.getElementById('urlModalError');
+        const contextDesc = document.getElementById('urlModalContextDesc');
 
         if (modalTitle) {
             modalTitle.textContent = title;
@@ -65,6 +79,12 @@ export function showURLModal({ title, placeholder, allowedDomains = ALLOWED_CSS_
         if (urlInput) {
             urlInput.value = '';
             urlInput.placeholder = placeholder || 'https://example.com/file.css';
+        }
+
+        // Update context-aware description for screen readers
+        if (contextDesc) {
+            const description = CONTEXT_DESCRIPTIONS[context] || CONTEXT_DESCRIPTIONS['style'];
+            contextDesc.textContent = description;
         }
 
         // Clear any previous error

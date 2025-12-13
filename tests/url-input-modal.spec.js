@@ -293,6 +293,81 @@ function browserCheckStateCleanup() {
 }
 
 /**
+ * Browser-side helper: Test context description updates by triggering modal through UI
+ * @returns {Promise<boolean>} True if context descriptions update correctly
+ */
+function browserTestContextDescriptions() {
+  const MODAL_DELAY_MS = 150;
+  return new Promise(function resolveContextTest(resolve) {
+    const contextDesc = document.getElementById('urlModalContextDesc');
+    const modal = document.getElementById('urlModal');
+    if (!contextDesc || !modal) {
+      resolve(false);
+      return;
+    }
+
+    // Map selectors to their expected context description text
+    const selectorContexts = [
+      { selectorId: 'styleSelector', expectedText: 'CSS stylesheet', optionText: 'Load from URL' },
+      { selectorId: 'syntaxThemeSelector', expectedText: 'syntax highlighting theme', optionText: 'Load from URL' },
+      { selectorId: 'editorThemeSelector', expectedText: 'CodeMirror editor theme', optionText: 'Load from URL' },
+      { selectorId: 'mermaidThemeSelector', expectedText: 'Mermaid diagram theme', optionText: 'Load from URL' }
+    ];
+
+    let testIndex = 0;
+    let allCorrect = true;
+
+    function testNextContext() {
+      if (testIndex >= selectorContexts.length) {
+        resolve(allCorrect);
+        return;
+      }
+
+      const { selectorId, expectedText, optionText } = selectorContexts[testIndex];
+      const selector = document.getElementById(selectorId);
+
+      if (!selector) {
+        testIndex++;
+        testNextContext();
+        return;
+      }
+
+      // Find the "Load from URL" option
+      const options = Array.from(selector.options);
+      const urlOption = options.find(function findUrlOption(opt) {
+        return opt.textContent.includes(optionText);
+      });
+
+      if (!urlOption) {
+        testIndex++;
+        testNextContext();
+        return;
+      }
+
+      // Select the option to trigger modal
+      selector.value = urlOption.value;
+      selector.dispatchEvent(new Event('change', { bubbles: true }));
+
+      // Wait for modal to open and check context
+      setTimeout(function checkContext() {
+        if (modal.open) {
+          const actualText = contextDesc.textContent;
+          if (!actualText.includes(expectedText)) {
+            allCorrect = false;
+          }
+          modal.close();
+        }
+
+        testIndex++;
+        setTimeout(testNextContext, 50);
+      }, MODAL_DELAY_MS);
+    }
+
+    testNextContext();
+  });
+}
+
+/**
  * Browser-side helper: Count optgroups in a selector
  * @param {string} selectorId - The selector ID
  * @returns {number} Number of optgroups
@@ -601,7 +676,7 @@ test.describe('URL Input Modal', () => {
       ]);
 
       expect(ariaLabelledBy).toBe('urlModalTitle');
-      expect(ariaDescribedBy).toBe('urlModalDesc');
+      expect(ariaDescribedBy).toBe('urlModalDesc urlModalContextDesc');
     });
 
     test('urlModal should have correct class names', async ({ page }) => {
@@ -651,6 +726,21 @@ test.describe('URL Input Modal', () => {
     test('error display should be hidden by default', async ({ page }) => {
       const display = await page.$eval('#urlModalError', el => el.style.display);
       expect(display).toBe('none');
+    });
+
+    test('context description element should have visually-hidden class', async ({ page }) => {
+      const hasClass = await elementHasClass(page, '#urlModalContextDesc', 'visually-hidden');
+      expect(hasClass).toBe(true);
+    });
+
+    test('context description should default to "style" context', async ({ page }) => {
+      const description = await page.$eval('#urlModalContextDesc', el => el.textContent);
+      expect(description).toContain('CSS stylesheet');
+    });
+
+    test('context description should update based on different contexts', async ({ page }) => {
+      const contextDescUpdates = await page.evaluate(browserTestContextDescriptions);
+      expect(contextDescUpdates).toBe(true);
     });
   });
 
