@@ -9,6 +9,16 @@ import { state } from './state.js';
 import { getElements } from './dom.js';
 
 /**
+ * HTML5 void elements that don't require closing tags.
+ * Defined at module scope to avoid recreation on each validation call.
+ * @see https://html.spec.whatwg.org/multipage/syntax.html#void-elements
+ */
+const VOID_ELEMENTS = new Set([
+    'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+    'link', 'meta', 'param', 'source', 'track', 'wbr'
+]);
+
+/**
  * Toggle the lint panel visibility
  * Updates state and triggers validation if enabling
  */
@@ -92,8 +102,26 @@ function validateJavaScript(_code, _blockIndex) {
 }
 
 /**
+ * Extract tag name from an HTML tag
+ * @param {string} tag - The HTML tag (e.g., "<div>", "<img />")
+ * @returns {string|null} The tag name in lowercase, or null if no match
+ */
+function extractTagName(tag) {
+    const match = /<(\w+)/.exec(tag);
+    return match ? match[1].toLowerCase() : null;
+}
+
+/**
  * Basic HTML validation
  * Checks for common HTML issues like unclosed tags and missing DOCTYPE
+ *
+ * NOTE: This is basic regex-based validation, not a full HTML parser.
+ * Known limitations:
+ * - May have false positives with angle brackets in script content (e.g., `if (x<div && y>5)`)
+ * - Does not validate tag name matching (e.g., won't catch `<div>...</span>`)
+ * - Doesn't handle comments containing HTML-like syntax (e.g., `<!-- <div> -->`)
+ * - For production use cases requiring accurate HTML validation, consider a dedicated parser library
+ *
  * @param {string} code - The HTML code to validate
  * @param {number} blockIndex - The index of the code block
  */
@@ -106,7 +134,22 @@ function validateHTML(code, blockIndex) {
     const openTags = code.match(/<(\w+)(?:\s[^>]*?)?>/g) || [];
     const closeTags = code.match(/<\/(\w+)>/g) || [];
 
-    if (openTags.length !== closeTags.length) {
+    // Filter out void elements and self-closing tags from open tags count
+    const nonVoidOpenTags = openTags.filter(tag => {
+        // Extract tag name from opening tag
+        const tagName = extractTagName(tag);
+        if (!tagName) return true;
+
+        // Exclude void elements
+        if (VOID_ELEMENTS.has(tagName)) return false;
+
+        // Only allow self-closing syntax for void elements
+        if (tag.endsWith('/>') && VOID_ELEMENTS.has(tagName)) return false;
+
+        return true;
+    });
+
+    if (nonVoidOpenTags.length !== closeTags.length) {
         issues.push('Possible unclosed HTML tags');
     }
 
