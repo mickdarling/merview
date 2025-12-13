@@ -5,65 +5,10 @@
 const { test, expect } = require('@playwright/test');
 const {
   waitForPageReady,
-  setCodeMirrorContent,
-  WAIT_TIMES
+  getLineTokens,
+  lineHasTokenType,
+  setContentAndWait
 } = require('./helpers/test-utils');
-
-/**
- * Helper to get all tokens for a specific line
- * @param {import('@playwright/test').Page} page - Playwright page object
- * @param {number} line - Line number (0-indexed)
- * @returns {Promise<Array<{type: string, string: string, start: number, end: number}>>} Array of tokens
- */
-async function getLineTokens(page, line) {
-  return page.evaluate((lineNum) => {
-    const cmElement = document.querySelector('.CodeMirror');
-    const cm = cmElement?.CodeMirror;
-    if (!cm) {
-      throw new Error('CodeMirror instance not found');
-    }
-    const lineContent = cm.getLine(lineNum);
-    if (lineContent === undefined) {
-      return [];
-    }
-    const tokens = [];
-    let pos = 0;
-    while (pos < lineContent.length) {
-      const token = cm.getTokenAt({ line: lineNum, ch: pos + 1 });
-      tokens.push({
-        type: token.type || '',
-        string: token.string,
-        start: token.start,
-        end: token.end
-      });
-      pos = token.end;
-    }
-    return tokens;
-  }, line);
-}
-
-/**
- * Helper to check if a line has a specific token type
- * @param {import('@playwright/test').Page} page - Playwright page object
- * @param {number} line - Line number (0-indexed)
- * @param {string} tokenType - Token type to check for (can be partial match)
- * @returns {Promise<boolean>} True if line contains the token type
- */
-async function lineHasTokenType(page, line, tokenType) {
-  const tokens = await getLineTokens(page, line);
-  return tokens.some(token => token.type?.includes(tokenType));
-}
-
-/**
- * Helper to set CodeMirror content and wait for it to be processed
- * @param {import('@playwright/test').Page} page - Playwright page object
- * @param {string} content - Content to set
- * @returns {Promise<void>}
- */
-async function setContentAndWait(page, content) {
-  await setCodeMirrorContent(page, content);
-  await page.waitForTimeout(WAIT_TIMES.SHORT);
-}
 
 test.describe('CodeMirror Complex YAML Highlighting in Editor', () => {
   test.beforeEach(async ({ page }) => {
@@ -117,6 +62,11 @@ level1:
         expect(tokens.length).toBeGreaterThan(0);
         // Each line should have at least one token with type information
         expect(tokens.some(t => t.type)).toBe(true);
+        // Each key should be highlighted as atom, variable-2, or meta (YAML property)
+        const hasYamlKey = tokens.some(t =>
+          t.type && (t.type.includes('atom') || t.type.includes('variable') || t.type.includes('meta'))
+        );
+        expect(hasYamlKey).toBe(true);
       }
     });
   });
@@ -146,6 +96,11 @@ title: Test
       expect(line2Tokens.length).toBeGreaterThan(0);
       expect(line3Tokens.length).toBeGreaterThan(0);
       expect(line4Tokens.length).toBeGreaterThan(0);
+
+      // Multi-line string content should be highlighted as string or have some token type
+      expect(line2Tokens.some(t => t.type)).toBe(true);
+      expect(line3Tokens.some(t => t.type)).toBe(true);
+      expect(line4Tokens.some(t => t.type)).toBe(true);
     });
 
     test('highlights folded block scalar (>)', async ({ page }) => {
@@ -533,9 +488,6 @@ multi: |
 
         return Array.from(types);
       });
-
-      // Log for debugging purposes
-      console.log('Token types found in complex YAML:', allTokenTypes);
 
       // We should have multiple token types
       expect(allTokenTypes.length).toBeGreaterThan(0);
