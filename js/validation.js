@@ -97,13 +97,20 @@ function validateJavaScript(_code, _blockIndex) {
  * @returns {string|null} The tag name in lowercase, or null if no match
  */
 function extractTagName(tag) {
-    const match = tag.match(/<(\w+)/);
+    const match = /<(\w+)/.exec(tag);
     return match ? match[1].toLowerCase() : null;
 }
 
 /**
  * Basic HTML validation
  * Checks for common HTML issues like unclosed tags and missing DOCTYPE
+ *
+ * NOTE: This is basic regex-based validation, not a full HTML parser.
+ * Known limitations:
+ * - May have false positives with angle brackets in script content (e.g., `if (x<div && y>5)`)
+ * - Does not validate tag name matching (e.g., won't catch `<div>...</span>`)
+ * - For production use cases requiring accurate HTML validation, consider a dedicated parser library
+ *
  * @param {string} code - The HTML code to validate
  * @param {number} blockIndex - The index of the code block
  */

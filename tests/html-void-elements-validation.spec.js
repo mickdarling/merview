@@ -206,41 +206,27 @@ This HTML uses self-closing syntax for void elements:
     // Wait for validation to complete
     await page.waitForTimeout(WAIT_TIMES.MEDIUM);
 
-    // Get all lint issues
-    const lintIssues = await page.$$eval('.lint-issue', issues => {
-      return issues.map(issue => ({
-        type: issue.querySelector('.lint-issue-type')?.textContent || '',
-        message: issue.querySelector('.lint-issue-message')?.textContent || ''
-      }));
-    });
-
-    // Filter for HTML-related issues
-    const htmlIssues = lintIssues.filter(issue =>
-      issue.message.includes('unclosed') ||
-      issue.message.includes('Possible unclosed HTML tags')
-    );
-
-    // The "Valid HTML" block should not have unclosed tag warnings
-    // There may be other intentional errors in the demo, but the valid HTML block
-    // (which contains void elements like <meta>, <title>, etc.) should be clean
-    const validHtmlBlockIssues = htmlIssues.filter(issue =>
-      // The valid HTML block is early in the demo, so if there are unclosed tag warnings,
-      // they should come from the intentionally invalid examples later
-      !issue.message.includes('Missing DOCTYPE') // This is okay for partial examples
-    );
-
     // The code-validation demo has intentionally invalid HTML blocks,
     // but the "Valid HTML" block should not trigger void element warnings.
-    // We expect some warnings from the intentional examples, but verify the count
-    // is reasonable (i.e., not every HTML block is flagged)
+    // We expect some warnings from the intentional examples, but verify that
+    // the lint panel is working and NOT all HTML blocks show unclosed tag warnings.
     const lintContent = await page.$eval('#lintContent', el => el.textContent);
 
-    // Should not show excessive warnings - the valid blocks should pass
-    const warningCount = (lintContent.match(/WARNING/g) || []).length;
+    // Verify validation is working - the demo has intentional errors, so should NOT be empty
+    expect(lintContent).toBeDefined();
+    expect(lintContent).not.toContain('No issues found');
 
-    // The demo has several intentional errors, but not all blocks are invalid.
-    // A reasonable expectation is fewer than 10 warnings total.
-    expect(warningCount).toBeLessThan(10);
+    // Key test: If every HTML block failed due to void elements, we'd see
+    // "Possible unclosed HTML tags" warnings in every block. Instead, verify
+    // that the valid HTML blocks (which contain void elements like <meta>, <link>, etc.)
+    // don't all have unclosed tag warnings.
+    // Count how many times "Possible unclosed HTML tags" appears
+    const unclosedWarnings = (lintContent.match(/Possible unclosed HTML tags/g) || []).length;
+    const totalHtmlWarnings = (lintContent.match(/HTML - Block #/g) || []).length;
+
+    // If void elements were causing false positives, unclosed warnings would match
+    // total HTML warnings. Verify that's not the case - some HTML blocks should be clean.
+    expect(unclosedWarnings).toBeLessThan(totalHtmlWarnings);
   });
 
   test('should handle all standard HTML5 void elements', async ({ page }) => {
