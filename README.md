@@ -10,7 +10,7 @@
 
 A client-side markdown editor with live Mermaid diagram rendering. No logins, no payments, completely free and open source.
 
-![Merview Screenshot](docs/images/merview-screenshot.png)
+![Merview Screenshot](docs/images/merview-screenshot-2025-12-13.png)
 
 ## Features
 
