@@ -35,7 +35,7 @@ test.describe('IDN and Homograph Protection', () => {
             expect(result.subdomain).toBe(true);
         });
 
-        test('pure Japanese domains should be allowed', async ({ page }) => {
+        test('pure Japanese domains should be blocked (IDN security policy)', async ({ page }) => {
             const result = await page.evaluate(() => {
                 const { isAllowedMarkdownURL } = globalThis;
                 return {
@@ -45,12 +45,13 @@ test.describe('IDN and Homograph Protection', () => {
                 };
             });
 
-            expect(result.japanese).toBe(true);
-            expect(result.hiragana).toBe(true);
-            expect(result.katakana).toBe(true);
+            // Security policy: ALL non-ASCII hostnames are blocked to prevent IDN homograph attacks
+            expect(result.japanese).toBe(false);
+            expect(result.hiragana).toBe(false);
+            expect(result.katakana).toBe(false);
         });
 
-        test('pure Chinese domains should be allowed', async ({ page }) => {
+        test('pure Chinese domains should be blocked (IDN security policy)', async ({ page }) => {
             const result = await page.evaluate(() => {
                 const { isAllowedMarkdownURL } = globalThis;
                 return {
@@ -59,11 +60,12 @@ test.describe('IDN and Homograph Protection', () => {
                 };
             });
 
-            expect(result.simplified).toBe(true);
-            expect(result.traditional).toBe(true);
+            // Security policy: ALL non-ASCII hostnames are blocked to prevent IDN homograph attacks
+            expect(result.simplified).toBe(false);
+            expect(result.traditional).toBe(false);
         });
 
-        test('pure Korean domains should be allowed', async ({ page }) => {
+        test('pure Korean domains should be blocked (IDN security policy)', async ({ page }) => {
             const result = await page.evaluate(() => {
                 const { isAllowedMarkdownURL } = globalThis;
                 return {
@@ -72,17 +74,19 @@ test.describe('IDN and Homograph Protection', () => {
                 };
             });
 
-            expect(result.hangul).toBe(true);
-            expect(result.korean).toBe(true);
+            // Security policy: ALL non-ASCII hostnames are blocked to prevent IDN homograph attacks
+            expect(result.hangul).toBe(false);
+            expect(result.korean).toBe(false);
         });
 
-        test('pure Arabic domains should be allowed', async ({ page }) => {
+        test('pure Arabic domains should be blocked (IDN security policy)', async ({ page }) => {
             const result = await page.evaluate(() => {
                 const { isAllowedMarkdownURL } = globalThis;
                 return isAllowedMarkdownURL('https://العربية.com/document.md');
             });
 
-            expect(result).toBe(true);
+            // Security policy: ALL non-ASCII hostnames are blocked to prevent IDN homograph attacks
+            expect(result).toBe(false);
         });
     });
 

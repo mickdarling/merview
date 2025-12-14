@@ -900,9 +900,15 @@ test.describe('URL Input Modal', () => {
     });
 
     test('modal description should be properly associated via aria-describedby', async ({ page }) => {
-      const descId = await getElementAttribute(page, '#urlModal', 'aria-describedby');
-      const descExists = await page.$(`#${descId}`);
-      expect(descExists).not.toBeNull();
+      const descIds = await getElementAttribute(page, '#urlModal', 'aria-describedby');
+      // aria-describedby can have multiple space-separated IDs
+      const idArray = descIds.split(' ');
+
+      // Check that all referenced IDs exist in the DOM
+      for (const id of idArray) {
+        const descExists = await page.$(`#${id}`);
+        expect(descExists).not.toBeNull();
+      }
     });
 
     test('error region should announce changes', async ({ page }) => {

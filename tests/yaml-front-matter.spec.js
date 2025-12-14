@@ -599,12 +599,19 @@ title: Style Test
       );
       expect(hasClass).toBe(true);
 
-      // Check for inline styles (indicating proper styling)
-      const hasStyle = await page.$eval(
+      // Check that CSS styling is applied (via computed styles, not inline styles)
+      // The yaml-front-matter class applies styling through CSS rules in index.html
+      const hasProperStyling = await page.$eval(
         '.yaml-front-matter',
-        el => el.hasAttribute('style')
+        el => {
+          const styles = window.getComputedStyle(el);
+          // Check that critical styling properties are set (from CSS rules)
+          return styles.border !== 'none' &&
+                 styles.borderRadius !== '0px' &&
+                 styles.backgroundColor !== 'rgba(0, 0, 0, 0)';
+        }
       );
-      expect(hasStyle).toBe(true);
+      expect(hasProperStyling).toBe(true);
     });
 
     test('panel contains table for data display', async ({ page }) => {

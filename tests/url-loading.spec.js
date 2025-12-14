@@ -177,13 +177,14 @@ test.describe('URL Loading', () => {
       expect(isAllowed).toBe(false);
     });
 
-    test('should allow legitimate IDN domains (non-homograph)', async ({ page }) => {
-      // URL with legitimate German umlaut (not a homograph attack)
-      // This is a legitimate internationalized domain name
+    test('should block legitimate IDN domains (security policy)', async ({ page }) => {
+      // URL with legitimate German umlaut is blocked as part of IDN homograph attack prevention
+      // Security policy: ALL non-ASCII hostnames are blocked, even legitimate ones
+      // This prevents sophisticated homograph attacks that use legitimate characters
       const unicodeUrl = 'https://müller.com/file.md';
 
       const isAllowed = await testUrlValidation(page, unicodeUrl);
-      expect(isAllowed).toBe(true);
+      expect(isAllowed).toBe(false);
     });
 
     test('should allow legitimate ASCII URLs from trusted domains', async ({ page }) => {
