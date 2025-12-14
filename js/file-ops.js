@@ -455,7 +455,7 @@ A client-side Markdown editor with first-class Mermaid diagram support.
 ## Quick Start
 1. Start typing markdown in this editor
 2. See live preview on the right
-3. Add Mermaid diagrams with \\\`\\\`\\\`mermaid code blocks
+3. Add Mermaid diagrams with \`\`\`mermaid code blocks
 4. Export to PDF when ready
 
 [Visit GitHub](https://github.com/mickdarling/merview) for documentation.`;

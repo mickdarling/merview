@@ -55,7 +55,7 @@ The **Style** dropdown (in the preview panel) controls the overall look of your 
 
 ### External Styles (MarkedCustomStyles)
 
-The Style dropdown provides access to the [MarkedCustomStyles](https://github.com/ttscott/MarkedCustomStyles) repository, which contains 40+ additional themes. Select "MarkedCustomStyles (external)" from the dropdown to browse themes including:
+The Style dropdown provides access to the [MarkedCustomStyles](https://github.com/ttscoff/MarkedCustomStyles) repository, which contains 40+ additional themes. Select "MarkedCustomStyles (external)" from the dropdown to browse themes including:
 
 - Academia, Avenue, Bear, Torpedo
 - Swiss, Ulysses, Yeti, and many more
