@@ -52,14 +52,15 @@ graph LR
 
 ```mermaid
 graph LR
-    A[Load a Document] --> B[Drag & Drop]
+    A[How to Load a Document] --> B[Drag & Drop]
     A --> C[Menu → Open]
     A --> D[Menu → Open URL]
     A --> E[Start Typing]
-    B --> F[Real-time Preview]
+    B --> F[Doc loaded]
     C --> F
     D --> F
     E --> F
+    F --> G[Real-time Preview]
 ```
 
 Choose how to start: drag and drop a `.md` file onto the editor, use the Menu to open a local file or URL, or simply start typing directly in the editor.
