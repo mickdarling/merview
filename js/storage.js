@@ -92,10 +92,12 @@ export function saveMermaidTheme(themeName) {
 
 /**
  * Get "Respect Style Layout" toggle preference
- * @returns {boolean} True if style layout should be respected
+ * @returns {boolean} True if style layout should be respected (default: false)
  */
 export function getRespectStyleLayout() {
-    return localStorage.getItem('respect-style-layout') === 'true';
+    const stored = localStorage.getItem('respect-style-layout');
+    // Default to false if not set
+    return stored === null ? false : stored === 'true';
 }
 
 /**
@@ -108,12 +110,12 @@ export function saveRespectStyleLayout(respectLayout) {
 
 /**
  * Get "HR as Page Break" toggle preference
- * @returns {boolean} True if horizontal rules should trigger page breaks (default: true)
+ * @returns {boolean} True if horizontal rules should trigger page breaks (default: false)
  */
 export function getHRAsPageBreak() {
     const stored = localStorage.getItem('hr-page-break');
-    // Default to true if not set (preserves current behavior)
-    return stored === null ? true : stored === 'true';
+    // Default to false if not set
+    return stored === null ? false : stored === 'true';
 }
 
 /**
