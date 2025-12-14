@@ -52,10 +52,10 @@ graph LR
 
 ```mermaid
 graph LR
-    A[Load a Document] --> B[Drag & Drop<br/>.md file]
-    A --> C[Menu → Open<br/>local file]
-    A --> D[Menu → Open URL<br/>remote file]
-    A --> E[Just Start<br/>Typing]
+    A[Load a Document] --> B[Drag & Drop]
+    A --> C[Menu → Open]
+    A --> D[Menu → Open URL]
+    A --> E[Start Typing]
     B --> F[Real-time Preview]
     C --> F
     D --> F
