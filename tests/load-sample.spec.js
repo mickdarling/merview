@@ -407,5 +407,43 @@ test.describe('Load Sample Functionality', () => {
       });
       expect(editorStillWorks).toBe(true);
     });
+
+    test('should show error status and load fallback content on fetch failure', async ({ page }) => {
+      // Clear the editor first
+      await clearCodeMirrorContent(page);
+      await page.waitForTimeout(WAIT_TIMES.SHORT);
+
+      // Track status messages shown
+      const statusMessages = [];
+      await page.exposeFunction('captureStatus', (msg) => statusMessages.push(msg));
+      await page.evaluate(() => {
+        const statusEl = document.getElementById('status');
+        if (statusEl) {
+          const observer = new MutationObserver(() => {
+            globalThis.captureStatus(statusEl.textContent);
+          });
+          observer.observe(statusEl, { childList: true, characterData: true, subtree: true });
+        }
+      });
+
+      // Mock fetch to fail
+      await page.route('**/docs/welcome.md', route => route.abort('failed'));
+
+      // Attempt to load welcome page
+      await page.evaluate(async () => await globalThis.loadWelcomePage());
+
+      // Wait for content to load
+      await page.waitForTimeout(WAIT_TIMES.MEDIUM);
+
+      // Verify fallback content is loaded in editor
+      const editorContent = await getCodeMirrorContent(page);
+      expect(editorContent).toContain('# Welcome to Merview');
+      expect(editorContent).toContain('Unable to load full welcome page');
+      expect(editorContent).toContain('Quick Start');
+
+      // Verify error status was shown at some point
+      const errorShown = statusMessages.some(msg => msg.includes('Error loading welcome page'));
+      expect(errorShown).toBe(true);
+    });
   });
 });

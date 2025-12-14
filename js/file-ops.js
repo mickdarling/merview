@@ -385,7 +385,33 @@ export async function loadWelcomePage() {
         renderMarkdown();
     } catch (error) {
         console.error('Error loading welcome page:', error);
-        showStatus('Error loading welcome page', 'error');
+        showStatus('Error loading welcome page. Using offline fallback.', 'warning');
+
+        // Minimal fallback content when fetch fails
+        const fallbackContent = `# Welcome to Merview
+
+A client-side Markdown editor with first-class Mermaid diagram support.
+
+**Note:** Unable to load full welcome page. Please check your connection.
+
+## Quick Start
+1. Start typing markdown in this editor
+2. See live preview on the right
+3. Add Mermaid diagrams with \\\`\\\`\\\`mermaid code blocks
+4. Export to PDF when ready
+
+[Visit GitHub](https://github.com/mickdarling/merview) for documentation.`;
+
+        const { cmEditor } = state;
+        if (cmEditor) {
+            cmEditor.setValue(fallbackContent);
+        }
+
+        // Set document name for the fallback
+        state.currentFilename = 'Welcome.md';
+        state.loadedFromURL = null;
+
+        renderMarkdown();
     }
 }
 
