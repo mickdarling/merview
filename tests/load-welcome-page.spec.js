@@ -65,8 +65,8 @@ test.describe('Welcome Page Functionality', () => {
 
   test.describe('Welcome Button', () => {
     test('Welcome button should exist in toolbar', async ({ page }) => {
-      const loadSampleButton = await page.$('button[onclick="loadWelcomePage()"]');
-      expect(loadSampleButton).not.toBeNull();
+      const welcomeButton = await page.$('button[onclick="loadWelcomePage()"]');
+      expect(welcomeButton).not.toBeNull();
     });
 
     test('Welcome button should have loadWelcomePage onclick handler', async ({ page }) => {
@@ -535,6 +535,43 @@ test.describe('Welcome Page Functionality', () => {
       // Verify error status was shown at some point
       const errorShown = statusMessages.some(msg => msg.includes('Error loading welcome page'));
       expect(errorShown).toBe(true);
+    });
+
+    test('fallback content should render correctly in preview', async ({ page }) => {
+      // Clear the editor and cache first
+      await clearCodeMirrorContent(page);
+      await page.evaluate(() => globalThis.clearWelcomePageCache());
+      await page.waitForTimeout(WAIT_TIMES.SHORT);
+
+      // Mock fetch to fail (404)
+      await page.route('**/docs/welcome.md', route => route.fulfill({
+        status: 404,
+        contentType: 'text/plain',
+        body: 'Not Found'
+      }));
+
+      // Attempt to load welcome page
+      await page.evaluate(async () => await globalThis.loadWelcomePage());
+
+      // Wait for content to render
+      await page.waitForTimeout(WAIT_TIMES.LONG);
+
+      // Verify fallback content includes all expected elements
+      const editorContent = await getCodeMirrorContent(page);
+      expect(editorContent).toContain('# Welcome to Merview');
+      expect(editorContent).toContain('client-side Markdown editor');
+      expect(editorContent).toContain('## Quick Start');
+      expect(editorContent).toContain('mermaid code blocks'); // Mentions mermaid in instructions
+      expect(editorContent).toContain('github.com/mickdarling/merview');
+
+      // Verify fallback renders in preview
+      const previewContent = await page.$eval('#wrapper', el => el.innerHTML);
+      expect(previewContent).toContain('<h1');
+      expect(previewContent).toContain('Welcome to Merview');
+      expect(previewContent).toContain('<h2');
+      expect(previewContent).toContain('Quick Start');
+      expect(previewContent).toContain('<a');
+      expect(previewContent).toContain('GitHub');
     });
   });
 });
