@@ -398,6 +398,42 @@ test.describe('Welcome Page Functionality', () => {
       await page.waitForTimeout(WAIT_TIMES.SHORT);
       expect(fetchCount).toBe(2);
     });
+
+    test('concurrent loadWelcomePage() calls should not cause issues', async ({ page }) => {
+      // Clear cache to start fresh
+      await page.evaluate(() => globalThis.clearWelcomePageCache());
+
+      // Track fetch calls
+      let fetchCount = 0;
+      await page.route('**/docs/welcome.md', async route => {
+        fetchCount++;
+        // Add small delay to simulate network latency
+        await new Promise(resolve => setTimeout(resolve, 50));
+        await route.continue();
+      });
+
+      // Fire multiple concurrent calls
+      await page.evaluate(async () => {
+        await Promise.all([
+          globalThis.loadWelcomePage(),
+          globalThis.loadWelcomePage(),
+          globalThis.loadWelcomePage()
+        ]);
+      });
+
+      await page.waitForTimeout(WAIT_TIMES.MEDIUM);
+
+      // Verify content loaded correctly (should contain welcome content)
+      const editorContent = await getCodeMirrorContent(page);
+      expect(editorContent).toContain('# Welcome to Merview');
+
+      // Editor should still be functional
+      const editorWorks = await page.evaluate(() => {
+        const cmElement = document.querySelector('.CodeMirror');
+        return cmElement && cmElement.CodeMirror !== undefined;
+      });
+      expect(editorWorks).toBe(true);
+    });
   });
 
   test.describe('Error Handling', () => {

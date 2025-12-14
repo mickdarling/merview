@@ -353,17 +353,49 @@ export function exportToPDF() {
 
 
 /**
- * Cached welcome page content to avoid repeated network requests
- * @type {string|null}
+ * Welcome page cache configuration
+ *
+ * Cache Lifetime & Invalidation Strategy:
+ * - Cache persists for the duration of the page session (until page refresh)
+ * - No automatic TTL expiration - content is static and rarely changes
+ * - Cache is invalidated on:
+ *   1. Page refresh (cache is in-memory only)
+ *   2. Explicit call to clearWelcomePageCache()
+ * - For development: manually call clearWelcomePageCache() or refresh to see changes
+ *
+ * @type {{content: string|null, timestamp: number|null}}
  */
-let cachedWelcomeContent = null;
+const welcomeCache = {
+    content: null,
+    timestamp: null
+};
 
 /**
- * Clear the welcome page cache (useful for testing)
+ * Cache TTL in milliseconds (optional, for development scenarios)
+ * Set to 0 or null to disable TTL (default behavior - cache never expires)
+ * Example: 5 * 60 * 1000 = 5 minutes for development
+ * @type {number|null}
+ */
+const WELCOME_CACHE_TTL = null;
+
+/**
+ * Clear the welcome page cache (useful for testing and development)
  * @returns {void}
  */
 export function clearWelcomePageCache() {
-    cachedWelcomeContent = null;
+    welcomeCache.content = null;
+    welcomeCache.timestamp = null;
+}
+
+/**
+ * Check if the cache is valid (not expired)
+ * @returns {boolean}
+ */
+function isCacheValid() {
+    if (!welcomeCache.content) return false;
+    if (!WELCOME_CACHE_TTL) return true; // No TTL, cache never expires
+    if (!welcomeCache.timestamp) return false;
+    return (Date.now() - welcomeCache.timestamp) < WELCOME_CACHE_TTL;
 }
 
 /**
@@ -375,16 +407,18 @@ export async function loadWelcomePage() {
     try {
         let content;
 
-        // Use cached content if available, otherwise fetch
-        if (cachedWelcomeContent) {
-            content = cachedWelcomeContent;
+        // Use cached content if available and valid, otherwise fetch
+        if (isCacheValid()) {
+            content = welcomeCache.content;
         } else {
             const response = await fetch('docs/welcome.md');
             if (!response.ok) {
                 throw new Error(`Failed to load welcome page: ${response.status} ${response.statusText}`);
             }
             content = await response.text();
-            cachedWelcomeContent = content; // Cache for future use
+            // Cache for future use with timestamp
+            welcomeCache.content = content;
+            welcomeCache.timestamp = Date.now();
         }
 
         const { cmEditor } = state;
