@@ -185,7 +185,7 @@ test.describe('Source Link Functionality (AGPL-3.0 Compliance)', () => {
     });
 
     test('should remain visible after page interactions', async ({ page }) => {
-      await page.click('button[onclick="loadSample()"]');
+      await page.click('button[onclick="loadWelcomePage()"]');
       await page.waitForTimeout(500);
       await expect(sourceLink).toBeVisible();
 

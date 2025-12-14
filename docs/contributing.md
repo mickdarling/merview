@@ -18,6 +18,10 @@ graph TD
     D --> H[Explain Your Idea]
     E --> I[Follow PR Guidelines]
     F --> J[Improve Content]
+
+    click C "https://github.com/mickdarling/merview/issues/new" "Open a new issue"
+    click D "https://github.com/mickdarling/merview/discussions" "Start a discussion"
+    click E "https://github.com/mickdarling/merview/fork" "Fork the repository"
 ```
 
 ---

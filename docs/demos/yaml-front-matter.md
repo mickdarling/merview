@@ -199,11 +199,16 @@ data: !!binary R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAAL
 ---
 ```
 
+---
+
+## Rendering Notes
+
 ### Multi-line Strings
+
+Multi-line strings may not render as expected due to how whitespace is handled:
 
 ```yaml
 ---
-# Multi-line strings may not render as expected
 description: |
   This is a long
   multi-line description

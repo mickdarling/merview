@@ -8,23 +8,39 @@ Merview offers extensive theming options to make your documents look exactly how
 
 ```mermaid
 graph TD
-    A[Theming Options] --> B[Document Style]
-    A --> C[Code Theme]
-    A --> D[Editor Theme]
+    A[Theming Options] --> B[Editor Theme]
+    A --> C[Document Style]
+    A --> D[Code Theme]
     A --> E[Mermaid Theme]
 
-    B --> B1[6 Built-in + External]
-    B --> B2[Custom CSS URL]
-    C --> C1[12 Syntax Themes]
-    D --> D1[6 Editor Themes]
+    B --> B1[6 Editor Themes]
+    C --> C1[6 Built-in + External]
+    D --> D1[12 Syntax Themes]
     E --> E1[6 Diagram Themes]
 ```
+
+*Sections below are ordered left-to-right as they appear in the toolbar.*
+
+---
+
+## Editor Themes
+
+The **Editor Theme** dropdown (in the editor panel) controls the editing pane appearance:
+
+| Theme | Style |
+|-------|-------|
+| **Material Darker** | Dark gray (default) |
+| **GitHub Dark** | GitHub's dark theme |
+| **Monokai** | Classic dark |
+| **Dracula** | Purple-tinted dark |
+| **Solarized Dark** | Warm dark theme |
+| **Solarized Light** | Warm light theme |
 
 ---
 
 ## Document Styles
 
-The **Style** dropdown controls the overall look of your rendered document.
+The **Style** dropdown (in the preview panel) controls the overall look of your rendered document.
 
 ### Built-in Styles
 
@@ -93,21 +109,6 @@ function example() {
 | **Night Owl** | Dark blue theme |
 | **Obsidian** | Dark gray theme |
 | **Agate** | Minimal dark |
-
----
-
-## Editor Themes
-
-The **Editor Theme** dropdown controls the editing pane (left side) appearance:
-
-| Theme | Style |
-|-------|-------|
-| **Material Darker** | Dark gray (default) |
-| **GitHub Dark** | GitHub's dark theme |
-| **Monokai** | Classic dark |
-| **Dracula** | Purple-tinted dark |
-| **Solarized Dark** | Warm dark theme |
-| **Solarized Light** | Warm light theme |
 
 ---
 

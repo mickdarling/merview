@@ -353,198 +353,124 @@ export function exportToPDF() {
 
 
 /**
- * Load sample markdown content
- * Loads a comprehensive demo document showcasing all features
+ * Welcome page cache configuration
+ *
+ * Cache Lifetime & Invalidation Strategy:
+ * - Cache persists for the duration of the page session (until page refresh)
+ * - No automatic TTL expiration - content is static and rarely changes
+ * - Cache is invalidated on:
+ *   1. Page refresh (cache is in-memory only)
+ *   2. Explicit call to clearWelcomePageCache()
+ * - For development: manually call clearWelcomePageCache() or refresh to see changes
+ *
+ * @type {{content: string|null, timestamp: number|null}}
  */
-export function loadSample() {
-    const sample = `# Welcome to Merview
+const welcomeCache = {
+    content: null,
+    timestamp: null
+};
+
+/**
+ * Cache TTL in milliseconds (optional, for development scenarios)
+ * Set to 0 or null to disable TTL (default behavior - cache never expires)
+ * Example: 5 * 60 * 1000 = 5 minutes for development
+ * @type {number|null}
+ */
+const WELCOME_CACHE_TTL = null;
+
+/**
+ * Clear the welcome page cache (useful for testing and development)
+ * @returns {void}
+ */
+export function clearWelcomePageCache() {
+    welcomeCache.content = null;
+    welcomeCache.timestamp = null;
+}
+
+/**
+ * Check if the cache is valid (not expired)
+ * @returns {boolean}
+ */
+function isCacheValid() {
+    if (!welcomeCache.content) return false;
+    if (!WELCOME_CACHE_TTL) return true; // No TTL, cache never expires
+    if (!welcomeCache.timestamp) return false;
+    return (Date.now() - welcomeCache.timestamp) < WELCOME_CACHE_TTL;
+}
+
+/**
+ * Load welcome page markdown content
+ * Loads the welcome document from docs/welcome.md with caching
+ * to avoid repeated network requests when users click Welcome multiple times.
+ */
+export async function loadWelcomePage() {
+    try {
+        let content;
+
+        // Use cached content if available and valid, otherwise fetch
+        if (isCacheValid()) {
+            content = welcomeCache.content;
+        } else {
+            const response = await fetch('docs/welcome.md');
+            if (!response.ok) {
+                throw new Error(`Failed to load welcome page: ${response.status} ${response.statusText}`);
+            }
+            content = await response.text();
+            // Cache for future use with timestamp
+            welcomeCache.content = content;
+            welcomeCache.timestamp = Date.now();
+        }
+
+        const { cmEditor } = state;
+        if (cmEditor) {
+            cmEditor.setValue(content);
+        }
+
+        // Set document name for the welcome page
+        state.currentFilename = 'Welcome.md';
+        state.loadedFromURL = null;
+
+        // Clear URL parameter when loading welcome page (Issue #204)
+        clearURLParameter();
+
+        // Update document selector to show the new name
+        if (typeof globalThis.updateDocumentSelector === 'function') {
+            globalThis.updateDocumentSelector();
+        }
+
+        renderMarkdown();
+    } catch (error) {
+        console.error('Error loading welcome page:', error);
+        showStatus('Error loading welcome page. Using offline fallback.', 'warning');
+
+        // Minimal fallback content when fetch fails
+        // NOTE: Keep this in sync with the essential content from docs/welcome.md
+        // This is intentionally minimal - just enough to help users get started
+        const fallbackContent = `# Welcome to Merview
 
 A client-side Markdown editor with first-class Mermaid diagram support.
 
-\`\`\`mermaid
-graph LR
-    subgraph Merview Documentation
-        A[Welcome<br/>You Are Here]
-        B[About]
-        C[Developer Kit]
-        D[Themes]
-        E[Security]
-        F[Demos]
-        G[Contributing]
-        H[Sponsor]
-    end
+**Note:** Unable to load full welcome page. Please check your connection.
 
-    A --- B
-    A --- C
-    A --- D
-    A --- E
-    A --- F
-    A --- G
-    A --- H
+## Quick Start
+1. Start typing markdown in this editor
+2. See live preview on the right
+3. Add Mermaid diagrams with \`\`\`mermaid code blocks
+4. Export to PDF when ready
 
-    click B "/?url=docs/about.md" "About Merview"
-    click C "/?url=docs/developer-kit.md" "Developer Kit"
-    click D "/?url=docs/themes.md" "Theme Guide"
-    click E "/?url=docs/security.md" "Security"
-    click F "/?url=docs/demos/index.md" "Feature Demos"
-    click G "/?url=docs/contributing.md" "Contributing"
-    click H "/?url=docs/sponsor.md" "Support the Project"
-\`\`\`
+[Visit GitHub](https://github.com/mickdarling/merview) for documentation.`;
 
----
+        const { cmEditor } = state;
+        if (cmEditor) {
+            cmEditor.setValue(fallbackContent);
+        }
 
-## Quick Links
+        // Set document name for the fallback
+        state.currentFilename = 'Welcome.md';
+        state.loadedFromURL = null;
 
-- [About Merview](/?url=docs/about.md) - Features, technology, and how it works
-- [Developer Kit](/?url=docs/developer-kit.md) - Integration guide and URL patterns
-- [Theme Guide](/?url=docs/themes.md) - 37 document styles and customization
-- [Security](/?url=docs/security.md) - Privacy-first design and protections
-- [Feature Demos](/?url=docs/demos/index.md) - Interactive examples
-- [Contributing](/?url=docs/contributing.md) - How to help improve Merview
-- [Support the Project](/?url=docs/sponsor.md) - Sponsor development
-
----
-
-## Getting Started
-
-### 1. Write Markdown
-
-Type in the left pane. The preview updates in real-time on the right.
-
-### 2. Add Mermaid Diagrams
-
-Use fenced code blocks with \`mermaid\` as the language:
-
-\`\`\`mermaid
-sequenceDiagram
-    You->>Merview: Write Markdown
-    Merview->>You: See it rendered instantly
-\`\`\`
-
-### 3. Choose Your Style
-
-Use the **Style** dropdown to pick from 37 professional themes.
-
-### 4. Export
-
-Click **Print/PDF** to save your document.
-
----
-
-## Feature Showcase
-
-### Code Syntax Highlighting
-
-190+ languages supported with beautiful themes:
-
-\`\`\`javascript
-// JavaScript with syntax highlighting
-const greet = (name) => \`Hello, \${name}!\`;
-console.log(greet('World'));
-\`\`\`
-
-\`\`\`python
-# Python example
-def fibonacci(n):
-    if n <= 1:
-        return n
-    return fibonacci(n-1) + fibonacci(n-2)
-\`\`\`
-
-### Tables
-
-| Feature | Status |
-|---------|--------|
-| Markdown Rendering | ✅ |
-| Mermaid Diagrams | ✅ |
-| Syntax Highlighting | ✅ |
-| PDF Export | ✅ |
-| 37 Themes | ✅ |
-| YAML Front Matter | ✅ |
-| Code Validation | ✅ |
-| Load from URL | ✅ |
-| International Text | ✅ |
-
-### Flowcharts
-
-\`\`\`mermaid
-graph TD
-    A[Write Markdown] --> B[Add Diagrams]
-    B --> C[Style Document]
-    C --> D[Export PDF]
-\`\`\`
-
-### Sequence Diagrams
-
-\`\`\`mermaid
-sequenceDiagram
-    participant User
-    participant Editor
-    participant Preview
-
-    User->>Editor: Type content
-    Editor->>Preview: Render
-    Preview-->>User: See results
-\`\`\`
-
-### Class Diagrams
-
-\`\`\`mermaid
-classDiagram
-    class Document {
-        +String content
-        +render()
-        +export()
+        renderMarkdown();
     }
-    class Theme {
-        +String name
-        +apply()
-    }
-    Document --> Theme
-\`\`\`
-
----
-
-## Tips
-
-1. **Drag & Drop** - Drop any \`.md\` file to load it
-2. **Load from URL** - Use \`?url=\` parameter or the Open URL dialog
-3. **YAML Metadata** - Add \`---\` delimited YAML at the start for document info
-4. **Code Validation** - Toggle the Lint button to check JSON, HTML, CSS
-5. **Keyboard Shortcuts** - Ctrl+S to save, Ctrl+P to print
-6. **Auto-save** - Your work is saved to browser storage
-
----
-
-## Open Source
-
-Merview is free and open source under the AGPL-3.0 license.
-
-- **GitHub**: [github.com/mickdarling/merview](https://github.com/mickdarling/merview)
-- **Issues**: [Report a bug or request a feature](https://github.com/mickdarling/merview/issues)
-
----
-
-**Start writing!** Clear this document and create something amazing.`;
-
-    const { cmEditor } = state;
-    if (cmEditor) {
-        cmEditor.setValue(sample);
-    }
-
-    // Set document name for the sample
-    state.currentFilename = 'Welcome.md';
-    state.loadedFromURL = null;
-
-    // Clear URL parameter when loading sample (Issue #204)
-    clearURLParameter();
-
-    // Update document selector to show the new name
-    if (typeof globalThis.updateDocumentSelector === 'function') {
-        globalThis.updateDocumentSelector();
-    }
-
-    renderMarkdown();
 }
 
 /**

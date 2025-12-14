@@ -8,7 +8,7 @@ import { state } from './state.js';
 import { initCodeMirror, getEditorContent, setEditorContent } from './editor.js';
 import { renderMarkdown, scheduleRender } from './renderer.js';
 import { initStyleSelector, initSyntaxThemeSelector, initEditorThemeSelector, initMermaidThemeSelector, initPreviewDragDrop, initURLModalHandlers, changeStyle, changeSyntaxTheme, changeEditorTheme, changeMermaidTheme, applyPreviewBackground, applyCachedBackground } from './themes.js';
-import { loadMarkdownFromURL, loadSample, openFile, saveFile, saveFileAs, isValidMarkdownFile, isValidMarkdownContentType, exportToPDF, initFileInputHandlers } from './file-ops.js';
+import { loadMarkdownFromURL, loadWelcomePage, clearWelcomePageCache, openFile, saveFile, saveFileAs, isValidMarkdownFile, isValidMarkdownContentType, exportToPDF, initFileInputHandlers } from './file-ops.js';
 import { initDocumentSelector, changeDocument, updateDocumentSelector } from './documents.js';
 import { shareToGist, hideGistModal, openGitHubAuth, startDeviceFlow, copyGistUrl, disconnectGitHub } from './gist.js';
 import { toggleLintPanel, validateCode } from './validation.js';
@@ -53,7 +53,8 @@ function exposeGlobalFunctions() {
 
     // Rendering functions
     globalThis.renderMarkdown = renderMarkdown;
-    globalThis.loadSample = loadSample;
+    globalThis.loadWelcomePage = loadWelcomePage;
+    globalThis.clearWelcomePageCache = clearWelcomePageCache;
 
     // Gist/sharing functions
     globalThis.shareToGist = shareToGist;
@@ -135,8 +136,9 @@ function setupKeyboardShortcuts() {
  * Handle loading content from a remote URL parameter.
  * Resolves relative doc paths and handles private repo tokens.
  * @param {string} remoteURL - The URL to load
+ * @returns {Promise<void>}
  */
-function handleRemoteURLParam(remoteURL) {
+async function handleRemoteURLParam(remoteURL) {
     let resolvedURL = remoteURL;
 
     // Resolve relative doc paths (e.g., "docs/about.md") to full URLs
@@ -146,7 +148,7 @@ function handleRemoteURLParam(remoteURL) {
         } catch (error) {
             console.error('Error resolving doc URL:', error);
             showStatus('Error loading documentation', 'warning');
-            loadSavedContentOrSample();
+            await loadSavedContentOrSample();
             return;
         }
     }
@@ -166,8 +168,9 @@ function handleRemoteURLParam(remoteURL) {
 /**
  * Handle loading content from inline markdown parameter.
  * @param {string} inlineMarkdown - The URL-encoded markdown
+ * @returns {Promise<void>}
  */
-function handleInlineMarkdownParam(inlineMarkdown) {
+async function handleInlineMarkdownParam(inlineMarkdown) {
     try {
         const decoded = decodeURIComponent(inlineMarkdown);
         setEditorContent(decoded);
@@ -175,7 +178,7 @@ function handleInlineMarkdownParam(inlineMarkdown) {
     } catch (error) {
         console.error('Error decoding inline markdown:', error);
         showStatus('Error loading markdown from URL', 'warning');
-        loadSavedContentOrSample();
+        await loadSavedContentOrSample();
     }
 }
 
@@ -191,13 +194,14 @@ function handleInlineMarkdownParam(inlineMarkdown) {
  * 2. ?url= parameter - loads from remote URL
  * 3. ?md= parameter - loads inline markdown
  * 4. No parameters - uses fresh visit detection (sample or localStorage)
+ * @returns {Promise<void>}
  */
-function handleURLParameters() {
+async function handleURLParameters() {
     const urlParams = new URLSearchParams(globalThis.location.search);
 
     // Check for sample parameter - explicitly load the sample/welcome document
     if (urlParams.has('sample')) {
-        loadSample();
+        await loadWelcomePage();
         markSessionInitialized();
         return;
     }
@@ -205,7 +209,7 @@ function handleURLParameters() {
     // Check for remote URL parameter
     const remoteURL = urlParams.get('url');
     if (remoteURL) {
-        handleRemoteURLParam(remoteURL);
+        await handleRemoteURLParam(remoteURL);
         markSessionInitialized();
         applyStyleParam(urlParams);
         return;
@@ -214,14 +218,14 @@ function handleURLParameters() {
     // Check for inline markdown parameter
     const inlineMarkdown = urlParams.get('md');
     if (inlineMarkdown) {
-        handleInlineMarkdownParam(inlineMarkdown);
+        await handleInlineMarkdownParam(inlineMarkdown);
         markSessionInitialized();
         applyStyleParam(urlParams);
         return;
     }
 
     // No URL parameters - use fresh visit detection to decide content
-    loadSavedContentOrSample();
+    await loadSavedContentOrSample();
     markSessionInitialized();
     applyStyleParam(urlParams);
 }
@@ -238,18 +242,19 @@ function applyStyleParam(urlParams) {
 }
 
 /**
- * Load saved content from localStorage or load sample
- * Fresh visits (new tab/window) always load the sample document.
+ * Load saved content from localStorage or load welcome page
+ * Fresh visits (new tab/window) always load the welcome document.
  * Same-session refreshes preserve the user's localStorage content.
  *
  * Note: markSessionInitialized() is called by handleURLParameters() after
  * this function returns, so we don't call it here.
+ * @returns {Promise<void>}
  */
-function loadSavedContentOrSample() {
-    // Fresh visit = new tab/window, always show sample for predictable UX
+async function loadSavedContentOrSample() {
+    // Fresh visit = new tab/window, always show welcome page for predictable UX
     // This also addresses minor security concern of cached content persisting
     if (isFreshVisit()) {
-        loadSample();
+        await loadWelcomePage();
         return;
     }
 
@@ -259,30 +264,31 @@ function loadSavedContentOrSample() {
         setEditorContent(saved);
         renderMarkdown();
     } else {
-        loadSample();
+        await loadWelcomePage();
     }
 }
 
 /**
  * Initialize brand home link click handler
- * Provides smooth UX by loading sample without page reload,
+ * Provides smooth UX by loading welcome page without page reload,
  * while keeping href as fallback for accessibility (right-click, new tab)
  */
 function initBrandHomeLink() {
     const brandHomeLink = document.getElementById('brandHomeLink');
     if (brandHomeLink) {
-        brandHomeLink.addEventListener('click', (e) => {
+        brandHomeLink.addEventListener('click', async (e) => {
             e.preventDefault();
-            loadSample();
-            showStatus('Welcome document loaded');
+            await loadWelcomePage();
+            showStatus('Welcome page loaded');
         });
     }
 }
 
 /**
  * Initialize the application on DOMContentLoaded
+ * @returns {Promise<void>}
  */
-function initializeApp() {
+async function initializeApp() {
     // Set dynamic copyright year
     const copyrightYear = document.getElementById('copyright-year');
     if (copyrightYear) {
@@ -341,7 +347,13 @@ function initializeApp() {
     setupKeyboardShortcuts();
 
     // Handle URL parameters (this will trigger initial render if content is loaded)
-    handleURLParameters();
+    // Errors are caught and handled within handleURLParameters and its callees
+    try {
+        await handleURLParameters();
+    } catch (error) {
+        console.error('Error during URL parameter handling:', error);
+        showStatus('Error loading content', 'error');
+    }
 }
 
 // Wait for DOM to be ready, then initialize
