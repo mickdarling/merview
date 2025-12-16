@@ -242,7 +242,7 @@ test.describe('Documentation Cross-References', () => {
 
     // Each linked doc should exist - verify by checking no error modal appears
     for (const link of links) {
-      if (link && link.startsWith('/?url=docs/')) {
+      if (link?.startsWith('/?url=docs/')) {
         // Extract the doc path
         const docPath = link.replace('/?url=', '');
 

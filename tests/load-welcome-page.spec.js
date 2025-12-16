@@ -14,6 +14,17 @@ const {
 } = require('./helpers/test-utils');
 
 /**
+ * Simple delay helper to avoid deeply nested Promise callbacks in tests
+ * @param {number} ms - Milliseconds to wait
+ * @returns {Promise<void>}
+ */
+function delay(ms) {
+  return new Promise(function waitForDelay(resolve) {
+    setTimeout(resolve, ms);
+  });
+}
+
+/**
  * Expected content elements in the welcome page markdown
  */
 const EXPECTED_CONTENT = {
@@ -408,7 +419,7 @@ test.describe('Welcome Page Functionality', () => {
       await page.route('**/docs/welcome.md', async route => {
         fetchCount++;
         // Add small delay to simulate network latency
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await delay(50);
         await route.continue();
       });
 
@@ -430,7 +441,7 @@ test.describe('Welcome Page Functionality', () => {
       // Editor should still be functional
       const editorWorks = await page.evaluate(() => {
         const cmElement = document.querySelector('.CodeMirror');
-        return cmElement && cmElement.CodeMirror !== undefined;
+        return cmElement?.CodeMirror !== undefined;
       });
       expect(editorWorks).toBe(true);
     });
@@ -468,7 +479,7 @@ test.describe('Welcome Page Functionality', () => {
       // Verify the app didn't crash - editor should still be functional
       const editorStillWorks = await page.evaluate(() => {
         const cmElement = document.querySelector('.CodeMirror');
-        return cmElement && cmElement.CodeMirror !== undefined;
+        return cmElement?.CodeMirror !== undefined;
       });
       expect(editorStillWorks).toBe(true);
     });
@@ -493,7 +504,7 @@ test.describe('Welcome Page Functionality', () => {
       // Verify the app didn't crash - editor should still be functional
       const editorStillWorks = await page.evaluate(() => {
         const cmElement = document.querySelector('.CodeMirror');
-        return cmElement && cmElement.CodeMirror !== undefined;
+        return cmElement?.CodeMirror !== undefined;
       });
       expect(editorStillWorks).toBe(true);
     });
@@ -507,12 +518,13 @@ test.describe('Welcome Page Functionality', () => {
       // Track status messages shown
       const statusMessages = [];
       await page.exposeFunction('captureStatus', (msg) => statusMessages.push(msg));
-      await page.evaluate(() => {
+      await page.evaluate(function setupStatusObserver() {
         const statusEl = document.getElementById('status');
         if (statusEl) {
-          const observer = new MutationObserver(() => {
+          function onStatusChange() {
             globalThis.captureStatus(statusEl.textContent);
-          });
+          }
+          const observer = new MutationObserver(onStatusChange);
           observer.observe(statusEl, { childList: true, characterData: true, subtree: true });
         }
       });

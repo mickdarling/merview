@@ -216,8 +216,7 @@ items:
             for (let i = 0; i < 110; i++) {
                 yamlLines.push(`key${i}: value${i}`);
             }
-            yamlLines.push('---');
-            yamlLines.push('# Content');
+            yamlLines.push('---', '# Content');
             const yaml = yamlLines.join('\n');
 
             const html = await renderAndGetYamlHtml(page, yaml);
@@ -236,8 +235,7 @@ items:
             for (let i = 0; i < 510; i++) {
                 yamlLines.push(`  - item${i}`);
             }
-            yamlLines.push('---');
-            yamlLines.push('# Content');
+            yamlLines.push('---', '# Content');
             const yaml = yamlLines.join('\n');
 
             const html = await renderAndGetYamlHtml(page, yaml);

@@ -438,7 +438,7 @@ export function resetPrivateUrlState() {
  */
 export function isCorsError(error, response) {
     // If we have a response, it's not a CORS error (CORS fails before response)
-    if (response && response.ok) {
+    if (response?.ok) {
         return false;
     }
 
