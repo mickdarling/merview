@@ -752,11 +752,9 @@ function applyHRPageBreakStyle() {
             `;
             document.head.appendChild(styleEl);
         }
-    } else {
+    } else if (styleEl) {
         // Remove page break CSS if present
-        if (styleEl) {
-            styleEl.remove();
-        }
+        styleEl.remove();
     }
 }
 

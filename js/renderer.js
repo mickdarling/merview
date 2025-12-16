@@ -271,6 +271,49 @@ const YAML_SECURITY_LIMITS = {
 };
 
 /**
+ * Check if a YAML line contains dangerous patterns (anchors, aliases, tags)
+ * @param {string} line - The line to check
+ * @returns {boolean} True if the line contains dangerous patterns
+ */
+function hasDangerousYAMLPattern(line) {
+    // Anchors (&name) can be used for billion laughs attacks
+    // Aliases (*name) can reference anchors causing exponential expansion
+    // Custom tags (!tag or !!type) can execute arbitrary code in some YAML parsers
+    // Note: Only reject YAML syntax patterns where the special character
+    // is followed by a word character (anchor/alias/tag names)
+    const dangerousPatterns = /&\w|\*\w|!\w|!!/;
+    return dangerousPatterns.test(line);
+}
+
+/**
+ * Truncate a value if it exceeds the maximum length limit
+ * @param {string} value - The value to truncate
+ * @param {string} context - Description for logging (e.g., key name)
+ * @returns {string} The possibly truncated value
+ */
+function truncateYAMLValue(value, context) {
+    if (value.length > YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH) {
+        console.warn(`YAML security: ${context} exceeds MAX_VALUE_LENGTH (${YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH}), truncating`);
+        return value.substring(0, YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH) + '... [truncated]';
+    }
+    return value;
+}
+
+/**
+ * Remove surrounding quotes from a YAML value (single or double quotes)
+ * Only removes quotes if they match at both ends; internal quotes are preserved
+ * @param {string} value - The value that may have surrounding quotes
+ * @returns {string} The value with surrounding quotes removed
+ */
+function stripSurroundingQuotes(value) {
+    if ((value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))) {
+        return value.substring(1, value.length - 1);
+    }
+    return value;
+}
+
+/**
  * Parse YAML front matter from markdown content
  * Extracts YAML between --- delimiters at start of file
  * @param {string} markdown - The markdown content
@@ -343,86 +386,88 @@ function parseSimpleYAML(yamlText) {
     for (const line of lines) {
         const trimmedLine = line.trim();
 
-        // Skip empty lines and comments
+        // Skip empty lines, comments, and dangerous patterns
         if (!trimmedLine || trimmedLine.startsWith('#')) {
             continue;
         }
-
-        // Security: Reject dangerous YAML patterns that could enable attacks
-        // - Anchors (&name) can be used for billion laughs attacks
-        // - Aliases (*name) can reference anchors causing exponential expansion
-        // - Custom tags (!tag or !!type) can execute arbitrary code in some YAML parsers
-        // Note: We use targeted patterns to avoid rejecting legitimate content like
-        // "John & Jane" or "5-star rating" - only reject YAML syntax patterns where
-        // the special character is followed by a word character (anchor/alias/tag names)
-        const dangerousPatterns = /&\w|\*\w|!\w|!!/;
-        if (dangerousPatterns.test(trimmedLine)) {
+        if (hasDangerousYAMLPattern(trimmedLine)) {
             console.warn('YAML security: Skipping line with potentially dangerous pattern (anchor/alias/tag):', trimmedLine);
             continue;
         }
 
-        // Check for array items (starting with - )
+        // Process array items (starting with - )
         if (trimmedLine.startsWith('- ')) {
-            let value = trimmedLine.substring(2).trim();
-
-            // Security: Enforce value length limit (truncate to match key-value handling)
-            if (value.length > YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH) {
-                console.warn(`YAML security: Array item exceeds MAX_VALUE_LENGTH (${YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH}), truncating`);
-                value = value.substring(0, YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH) + '... [truncated]';
-            }
-
-            if (currentArray) {
-                // Security: Enforce array size limit
-                if (currentArray.length >= YAML_SECURITY_LIMITS.MAX_ARRAY_ITEMS) {
-                    console.warn(`YAML security: Array exceeds MAX_ARRAY_ITEMS (${YAML_SECURITY_LIMITS.MAX_ARRAY_ITEMS}), ignoring additional items`);
-                    continue;
-                }
-                currentArray.push(value);
-            }
+            const arrayResult = processYAMLArrayItem(trimmedLine, currentArray);
+            currentArray = arrayResult.currentArray;
             continue;
         }
 
-        // Check for key-value pairs
+        // Process key-value pairs
         const colonIndex = trimmedLine.indexOf(':');
         if (colonIndex > 0) {
-            const key = trimmedLine.substring(0, colonIndex).trim();
-            const value = trimmedLine.substring(colonIndex + 1).trim();
-
             // Security: Enforce key count limit
             if (keyCount >= YAML_SECURITY_LIMITS.MAX_KEYS) {
                 console.warn(`YAML security: Exceeded MAX_KEYS (${YAML_SECURITY_LIMITS.MAX_KEYS}), ignoring additional keys`);
                 break;
             }
 
-            if (value === '') {
-                // Key with no value - might be starting an array or object
-                currentArray = [];
-                result[key] = currentArray;
-                keyCount++;
-            } else {
-                // Key with value - reset array tracking
-                currentArray = null;
-
-                // Remove quotes if present
-                let cleanValue = value;
-                if ((value.startsWith('"') && value.endsWith('"')) ||
-                    (value.startsWith("'") && value.endsWith("'"))) {
-                    cleanValue = value.substring(1, value.length - 1);
-                }
-
-                // Security: Enforce value length limit
-                if (cleanValue.length > YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH) {
-                    console.warn(`YAML security: Value for key "${key}" exceeds MAX_VALUE_LENGTH (${YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH}), truncating`);
-                    cleanValue = cleanValue.substring(0, YAML_SECURITY_LIMITS.MAX_VALUE_LENGTH) + '... [truncated]';
-                }
-
-                result[key] = cleanValue;
-                keyCount++;
-            }
+            const parseResult = processYAMLKeyValue(trimmedLine, colonIndex);
+            result[parseResult.key] = parseResult.value;
+            currentArray = parseResult.newArray;
+            keyCount++;
         }
     }
 
     return result;
+}
+
+/**
+ * Process a YAML array item line
+ * @param {string} line - The trimmed line starting with '- '
+ * @param {Array|null} currentArray - The current array being populated
+ * @returns {Object} Object with currentArray property (consistent with processYAMLKeyValue API)
+ */
+function processYAMLArrayItem(line, currentArray) {
+    // Early return if no array context - orphaned array items are ignored
+    if (!currentArray) {
+        return { currentArray: null };
+    }
+
+    // Security: Enforce array size limit before processing
+    if (currentArray.length >= YAML_SECURITY_LIMITS.MAX_ARRAY_ITEMS) {
+        console.warn(`YAML security: Array exceeds MAX_ARRAY_ITEMS (${YAML_SECURITY_LIMITS.MAX_ARRAY_ITEMS}), ignoring additional items`);
+        return { currentArray };
+    }
+
+    // Extract and sanitize the value
+    let value = line.substring(2).trim();
+    value = truncateYAMLValue(value, 'Array item');
+
+    currentArray.push(value);
+    return { currentArray };
+}
+
+/**
+ * Process a YAML key-value pair line
+ * @param {string} line - The trimmed line containing a colon
+ * @param {number} colonIndex - Index of the colon in the line
+ * @returns {Object} Object with key, value, and newArray properties
+ */
+function processYAMLKeyValue(line, colonIndex) {
+    const key = line.substring(0, colonIndex).trim();
+    const rawValue = line.substring(colonIndex + 1).trim();
+
+    // Key with no value - might be starting an array or object
+    if (rawValue === '') {
+        const newArray = [];
+        return { key, value: newArray, newArray };
+    }
+
+    // Key with value - reset array tracking
+    let cleanValue = stripSurroundingQuotes(rawValue);
+    cleanValue = truncateYAMLValue(cleanValue, `Value for key "${key}"`);
+
+    return { key, value: cleanValue, newArray: null };
 }
 
 /**

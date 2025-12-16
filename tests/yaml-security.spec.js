@@ -216,8 +216,7 @@ items:
             for (let i = 0; i < 110; i++) {
                 yamlLines.push(`key${i}: value${i}`);
             }
-            yamlLines.push('---');
-            yamlLines.push('# Content');
+            yamlLines.push('---', '# Content');
             const yaml = yamlLines.join('\n');
 
             const html = await renderAndGetYamlHtml(page, yaml);
@@ -236,8 +235,7 @@ items:
             for (let i = 0; i < 510; i++) {
                 yamlLines.push(`  - item${i}`);
             }
-            yamlLines.push('---');
-            yamlLines.push('# Content');
+            yamlLines.push('---', '# Content');
             const yaml = yamlLines.join('\n');
 
             const html = await renderAndGetYamlHtml(page, yaml);
@@ -346,6 +344,30 @@ title: Test
             // Our simple parser doesn't support deep nesting, but shouldn't crash
             const html = await renderAndGetYamlHtml(page, yaml);
             expect(html).not.toBeNull();
+        });
+
+        test('ignores orphaned array items without preceding key', async ({ page }) => {
+            const yaml = `---
+- orphan1
+- orphan2
+title: Test
+tags:
+- valid1
+- valid2
+---
+# Content`;
+            // Orphaned array items (not preceded by a key) should be ignored
+            const html = await renderAndGetYamlHtml(page, yaml);
+            expect(html).not.toBeNull();
+            // Should have the valid key and array
+            expect(html).toContain('title');
+            expect(html).toContain('Test');
+            expect(html).toContain('tags');
+            expect(html).toContain('valid1');
+            expect(html).toContain('valid2');
+            // Orphaned items should NOT appear
+            expect(html).not.toContain('orphan1');
+            expect(html).not.toContain('orphan2');
         });
     });
 });
