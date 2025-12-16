@@ -409,7 +409,7 @@ function parseSimpleYAML(yamlText) {
                 break;
             }
 
-            const parseResult = processYAMLKeyValue(trimmedLine, colonIndex, currentArray);
+            const parseResult = processYAMLKeyValue(trimmedLine, colonIndex);
             result[parseResult.key] = parseResult.value;
             currentArray = parseResult.newArray;
             keyCount++;
@@ -423,21 +423,24 @@ function parseSimpleYAML(yamlText) {
  * Process a YAML array item line
  * @param {string} line - The trimmed line starting with '- '
  * @param {Array|null} currentArray - The current array being populated
- * @returns {Array|null} The updated current array
+ * @returns {Array|null} The updated current array (returns array for API consistency
+ *                       with processYAMLKeyValue which returns an object with newArray)
  */
 function processYAMLArrayItem(line, currentArray) {
-    let value = line.substring(2).trim();
-    value = truncateYAMLValue(value, 'Array item');
-
+    // Early return if no array context - orphaned array items are ignored
     if (!currentArray) {
-        return currentArray;
+        return null;
     }
 
-    // Security: Enforce array size limit
+    // Security: Enforce array size limit before processing
     if (currentArray.length >= YAML_SECURITY_LIMITS.MAX_ARRAY_ITEMS) {
         console.warn(`YAML security: Array exceeds MAX_ARRAY_ITEMS (${YAML_SECURITY_LIMITS.MAX_ARRAY_ITEMS}), ignoring additional items`);
         return currentArray;
     }
+
+    // Extract and sanitize the value
+    let value = line.substring(2).trim();
+    value = truncateYAMLValue(value, 'Array item');
 
     currentArray.push(value);
     return currentArray;
@@ -447,10 +450,9 @@ function processYAMLArrayItem(line, currentArray) {
  * Process a YAML key-value pair line
  * @param {string} line - The trimmed line containing a colon
  * @param {number} colonIndex - Index of the colon in the line
- * @param {Array|null} currentArray - The current array context
  * @returns {Object} Object with key, value, and newArray properties
  */
-function processYAMLKeyValue(line, colonIndex, currentArray) {
+function processYAMLKeyValue(line, colonIndex) {
     const key = line.substring(0, colonIndex).trim();
     const rawValue = line.substring(colonIndex + 1).trim();
 
