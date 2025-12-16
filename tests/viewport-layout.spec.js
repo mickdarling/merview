@@ -289,5 +289,51 @@ test.describe('Viewport Layout', () => {
       const widthDifference = Math.abs(panelWidths.editor - panelWidths.preview);
       expect(widthDifference).toBeLessThanOrEqual(10);
     });
+
+    test('divider position should persist across document loads (Issue #285)', async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 720 });
+      await page.waitForTimeout(200);
+
+      // Get the resize handle and container
+      const resizeHandle = page.locator('.resize-handle');
+      const container = page.locator('.container');
+
+      // Get initial container bounds
+      const containerBox = await container.boundingBox();
+
+      // Drag the resize handle to approximately 30% from the left
+      const targetX = containerBox.x + (containerBox.width * 0.3);
+      const centerY = containerBox.y + (containerBox.height / 2);
+
+      await resizeHandle.hover();
+      await page.mouse.down();
+      await page.mouse.move(targetX, centerY);
+      await page.mouse.up();
+      await page.waitForTimeout(100);
+
+      // Get the editor panel width after dragging
+      const widthAfterDrag = await page.evaluate(() => {
+        const editor = document.querySelector('.editor-panel');
+        const container = document.querySelector('.container');
+        return (editor.offsetWidth / container.offsetWidth) * 100;
+      });
+
+      // Click the Welcome button to load a new document
+      await page.click('button:has-text("Welcome")');
+      await page.waitForTimeout(200);
+
+      // Get the editor panel width after loading new document
+      const widthAfterLoad = await page.evaluate(() => {
+        const editor = document.querySelector('.editor-panel');
+        const container = document.querySelector('.container');
+        return (editor.offsetWidth / container.offsetWidth) * 100;
+      });
+
+      // The width should persist (within 2% tolerance for rounding)
+      expect(Math.abs(widthAfterDrag - widthAfterLoad)).toBeLessThanOrEqual(2);
+
+      // Verify it's still roughly at 30% (not reset to 50%)
+      expect(widthAfterLoad).toBeLessThan(40);
+    });
   });
 });

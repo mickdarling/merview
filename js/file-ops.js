@@ -22,6 +22,7 @@ import { getElements } from './dom.js';
 import { showStatus, setURLParameter, clearURLParameter } from './utils.js';
 import { isAllowedMarkdownURL, normalizeGitHubContentUrl, isCorsError, getCorsErrorMessage } from './security.js';
 import { renderMarkdown } from './renderer.js';
+import { restorePanelWidths } from './resize.js';
 
 /**
  * Validate file type (text or markdown)
@@ -69,6 +70,10 @@ export async function loadMarkdownFile(file) {
         }
 
         await renderMarkdown();
+
+        // Restore panel widths after loading new content (Issue #285)
+        restorePanelWidths();
+
         showStatus(`Loaded: ${file.name}`);
         return true;
     } catch (error) {
@@ -218,6 +223,10 @@ export async function loadMarkdownFromURL(url) {
         }
 
         await renderMarkdown();
+
+        // Restore panel widths after loading new content (Issue #285)
+        restorePanelWidths();
+
         showStatus(`Loaded: ${state.currentFilename}`);
         return true;
     } catch (error) {
@@ -439,6 +448,9 @@ export async function loadWelcomePage() {
         }
 
         renderMarkdown();
+
+        // Restore panel widths after loading new content (Issue #285)
+        restorePanelWidths();
     } catch (error) {
         console.error('Error loading welcome page:', error);
         showStatus('Error loading welcome page. Using offline fallback.', 'warning');
@@ -470,6 +482,9 @@ A client-side Markdown editor with first-class Mermaid diagram support.
         state.loadedFromURL = null;
 
         renderMarkdown();
+
+        // Restore panel widths after loading fallback content (Issue #285)
+        restorePanelWidths();
     }
 }
 

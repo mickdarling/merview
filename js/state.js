@@ -80,5 +80,9 @@ export const state = {
     // Session management state
     activeSessionId: null,               // Currently active session ID
     sessionsLoaded: false,               // Whether sessions have been loaded from storage
-    clearingAllSessions: false           // Flag to prevent race conditions during Clear All operation
+    clearingAllSessions: false,          // Flag to prevent race conditions during Clear All operation
+
+    // Panel resize state
+    editorPanelWidth: null,              // Percentage width of editor panel (null = default 50/50)
+    previewPanelWidth: null              // Percentage width of preview panel (null = default 50/50)
 };

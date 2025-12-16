@@ -18,6 +18,7 @@ import { showStatus, clearURLParameter } from './utils.js';
 import { loadMarkdownFromURL, openFile } from './file-ops.js';
 import { showURLModal } from './components/url-modal.js';
 import { renderMarkdown } from './renderer.js';
+import { restorePanelWidths } from './resize.js';
 import {
     getRecentSessions,
     getActiveSessionMeta,
@@ -190,6 +191,10 @@ async function switchToSession(sessionId) {
             // Render and update UI
             renderMarkdown();
             updateDocumentSelector();
+
+            // Restore panel widths after switching sessions (Issue #285)
+            restorePanelWidths();
+
             showStatus(`Opened: ${session.name}`);
         } else {
             showStatus('Session not found', 'warning');
@@ -322,6 +327,10 @@ export function newDocument() {
 
     updateDocumentSelector();
     renderMarkdown();
+
+    // Restore panel widths after creating new document (Issue #285)
+    restorePanelWidths();
+
     showStatus('New document created');
 }
 
