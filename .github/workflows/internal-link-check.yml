@@ -63,7 +63,7 @@ jobs:
 
       - name: Comment PR with results (if links broken)
         # Use exit_code output instead of outcome since fail: false means outcome is always 'success'
-        if: always() && github.event_name == 'pull_request' && steps.lychee.outputs.exit_code != '0'
+        if: always() && github.event_name == 'pull_request' && steps.lychee.outputs.exit_code != 0
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
@@ -71,6 +71,10 @@ jobs:
             let report = '';
             try {
               report = fs.readFileSync('./lychee-internal-report.md', 'utf8');
+              if (!report || report.trim().length === 0) {
+                console.log('Report file is empty, skipping comment');
+                return;
+              }
             } catch (error) {
               console.log('No report file found, skipping comment');
               return;

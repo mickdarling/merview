@@ -15,7 +15,7 @@ timeout = 10
 # Maximum number of retries per link
 max_retries = 2
 
-# Exclude these directories and files from being scanned
+# Exclude these directories from being scanned
 exclude_path = [
     'node_modules/',
     'cloudflare-worker/node_modules/',
@@ -24,8 +24,6 @@ exclude_path = [
     '.git/',
     'dist/',
     'build/',
-    # Test fixture with intentionally broken links for workflow verification
-    'tests/fixtures/internal-link-test.md',
 ]
 
 # Note: With offline = true, external HTTP/HTTPS URLs are automatically skipped,
