@@ -62,7 +62,8 @@ test.describe('Resize Handle Touch Support', () => {
               }
             }
           } catch (e) {
-            // Cross-origin stylesheets may throw
+            // Cross-origin stylesheets throw SecurityError - expected and safe to ignore
+            continue;
           }
         }
         return false;
