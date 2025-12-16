@@ -13,6 +13,9 @@ import { getElements } from './dom.js';
 // - Keeping it local reduces coupling and makes the code easier to reason about
 let isResizing = false;
 
+// Initialization guard to prevent duplicate event listeners
+let initialized = false;
+
 /**
  * Start resizing - called on mousedown or touchstart on resize handle
  */
@@ -41,7 +44,8 @@ function handleResize(e) {
     const containerWidth = containerRect.width;
 
     // Get X position from either mouse or touch event
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    // Defensive check for touches array length handles edge cases like multi-touch interference
+    const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
     const mouseX = clientX - containerRect.left;
 
     // Calculate percentage width for editor panel
@@ -81,6 +85,10 @@ function stopResize() {
  * Sets up event listeners for panel resizing (mouse and touch)
  */
 export function initResizeHandle() {
+    // Prevent duplicate listeners if called multiple times
+    if (initialized) return;
+    initialized = true;
+
     const elements = getElements();
     const resizeHandle = elements.resizeHandle;
 
