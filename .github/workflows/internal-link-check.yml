@@ -62,7 +62,8 @@ jobs:
           retention-days: 30
 
       - name: Comment PR with results (if links broken)
-        if: always() && github.event_name == 'pull_request' && steps.lychee.outcome == 'failure'
+        # Use exit_code output instead of outcome since fail: false means outcome is always 'success'
+        if: always() && github.event_name == 'pull_request' && steps.lychee.outputs.exit_code != '0'
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
@@ -77,18 +78,18 @@ jobs:
 
             const body = `## Internal Link Check Results
 
-            The following internal links or anchors appear to be broken:
+The following internal links or anchors appear to be broken:
 
-            <details>
-            <summary>Click to view report</summary>
+<details>
+<summary>Click to view report</summary>
 
-            \`\`\`
-            ${report}
-            \`\`\`
+\`\`\`
+${report}
+\`\`\`
 
-            </details>
+</details>
 
-            Please fix the broken links before merging.`;
+Please fix the broken links before merging.`;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
