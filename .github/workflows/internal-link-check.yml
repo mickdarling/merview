@@ -1,0 +1,81 @@
+name: Internal Link Verification
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch: # Allow manual triggering
+
+permissions:
+  contents: read
+  pull-requests: write  # Allow commenting on PRs
+
+jobs:
+  internal-link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check internal links and anchors
+        uses: lycheeverse/lychee-action@v2
+        with:
+          # Check all markdown and HTML files for internal links and anchors
+          args: |
+            --verbose
+            --no-progress
+            './**/*.md'
+            './**/*.html'
+          # Use custom config file for internal link checking
+          lycheeConfig: '.lychee.internal.toml'
+          # Don't fail the build on link errors initially
+          # Change to 'true' once all existing links are fixed
+          fail: false
+          # Format for better readability
+          format: detailed
+          # Output file for results
+          output: ./lychee-internal-report.md
+
+      - name: Upload internal link check results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: internal-link-check-report
+          path: lychee-internal-report.md
+          retention-days: 30
+
+      - name: Comment PR with results (on failure)
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let report = '';
+            try {
+              report = fs.readFileSync('./lychee-internal-report.md', 'utf8');
+            } catch (error) {
+              report = 'Unable to read internal link check report.';
+            }
+
+            const body = `## Internal Link Check Failed
+
+            The following internal links or anchors appear to be broken:
+
+            <details>
+            <summary>Click to view report</summary>
+
+            \`\`\`
+            ${report}
+            \`\`\`
+
+            </details>
+
+            Please fix the broken links before merging.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });

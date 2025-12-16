@@ -1,0 +1,51 @@
+# Lychee configuration for internal link and anchor verification
+# Documentation: https://lychee.cli.rs/usage/config/
+
+# Check only local/internal links (offline mode)
+# This skips all external URLs
+offline = true
+
+# Include fragment/anchor checking
+# This validates that #heading-anchors actually exist
+include_fragments = true
+
+# Timeout for each request (in seconds)
+timeout = 10
+
+# Maximum number of retries per link
+max_retries = 2
+
+# Exclude these directories from being scanned
+exclude_path = [
+    'node_modules/',
+    'cloudflare-worker/node_modules/',
+    'playwright-report/',
+    'test-results/',
+    '.git/',
+    'dist/',
+    'build/',
+]
+
+# Exclude specific link patterns (even for internal links)
+exclude = [
+    # Exclude localhost URLs as they're runtime-dependent
+    'http://localhost*',
+    'http://127.0.0.1*',
+    'http://0.0.0.0*',
+
+    # Exclude example/placeholder links
+    'https://example.com/*',
+    'http://example.com/*',
+]
+
+# Maximum number of concurrent checks
+max_concurrency = 16
+
+# Follow redirects
+max_redirects = 5
+
+# Verbose output for debugging
+verbose = true
+
+# Include verbatim code blocks (for checking links in code examples)
+include_verbatim = false
