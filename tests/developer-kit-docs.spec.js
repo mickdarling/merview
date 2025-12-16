@@ -243,7 +243,7 @@ test.describe('Developer Kit Documentation', () => {
       const hasGitIo = await page.evaluate((term) => {
         const wrapper = document.getElementById('wrapper');
         const text = wrapper?.textContent || '';
-        return text.indexOf(term) !== -1;
+        return text.includes(term);
       }, deprecatedService);
 
       expect(hasGitIo).toBe(false);
