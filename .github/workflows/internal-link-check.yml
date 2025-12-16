@@ -46,18 +46,25 @@ jobs:
           # Use custom config file for internal link checking
           lycheeConfig: '.lychee.internal.toml'
           # Don't fail the build on link errors initially
-          # Change to 'true' once all existing links are fixed
+          # TODO: Change to 'true' once issue #321 is resolved and existing links are fixed
           fail: false
           # Format for better readability
           format: detailed
           # Output file for results
           output: ./lychee-internal-report.md
 
+      - name: Debug lychee outputs
+        if: always()
+        run: |
+          echo "Exit code: '${{ steps.lychee.outputs.exit_code }}'"
+          echo "Outcome: '${{ steps.lychee.outcome }}'"
+          ls -la lychee-internal-report.md 2>/dev/null || echo "No report file found"
+
       - name: Upload internal link check results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: internal-link-check-report
+          name: internal-link-check-report-${{ github.run_id }}
           path: lychee-internal-report.md
           retention-days: 30
 
