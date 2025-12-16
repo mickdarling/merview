@@ -10,14 +10,8 @@ const {
   waitForElementClassRemoved,
   elementHasClass,
   isGlobalFunctionAvailable,
-  getElementAttribute,
-  WAIT_TIMES
+  getElementAttribute
 } = require('./helpers/test-utils');
-
-/**
- * Transition wait time for lint panel animations
- */
-const LINT_PANEL_TRANSITION_MS = 350;
 
 /**
  * Browser-side helper: Toggle lint panel and wait for transition

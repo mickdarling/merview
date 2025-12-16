@@ -5,11 +5,9 @@
 const { test, expect } = require('@playwright/test');
 const {
   waitForPageReady,
-  waitForElement,
   isGlobalFunctionAvailable,
   setCodeMirrorContent,
-  renderMarkdownAndWait,
-  WAIT_TIMES
+  renderMarkdownAndWait
 } = require('./helpers/test-utils');
 
 /**

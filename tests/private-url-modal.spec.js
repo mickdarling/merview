@@ -5,7 +5,6 @@
 const { test, expect } = require('@playwright/test');
 const {
   waitForPageReady,
-  waitForElement,
   elementExists,
   elementHasClass,
   getElementAttribute
@@ -70,11 +69,6 @@ function browserGetButtonAction(selector) {
   const element = document.querySelector('#privateUrlModal ' + selector);
   return element ? element.dataset.action : null;
 }
-
-/**
- * Backdrop click check timeout
- */
-const BACKDROP_CHECK_TIMEOUT_MS = 100;
 
 /**
  * Browser-side helper: Test modal close via backdrop click

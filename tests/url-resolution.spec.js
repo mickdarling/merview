@@ -4,13 +4,6 @@
  */
 const { test, expect } = require('@playwright/test');
 
-// Helper to import config module in browser context
-async function importConfig(page) {
-    return page.evaluate(() => {
-        return import('./js/config.js');
-    });
-}
-
 test.describe('isRelativeDocPath - Valid Paths', () => {
     test('should recognize standard doc paths', async ({ page }) => {
         await page.goto('/');

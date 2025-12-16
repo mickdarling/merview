@@ -5,8 +5,7 @@
 const { test, expect } = require('@playwright/test');
 const {
   waitForPageReady,
-  waitForElementClass,
-  WAIT_TIMES
+  waitForElementClass
 } = require('./helpers/test-utils');
 
 /**

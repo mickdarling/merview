@@ -562,7 +562,8 @@ export async function renderMarkdown() {
         for (const element of mermaidElements) {
             try {
                 const { svg } = await mermaid.render(element.id + '-svg', element.textContent);
-                element.innerHTML = svg;
+                // Sanitize mermaid SVG output for defense-in-depth against XSS
+                element.innerHTML = DOMPurify.sanitize(svg);
             } catch (error) {
                 console.error('Mermaid render error:', error);
                 element.innerHTML = `<div style="color: red; padding: 10px; border: 1px solid red; border-radius: 4px;">

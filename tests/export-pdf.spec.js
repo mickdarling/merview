@@ -9,14 +9,8 @@ const {
   isGlobalFunctionAvailable,
   loadSampleContent,
   setCodeMirrorContent,
-  renderMarkdownAndWait,
-  WAIT_TIMES
+  renderMarkdownAndWait
 } = require('./helpers/test-utils');
-
-/**
- * Timeout for checking export results
- */
-const EXPORT_CHECK_TIMEOUT_MS = 200;
 
 /**
  * Browser-side helper: Test export function with mock

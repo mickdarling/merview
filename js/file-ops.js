@@ -175,6 +175,8 @@ export async function loadMarkdownFromURL(url) {
     let response = null;
     try {
         showStatus('Loading from URL...');
+        // NOSONAR: Client-side request with user-controlled URL is intentional for this markdown viewer.
+        // Security mitigations: HTTPS required, credentials blocked, homograph detection, content sanitized by DOMPurify
         response = await fetch(normalizedUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
 
