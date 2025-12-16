@@ -25,6 +25,24 @@ function delay(ms) {
 }
 
 /**
+ * Set up status message capture via MutationObserver
+ * Extracted to reduce function nesting depth in tests (SonarCloud S2004)
+ * @param {import('@playwright/test').Page} page - Playwright page
+ * @param {string[]} statusMessages - Array to collect status messages
+ */
+async function setupStatusMessageCapture(page, statusMessages) {
+  await page.exposeFunction('captureStatus', (msg) => statusMessages.push(msg));
+  await page.evaluate(function initStatusObserver() {
+    const statusEl = document.getElementById('status');
+    if (!statusEl) return;
+    const observer = new MutationObserver(function onStatusChange() {
+      globalThis.captureStatus(statusEl.textContent);
+    });
+    observer.observe(statusEl, { childList: true, characterData: true, subtree: true });
+  });
+}
+
+/**
  * Expected content elements in the welcome page markdown
  */
 const EXPECTED_CONTENT = {
@@ -517,17 +535,7 @@ test.describe('Welcome Page Functionality', () => {
 
       // Track status messages shown
       const statusMessages = [];
-      await page.exposeFunction('captureStatus', (msg) => statusMessages.push(msg));
-      await page.evaluate(function setupStatusObserver() {
-        const statusEl = document.getElementById('status');
-        if (statusEl) {
-          function onStatusChange() {
-            globalThis.captureStatus(statusEl.textContent);
-          }
-          const observer = new MutationObserver(onStatusChange);
-          observer.observe(statusEl, { childList: true, characterData: true, subtree: true });
-        }
-      });
+      await setupStatusMessageCapture(page, statusMessages);
 
       // Mock fetch to fail
       await page.route('**/docs/welcome.md', route => route.abort('failed'));

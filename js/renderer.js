@@ -300,11 +300,12 @@ function truncateYAMLValue(value, context) {
 }
 
 /**
- * Remove surrounding quotes from a YAML value
- * @param {string} value - The value to unquote
- * @returns {string} The value without surrounding quotes
+ * Remove surrounding quotes from a YAML value (single or double quotes)
+ * Only removes quotes if they match at both ends; internal quotes are preserved
+ * @param {string} value - The value that may have surrounding quotes
+ * @returns {string} The value with surrounding quotes removed
  */
-function unquoteYAMLValue(value) {
+function stripSurroundingQuotes(value) {
     if ((value.startsWith('"') && value.endsWith('"')) ||
         (value.startsWith("'") && value.endsWith("'"))) {
         return value.substring(1, value.length - 1);
@@ -396,7 +397,8 @@ function parseSimpleYAML(yamlText) {
 
         // Process array items (starting with - )
         if (trimmedLine.startsWith('- ')) {
-            currentArray = processYAMLArrayItem(trimmedLine, currentArray);
+            const arrayResult = processYAMLArrayItem(trimmedLine, currentArray);
+            currentArray = arrayResult.currentArray;
             continue;
         }
 
@@ -423,19 +425,18 @@ function parseSimpleYAML(yamlText) {
  * Process a YAML array item line
  * @param {string} line - The trimmed line starting with '- '
  * @param {Array|null} currentArray - The current array being populated
- * @returns {Array|null} The updated current array (returns array for API consistency
- *                       with processYAMLKeyValue which returns an object with newArray)
+ * @returns {Object} Object with currentArray property (consistent with processYAMLKeyValue API)
  */
 function processYAMLArrayItem(line, currentArray) {
     // Early return if no array context - orphaned array items are ignored
     if (!currentArray) {
-        return null;
+        return { currentArray: null };
     }
 
     // Security: Enforce array size limit before processing
     if (currentArray.length >= YAML_SECURITY_LIMITS.MAX_ARRAY_ITEMS) {
         console.warn(`YAML security: Array exceeds MAX_ARRAY_ITEMS (${YAML_SECURITY_LIMITS.MAX_ARRAY_ITEMS}), ignoring additional items`);
-        return currentArray;
+        return { currentArray };
     }
 
     // Extract and sanitize the value
@@ -443,7 +444,7 @@ function processYAMLArrayItem(line, currentArray) {
     value = truncateYAMLValue(value, 'Array item');
 
     currentArray.push(value);
-    return currentArray;
+    return { currentArray };
 }
 
 /**
@@ -463,7 +464,7 @@ function processYAMLKeyValue(line, colonIndex) {
     }
 
     // Key with value - reset array tracking
-    let cleanValue = unquoteYAMLValue(rawValue);
+    let cleanValue = stripSurroundingQuotes(rawValue);
     cleanValue = truncateYAMLValue(cleanValue, `Value for key "${key}"`);
 
     return { key, value: cleanValue, newArray: null };
