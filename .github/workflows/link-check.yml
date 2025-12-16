@@ -1,0 +1,48 @@
+name: External Link Verification
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run weekly on Sunday at 00:00 UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch: # Allow manual triggering
+
+permissions:
+  contents: read
+
+jobs:
+  link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check external links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          # Check all markdown and HTML files
+          args: |
+            --verbose
+            --no-progress
+            --exclude-all-private
+            --timeout 30
+            --max-retries 3
+            --accept 100..=103,200..=299
+            --exclude-mail
+            './**/*.md'
+            './**/*.html'
+          # Use custom config file if it exists
+          lycheeConfig: '.lychee.toml'
+          # Continue on error - don't fail the build
+          fail: false
+
+      - name: Upload link check results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: link-check-report
+          path: lychee-report.md
+          retention-days: 30

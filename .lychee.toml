@@ -1,0 +1,52 @@
+# Lychee link checker configuration
+# Documentation: https://lychee.cli.rs/usage/config/
+
+# Timeout for each request (in seconds)
+timeout = 30
+
+# Maximum number of retries per link
+max_retries = 3
+
+# Maximum number of concurrent network requests
+max_concurrency = 8
+
+# Accept status codes (2xx = success, 429 = rate limited)
+accept = [100, 101, 102, 103, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 307, 308, 429]
+
+# Exclude private IP addresses and localhost
+exclude_all_private = true
+
+# Exclude mail addresses from checking
+exclude_mail = true
+
+# Exclude specific patterns
+exclude = [
+    # Localhost and local network
+    'http://localhost*',
+    'http://127.0.0.1*',
+    'http://0.0.0.0*',
+
+    # Requires authentication (badges, private repos)
+    'https://sonarcloud.io/api/*',
+
+    # Known flaky services (optional - add if needed)
+    # 'https://twitter.com/*',
+]
+
+# Exclude these directories from being scanned
+exclude_path = [
+    'node_modules/',
+    'cloudflare-worker/node_modules/',
+    'playwright-report/',
+    'test-results/',
+    '.git/',
+]
+
+# User agent to use for requests
+user_agent = "Mozilla/5.0 (compatible; Lychee/1.0; +https://github.com/lycheeverse/lychee)"
+
+# Include external links only
+include_verbatim = false
+
+# Follow redirects
+max_redirects = 5
