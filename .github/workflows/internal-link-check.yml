@@ -45,8 +45,8 @@ jobs:
           path: lychee-internal-report.md
           retention-days: 30
 
-      - name: Comment PR with results (on failure)
-        if: failure() && github.event_name == 'pull_request'
+      - name: Comment PR with results (if links broken)
+        if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
@@ -55,10 +55,17 @@ jobs:
             try {
               report = fs.readFileSync('./lychee-internal-report.md', 'utf8');
             } catch (error) {
-              report = 'Unable to read internal link check report.';
+              console.log('No report file found, skipping comment');
+              return;
             }
 
-            const body = `## Internal Link Check Failed
+            // Only comment if there are actual broken links
+            if (!report.includes('❌') && !report.includes('ERROR') && !report.includes('[Errors]')) {
+              console.log('No broken links found, skipping comment');
+              return;
+            }
+
+            const body = `## Internal Link Check Results
 
             The following internal links or anchors appear to be broken:
 
