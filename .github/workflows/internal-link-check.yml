@@ -35,12 +35,14 @@ jobs:
         id: lychee
         uses: lycheeverse/lychee-action@a8c4c7cb88f0c7386610c35eb25108e448569cb0 # v2
         with:
-          # Check all markdown and HTML files for internal links and anchors
+          # Check all markdown and HTML files across the repo
+          # Using broad patterns since docs are in root, docs/, tests/, cloudflare-worker/
+          # Exclusions are handled in .lychee.internal.toml (node_modules, dist, etc.)
           args: |
             --verbose
             --no-progress
-            './**/*.md'
-            './**/*.html'
+            '**/*.md'
+            '**/*.html'
           # Use custom config file for internal link checking
           lycheeConfig: '.lychee.internal.toml'
           # Don't fail the build on link errors initially
