@@ -558,6 +558,18 @@
             background: #3498db;
         }
 
+        .resize-handle::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 44px;
+            height: 100%;
+            /* Invisible touch target for better touch interaction on tablets/iPadOS */
+            /* 44px meets iOS minimum touch target guidelines */
+        }
+
         .resize-handle::after {
             content: '';
             position: absolute;
@@ -568,6 +580,7 @@
             height: 40px;
             background: rgba(255, 255, 255, 0.3);
             border-radius: 2px;
+            pointer-events: none; /* Let clicks pass through to the handle */
         }
 
         .panel-header {

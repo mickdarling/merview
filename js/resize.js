@@ -14,7 +14,7 @@ import { getElements } from './dom.js';
 let isResizing = false;
 
 /**
- * Start resizing - called on mousedown on resize handle
+ * Start resizing - called on mousedown or touchstart on resize handle
  */
 function startResize(e) {
     isResizing = true;
@@ -24,7 +24,7 @@ function startResize(e) {
 }
 
 /**
- * Handle resize - called on mousemove when resizing
+ * Handle resize - called on mousemove or touchmove when resizing
  */
 function handleResize(e) {
     if (!isResizing) return;
@@ -39,7 +39,10 @@ function handleResize(e) {
     // Get container bounds
     const containerRect = container.getBoundingClientRect();
     const containerWidth = containerRect.width;
-    const mouseX = e.clientX - containerRect.left;
+
+    // Get X position from either mouse or touch event
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const mouseX = clientX - containerRect.left;
 
     // Calculate percentage width for editor panel
     const editorPercentage = (mouseX / containerWidth) * 100;
@@ -55,10 +58,15 @@ function handleResize(e) {
     // Apply flex-basis to both panels
     editorPanel.style.flexBasis = `${clampedPercentage}%`;
     previewPanel.style.flexBasis = `${100 - clampedPercentage}%`;
+
+    // Prevent scrolling on touch devices
+    if (e.touches) {
+        e.preventDefault();
+    }
 }
 
 /**
- * Stop resizing - called on mouseup
+ * Stop resizing - called on mouseup or touchend
  */
 function stopResize() {
     if (isResizing) {
@@ -70,7 +78,7 @@ function stopResize() {
 
 /**
  * Initialize resize handle functionality
- * Sets up event listeners for panel resizing
+ * Sets up event listeners for panel resizing (mouse and touch)
  */
 export function initResizeHandle() {
     const elements = getElements();
@@ -85,4 +93,11 @@ export function initResizeHandle() {
     resizeHandle.addEventListener('mousedown', startResize);
     document.addEventListener('mousemove', handleResize);
     document.addEventListener('mouseup', stopResize);
+
+    // Touch events for resize handle
+    // Use { passive: false } to allow preventDefault() for preventing page scroll
+    resizeHandle.addEventListener('touchstart', startResize, { passive: false });
+    document.addEventListener('touchmove', handleResize, { passive: false });
+    document.addEventListener('touchend', stopResize);
+    document.addEventListener('touchcancel', stopResize);
 }
