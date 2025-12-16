@@ -420,4 +420,102 @@ test.describe('Fresh Visit Behavior', () => {
       expect(isSampleContent(content)).toBe(true);
     });
   });
+
+  test.describe('Default Settings for New Users', () => {
+    test('hrAsPageBreak defaults to false when localStorage is empty', async ({ page }) => {
+      await page.goto('/');
+      await clearAllStorage(page);
+
+      // Reload to reinitialize state with empty localStorage
+      await page.reload();
+      await waitForPageReady(page);
+
+      const result = await page.evaluate(() => {
+        return {
+          localStorageValue: localStorage.getItem('hr-page-break'),
+          stateValue: globalThis.state?.hrAsPageBreak
+        };
+      });
+
+      // localStorage should be null (not set), state should be false
+      expect(result.localStorageValue).toBeNull();
+      expect(result.stateValue).toBe(false);
+    });
+
+    test('respectStyleLayout defaults to false when localStorage is empty', async ({ page }) => {
+      await page.goto('/');
+      await clearAllStorage(page);
+
+      // Reload to reinitialize state with empty localStorage
+      await page.reload();
+      await waitForPageReady(page);
+
+      const result = await page.evaluate(() => {
+        return {
+          localStorageValue: localStorage.getItem('respect-style-layout'),
+          stateValue: globalThis.state?.respectStyleLayout
+        };
+      });
+
+      // localStorage should be null (not set), state should be false
+      expect(result.localStorageValue).toBeNull();
+      expect(result.stateValue).toBe(false);
+    });
+
+    test('hrAsPageBreak is true when localStorage is set to true', async ({ page }) => {
+      await page.goto('/');
+      await page.evaluate(() => {
+        localStorage.setItem('hr-page-break', 'true');
+      });
+
+      // Reload to reinitialize state with the stored value
+      await page.reload();
+      await waitForPageReady(page);
+
+      const stateValue = await page.evaluate(() => globalThis.state?.hrAsPageBreak);
+      expect(stateValue).toBe(true);
+    });
+
+    test('respectStyleLayout is true when localStorage is set to true', async ({ page }) => {
+      await page.goto('/');
+      await page.evaluate(() => {
+        localStorage.setItem('respect-style-layout', 'true');
+      });
+
+      // Reload to reinitialize state with the stored value
+      await page.reload();
+      await waitForPageReady(page);
+
+      const stateValue = await page.evaluate(() => globalThis.state?.respectStyleLayout);
+      expect(stateValue).toBe(true);
+    });
+
+    test('hrAsPageBreak is false when localStorage is set to false', async ({ page }) => {
+      await page.goto('/');
+      await page.evaluate(() => {
+        localStorage.setItem('hr-page-break', 'false');
+      });
+
+      // Reload to reinitialize state with the stored value
+      await page.reload();
+      await waitForPageReady(page);
+
+      const stateValue = await page.evaluate(() => globalThis.state?.hrAsPageBreak);
+      expect(stateValue).toBe(false);
+    });
+
+    test('respectStyleLayout is false when localStorage is set to false', async ({ page }) => {
+      await page.goto('/');
+      await page.evaluate(() => {
+        localStorage.setItem('respect-style-layout', 'false');
+      });
+
+      // Reload to reinitialize state with the stored value
+      await page.reload();
+      await waitForPageReady(page);
+
+      const stateValue = await page.evaluate(() => globalThis.state?.respectStyleLayout);
+      expect(stateValue).toBe(false);
+    });
+  });
 });
