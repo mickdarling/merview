@@ -563,11 +563,17 @@ export async function renderMarkdown() {
             try {
                 const { svg } = await mermaid.render(element.id + '-svg', element.textContent);
 
-                // Sanitize SVG BEFORE insertion to satisfy CodeQL security requirements
-                // Strategy: Parse SVG string, sanitize foreignObject contents, then insert
-                // This prevents any malicious code from executing during innerHTML assignment
+                // Sanitize SVG BEFORE any DOM parsing to satisfy CodeQL security requirements
+                // Configure DOMPurify to preserve elements Mermaid needs while blocking XSS
+                const sanitizedSvgString = DOMPurify.sanitize(svg, {
+                    USE_PROFILES: { svg: true, svgFilters: true },
+                    ADD_TAGS: ['foreignObject'],
+                    ADD_ATTR: ['xmlns', 'style', 'class', 'transform', 'x', 'y', 'width', 'height'],
+                });
+
+                // Parse the sanitized SVG string
                 const parser = new DOMParser();
-                const svgDoc = parser.parseFromString(svg, 'image/svg+xml');
+                const svgDoc = parser.parseFromString(sanitizedSvgString, 'image/svg+xml');
 
                 // Check for parse errors
                 const parseError = svgDoc.querySelector('parsererror');
