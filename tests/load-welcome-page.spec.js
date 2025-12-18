@@ -56,7 +56,8 @@ const EXPECTED_CONTENT = {
   ],
   codeBlocks: ['```javascript', '```python'],
   mermaidElements: ['```mermaid', 'graph LR', 'sequenceDiagram', 'classDiagram'],
-  tableMarkers: ['| Feature | Status |', '|---------|--------|']
+  tableMarkers: ['| Feature | Status |', '|---------|--------|'],
+  minRealFileSize: 2000 // Real welcome.md is ~5KB, fallback is much smaller
 };
 
 /**
@@ -386,12 +387,13 @@ test.describe('Welcome Page Functionality', () => {
       await page.click('button[onclick="loadWelcomePage()"]');
 
       // Wait for content to actually load (more reliable than fixed timeout)
+      // Use CONTENT_LOAD * 2.5 as max timeout to handle slow CI environments
       await page.waitForFunction(() => {
         const cmElement = document.querySelector('.CodeMirror');
         const cmEditor = cmElement?.CodeMirror;
         const content = cmEditor?.getValue() || '';
         return content.includes('# Welcome to Merview');
-      }, { timeout: 5000 });
+      }, { timeout: WAIT_TIMES.CONTENT_LOAD * 2.5 });
 
       const content = await getCodeMirrorContent(page);
 
@@ -427,8 +429,7 @@ test.describe('Welcome Page Functionality', () => {
       }
 
       // Verify the content is substantial (real file should be much larger than fallback)
-      const MIN_REAL_FILE_SIZE = 2000; // Real welcome.md is ~5KB
-      expect(content.length).toBeGreaterThan(MIN_REAL_FILE_SIZE);
+      expect(content.length).toBeGreaterThan(EXPECTED_CONTENT.minRealFileSize);
     });
   });
 
