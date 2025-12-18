@@ -846,8 +846,17 @@ Always provide descriptive text before or after diagrams. This is the most impor
 
 **Recommended pattern:**
 
-```markdown
+
 **Diagram description:** This flowchart shows the user authentication process. Users start at the Login page, where credentials are validated. If valid, users proceed to the Dashboard. If invalid, an error message is displayed and users return to the Login page with the option to reset their password.
+
+```
+graph LR
+    A[Login] --> B{Valid?}
+    B -->|Yes| C[Dashboard]
+    B -->|No| D[Error]
+    D --> A
+    D --> E[Reset Password]
+```
 
 ```mermaid
 graph LR
@@ -856,7 +865,6 @@ graph LR
     B -->|No| D[Error]
     D --> A
     D --> E[Reset Password]
-```
 ```
 
 ### Keyboard Navigation
@@ -900,7 +908,7 @@ When creating Mermaid diagrams, follow these best practices:
 
 ### Example: Accessible Diagram Pattern
 
-```markdown
+
 **Purpose:** This sequence diagram illustrates the authentication flow for our application.
 
 **Key steps:**
@@ -908,6 +916,22 @@ When creating Mermaid diagrams, follow these best practices:
 2. Server validates against the database
 3. Database returns validation result
 4. Server responds with either a success token or error message
+
+```
+sequenceDiagram
+    participant User
+    participant Server
+    participant Database
+
+    User->>Server: Submit credentials
+    Server->>Database: Validate
+    Database-->>Server: Result
+    alt Valid
+        Server-->>User: Success token
+    else Invalid
+        Server-->>User: Error message
+    end
+```
 
 ```mermaid
 sequenceDiagram
@@ -925,8 +949,9 @@ sequenceDiagram
     end
 ```
 
+
 **Outcome:** Users with valid credentials receive an authentication token, while invalid attempts result in an error message prompting retry.
-```
+
 
 ### Accessibility Test Checklist
 
