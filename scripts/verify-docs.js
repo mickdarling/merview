@@ -16,7 +16,7 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
-import { join, dirname, relative } from 'node:path';
+import { join, dirname, relative, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Get script directory for relative paths
@@ -40,6 +40,40 @@ const results = {
     codeRefs: { passed: [], failed: [] },
     exportRefs: { passed: [], failed: [] }
 };
+
+// Built-in JavaScript functions/globals to skip during code reference verification
+// These are defined at module scope for performance (avoid recreation per call)
+const JAVASCRIPT_BUILTINS = new Set([
+    'encodeURIComponent', 'decodeURIComponent', 'encodeURI', 'decodeURI',
+    'parseInt', 'parseFloat', 'isNaN', 'isFinite',
+    'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval',
+    'Promise', 'Array', 'Object', 'String', 'Number', 'Boolean',
+    'Function', 'Date', 'RegExp', 'Error', 'Math',
+    'JSON', 'console', 'window', 'document',
+    'fetch', 'alert', 'confirm', 'prompt',
+    'URL', 'URLSearchParams', 'Blob', 'File',
+    'addEventListener', 'removeEventListener',
+    'querySelector', 'querySelectorAll',
+    'getElementById', 'getElementsByClassName',
+    'createElement', 'createTextNode',
+    'appendChild', 'removeChild',
+    'waitForFunction', // Playwright/test framework function
+    'url' // Generic placeholder
+]);
+
+// Regex patterns for parsing JavaScript files
+// Defined at module scope to avoid recreation on each function call
+const JS_FUNCTION_PATTERNS = [
+    /function\s+([a-zA-Z_]\w*)\s*\(/g,
+    /const\s+([a-zA-Z_]\w*)\s*=\s*function/g,
+    /const\s+([a-zA-Z_]\w*)\s*=\s*\([^)]*\)\s*=>/g,
+    /export\s+function\s+([a-zA-Z_]\w*)\s*\(/g,
+    /export\s+const\s+([a-zA-Z_]\w*)\s*=\s*function/g,
+    /export\s+const\s+([a-zA-Z_]\w*)\s*=\s*\([^)]*\)\s*=>/g
+];
+const JS_CONSTANT_PATTERN = /const\s+([A-Z][A-Z0-9_]+)\s*=/g;
+const JS_EXPORT_BLOCK_PATTERN = /export\s+\{\s*([^}]+)\s*\}/g;
+const JS_EXPORT_DIRECT_PATTERN = /export\s+(?:function|const)\s+([a-zA-Z_]\w*)/g;
 
 /**
  * Find all markdown files in a directory recursively
@@ -165,32 +199,13 @@ function extractFileReferences(content) {
 function extractCodeReferences(content) {
     const refs = new Set();
 
-    // Built-in JavaScript functions/globals to skip
-    const builtins = new Set([
-        'encodeURIComponent', 'decodeURIComponent', 'encodeURI', 'decodeURI',
-        'parseInt', 'parseFloat', 'isNaN', 'isFinite',
-        'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval',
-        'Promise', 'Array', 'Object', 'String', 'Number', 'Boolean',
-        'Function', 'Date', 'RegExp', 'Error', 'Math',
-        'JSON', 'console', 'window', 'document',
-        'fetch', 'alert', 'confirm', 'prompt',
-        'URL', 'URLSearchParams', 'Blob', 'File',
-        'addEventListener', 'removeEventListener',
-        'querySelector', 'querySelectorAll',
-        'getElementById', 'getElementsByClassName',
-        'createElement', 'createTextNode',
-        'appendChild', 'removeChild',
-        'waitForFunction', // Playwright/test framework function
-        'url' // Generic placeholder
-    ]);
-
     // Match function calls: `functionName()`
     const functionRegex = /`([a-zA-Z_]\w*)\(\)`/g;
     let match;
 
     while ((match = functionRegex.exec(content)) !== null) {
         const name = match[1];
-        if (!builtins.has(name)) {
+        if (!JAVASCRIPT_BUILTINS.has(name)) {
             refs.add(JSON.stringify({ name, type: 'function' }));
         }
     }
@@ -224,17 +239,10 @@ function parseJavaScriptFile(filePath) {
     try {
         const content = readFileSync(filePath, 'utf-8');
 
-        // Match function declarations: function name() or const name = function()
-        const functionPatterns = [
-            /function\s+([a-zA-Z_]\w*)\s*\(/g,
-            /const\s+([a-zA-Z_]\w*)\s*=\s*function/g,
-            /const\s+([a-zA-Z_]\w*)\s*=\s*\([^)]*\)\s*=>/g,
-            /export\s+function\s+([a-zA-Z_]\w*)\s*\(/g,
-            /export\s+const\s+([a-zA-Z_]\w*)\s*=\s*function/g,
-            /export\s+const\s+([a-zA-Z_]\w*)\s*=\s*\([^)]*\)\s*=>/g
-        ];
-
-        for (const pattern of functionPatterns) {
+        // Match function declarations using module-level patterns
+        // Reset lastIndex before use since global regex maintains state
+        for (const pattern of JS_FUNCTION_PATTERNS) {
+            pattern.lastIndex = 0;
             let match;
             while ((match = pattern.exec(content)) !== null) {
                 definitions.functions.add(match[1]);
@@ -242,22 +250,22 @@ function parseJavaScriptFile(filePath) {
         }
 
         // Match constant declarations: const UPPER_CASE
-        const constantPattern = /const\s+([A-Z][A-Z0-9_]+)\s*=/g;
+        JS_CONSTANT_PATTERN.lastIndex = 0;
         let match;
-        while ((match = constantPattern.exec(content)) !== null) {
+        while ((match = JS_CONSTANT_PATTERN.exec(content)) !== null) {
             definitions.constants.add(match[1]);
         }
 
         // Match exports: export { name, name2 }
-        const exportPattern = /export\s+\{\s*([^}]+)\s*\}/g;
-        while ((match = exportPattern.exec(content)) !== null) {
+        JS_EXPORT_BLOCK_PATTERN.lastIndex = 0;
+        while ((match = JS_EXPORT_BLOCK_PATTERN.exec(content)) !== null) {
             const exports = match[1].split(',').map(e => e.trim().split(/\s+as\s+/)[0].trim());
             exports.forEach(exp => definitions.exports.add(exp));
         }
 
         // Match export function/const
-        const exportDirectPattern = /export\s+(?:function|const)\s+([a-zA-Z_]\w*)/g;
-        while ((match = exportDirectPattern.exec(content)) !== null) {
+        JS_EXPORT_DIRECT_PATTERN.lastIndex = 0;
+        while ((match = JS_EXPORT_DIRECT_PATTERN.exec(content)) !== null) {
             definitions.exports.add(match[1]);
         }
 
@@ -429,7 +437,15 @@ function verifyExportRefs(content, relPath, codeIndex) {
  */
 async function verifyMarkdownFile(mdFile, codeIndex, isSessionNote = false) {
     const relPath = relative(ROOT_DIR, mdFile);
-    const content = readFileSync(mdFile, 'utf-8');
+
+    // Read file content with error handling for files that may be deleted/moved during verification
+    let content;
+    try {
+        content = readFileSync(mdFile, 'utf-8');
+    } catch (error) {
+        console.log(`${COLORS.red}✗ Unable to read file: ${relPath} - ${error.message}${COLORS.reset}`);
+        return;
+    }
 
     console.log(`${COLORS.blue}Checking ${relPath}...${COLORS.reset}`);
 
@@ -532,7 +548,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         // Verify each markdown file
         for (const mdFile of allMdFiles) {
             // Check if this is a session note (historical documentation)
-            const isSessionNote = mdFile.includes('/session-notes/') || mdFile.includes('/session-notes-');
+            // Session notes are identified by:
+            // 1. Being in a /session-notes/ directory, or
+            // 2. Having a filename starting with SESSION_NOTES_ or session-notes-
+            // This is more precise than checking for path substring to avoid false positives
+            const fileName = basename(mdFile);
+            const isSessionNote = mdFile.includes('/session-notes/') ||
+                                  fileName.startsWith('SESSION_NOTES_') ||
+                                  fileName.startsWith('session-notes-');
             await verifyMarkdownFile(mdFile, codeIndex, isSessionNote);
         }
 
