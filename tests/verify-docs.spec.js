@@ -3,7 +3,7 @@
 
 // @ts-check
 const { test, expect } = require('@playwright/test');
-const { execSync } = require('node:child_process');
+const { execSync, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
@@ -609,20 +609,16 @@ test.describe('Integration Tests', () => {
     // to ensure all documentation references are valid
     const scriptPath = path.join(__dirname, '../scripts/verify-docs.js');
 
-    let result;
-    let exitCode = 0;
+    // Use spawnSync with shell: false to avoid security hotspot (S4721)
+    // The script path is entirely controlled by this test code
+    const spawnResult = spawnSync('node', [scriptPath], {
+      encoding: 'utf-8',
+      cwd: path.join(__dirname, '..'),
+      shell: false
+    });
 
-    try {
-      result = execSync(`node ${scriptPath}`, {
-        encoding: 'utf-8',
-        cwd: path.join(__dirname, '..'),
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
-    } catch (error) {
-      // execSync throws if the process exits with non-zero code
-      result = error.stdout || '';
-      exitCode = error.status || 1;
-    }
+    const result = spawnResult.stdout || '';
+    const exitCode = spawnResult.status || 0;
 
     // The script should exit with code 0 (success)
     expect(exitCode).toBe(0);
@@ -653,10 +649,13 @@ console.log('codeRefs:', JSON.stringify(codeRefs));
 
     try {
       fs.writeFileSync(tempFile, testCode, { mode: 0o600 });
-      const output = execSync(`node ${tempFile}`, {
+      // Use spawnSync with shell: false to avoid security hotspot (S4721)
+      // The temp file path is generated with crypto.randomBytes, controlled by test code
+      const spawnResult = spawnSync('node', [tempFile], {
         encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe']
+        shell: false
       });
+      const output = spawnResult.stdout || '';
 
       // Should extract the bad file reference
       expect(output).toContain('js/nonexistent-file.js');
