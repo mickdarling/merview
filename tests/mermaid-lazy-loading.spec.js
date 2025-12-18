@@ -43,7 +43,7 @@ Regular text content here.
         // Check that the first diagram is rendered (should be visible)
         const diagramRendered = await page.evaluate(() => {
             const diagram = document.querySelector('.mermaid');
-            return diagram && diagram.dataset.mermaidRendered === 'true';
+            return diagram?.dataset.mermaidRendered === 'true';
         });
 
         expect(diagramRendered).toBe(true);
@@ -53,7 +53,7 @@ Regular text content here.
         // Create content with a diagram very far down the page (beyond 200px margin)
         const content = `# Test Document
 
-${'\\n'.repeat(100)}
+${'\n'.repeat(100)}
 
 \`\`\`mermaid
 graph TD
@@ -84,14 +84,14 @@ graph TD
     A1[First]
 \`\`\`
 
-${'\\n'.repeat(100)}
+${'\n'.repeat(100)}
 
 \`\`\`mermaid
 graph TD
     A2[Second]
 \`\`\`
 
-${'\\n'.repeat(100)}
+${'\n'.repeat(100)}
 
 \`\`\`mermaid
 graph TD
@@ -127,14 +127,14 @@ graph TD
     A1[First]
 \`\`\`
 
-${'\\n'.repeat(20)}
+${'\n'.repeat(20)}
 
 \`\`\`mermaid
 graph TD
     A2[Second]
 \`\`\`
 
-${'\\n'.repeat(20)}
+${'\n'.repeat(20)}
 
 \`\`\`mermaid
 graph TD
@@ -173,7 +173,7 @@ graph TD
 
         // Check that the observer is stored in state
         const hasObserver = await page.evaluate(() => {
-            return window.state && window.state.mermaidObserver !== null;
+            return globalThis.state && globalThis.state.mermaidObserver !== null;
         });
 
         expect(hasObserver).toBe(true);
@@ -193,16 +193,16 @@ graph TD
 
         // Get initial observer
         const observer1 = await page.evaluate(() => {
-            return window.state ? window.state.mermaidObserver : null;
+            return globalThis.state ? globalThis.state.mermaidObserver : null;
         });
 
         // Trigger a re-render by changing content
-        await setCodeMirrorContent(page, content + '\\nMore content');
+        await setCodeMirrorContent(page, content + '\nMore content');
         await renderMarkdownAndWait(page, WAIT_TIMES.MEDIUM);
 
         // Check that a new observer was created
         const observer2 = await page.evaluate(() => {
-            return window.state ? window.state.mermaidObserver : null;
+            return globalThis.state ? globalThis.state.mermaidObserver : null;
         });
 
         // Both should exist (different instances)
@@ -243,7 +243,7 @@ graph TD
     test('loading indicator should appear for pending diagrams', async ({ page }) => {
         const content = `# Test
 
-${'\\n'.repeat(100)}
+${'\n'.repeat(100)}
 
 \`\`\`mermaid
 graph TD
@@ -272,7 +272,7 @@ graph TD
     test('performance: multiple diagrams render efficiently', async ({ page }) => {
         // Create content with 10 diagrams
         const diagrams = Array.from({ length: 10 }, (_, i) => `
-${'\\n'.repeat(20)}
+${'\n'.repeat(20)}
 
 \`\`\`mermaid
 graph TD
@@ -378,19 +378,19 @@ graph TD
 
         // Verify observer exists
         const hasObserverBefore = await page.evaluate(() => {
-            return window.state?.mermaidObserver !== null;
+            return globalThis.state?.mermaidObserver !== null;
         });
 
         expect(hasObserverBefore).toBe(true);
 
         // Simulate page navigation by triggering pagehide event
         await page.evaluate(() => {
-            window.dispatchEvent(new Event('pagehide'));
+            globalThis.dispatchEvent(new Event('pagehide'));
         });
 
         // Check that observer was cleaned up
         const hasObserverAfter = await page.evaluate(() => {
-            return window.state?.mermaidObserver;
+            return globalThis.state?.mermaidObserver;
         });
 
         expect(hasObserverAfter).toBeNull();

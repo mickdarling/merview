@@ -792,7 +792,7 @@ async function showMermaidRenderStatus() {
     if (totalErrors > 0) {
         const { showStatus } = await import('./utils.js');
         showStatus(
-            `${totalRendered} diagram${totalRendered !== 1 ? 's' : ''} rendered, ${totalErrors} failed`,
+            `${totalRendered} diagram${totalRendered === 1 ? '' : 's'} rendered, ${totalErrors} failed`,
             'warning'
         );
     }
