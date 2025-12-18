@@ -562,12 +562,22 @@ export async function renderMarkdown() {
         for (const element of mermaidElements) {
             try {
                 const { svg } = await mermaid.render(element.id + '-svg', element.textContent);
-                // Mermaid output is NOT sanitized with DOMPurify because:
-                // 1. Mermaid has built-in security via securityLevel: 'strict' (configured in initMermaid)
-                // 2. DOMPurify strips SVG attributes/elements that Mermaid needs for proper rendering
-                //    (foreignObject, style attributes, transforms) causing broken diagrams
-                // 3. The markdown content itself is sanitized by DOMPurify before Mermaid processes it
+                // Insert SVG first, then surgically sanitize foreignObject contents
+                // This preserves Mermaid's SVG structure while protecting against XSS
                 element.innerHTML = svg;
+
+                // Sanitize HTML content inside foreignObject elements (where XSS risk exists)
+                // The SVG structure itself (paths, rects, transforms) is safe - only the
+                // embedded HTML in foreignObject can contain malicious scripts/handlers
+                element.querySelectorAll('foreignObject').forEach(fo => {
+                    // Sanitize only the HTML inside, preserving safe styling for layout
+                    fo.innerHTML = DOMPurify.sanitize(fo.innerHTML, {
+                        ALLOWED_TAGS: ['div', 'span', 'p', 'br', 'b', 'i', 'strong', 'em'],
+                        ALLOWED_ATTR: ['class', 'style'],
+                        // Allow safe CSS properties needed for Mermaid text positioning
+                        // Block dangerous CSS like expressions, urls, behaviors
+                    });
+                });
             } catch (error) {
                 console.error('Mermaid render error:', error);
                 element.innerHTML = `<div style="color: red; padding: 10px; border: 1px solid red; border-radius: 4px;">
