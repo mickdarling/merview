@@ -61,15 +61,15 @@ graph TD
 
 ### Clickable Flowchart
 
-Click on any node to navigate:
+Click on any node to navigate (uses standard Mermaid `click` directive):
 
 ```mermaid
 graph LR
     subgraph Navigation Test
-        A[Welcome]
-        B[About]
-        C[Themes]
-        D[Security]
+        A[Welcome Page]
+        B[Sample Content]
+        C[Demos Index]
+        D[About Merview]
     end
 
     A --> B
@@ -77,10 +77,12 @@ graph LR
     A --> D
 
     click A "/?sample" "Go to Welcome"
-    click B "/?url=docs/about.md" "Go to About"
-    click C "/?url=docs/themes.md" "Go to Themes"
-    click D "/?url=docs/security.md" "Go to Security"
+    click B "/?url=docs/demos/sample.md" "Go to Sample"
+    click C "/?url=docs/demos/index.md" "Go to Demos"
+    click D "/?url=docs/about.md" "Go to About"
 ```
+
+> **Note:** Clickable nodes use Mermaid's standard `click` directive syntax. Links may be subject to security filtering by the renderer's sanitization process.
 
 ### Edge Labels (Critical for Issue #327)
 
@@ -819,6 +821,36 @@ graph LR
     H o--o I
     I x--x J
 ```
+
+### Malformed Diagrams (Error Handling Tests)
+
+These intentionally malformed diagrams test the renderer's error handling:
+
+**Missing arrow (syntax error):**
+
+```mermaid
+graph LR
+    A[Start]
+    B[End]
+    A B
+```
+
+**Invalid diagram type:**
+
+```mermaid
+invalidtype
+    A --> B
+```
+
+**Unclosed subgraph:**
+
+```mermaid
+graph TD
+    subgraph Unclosed
+        A --> B
+```
+
+> **Expected behavior:** Malformed diagrams should either display an error message or gracefully fail without breaking the page. The renderer should continue processing subsequent diagrams.
 
 ---
 

@@ -25,6 +25,17 @@ const WAIT_TIMES = {
 };
 
 /**
+ * Mermaid diagram test constants
+ * Used in mermaid-diagrams-demo.spec.js for consistent assertions
+ */
+const MERMAID_TEST_CONSTANTS = {
+  EXPECTED_DIAGRAM_COUNT: 40,     // Total diagrams in test page (includes all types)
+  MIN_RENDERED_DIAGRAMS: 30,      // Minimum for tests to pass (accounts for version differences)
+  RENDER_TIMEOUT: 15000,          // Max time to wait for diagrams to render
+  CLICK_HANDLER_WAIT: 1000        // Time to wait for click handlers to attach
+};
+
+/**
  * Standard timeout values for page initialization
  */
 const INIT_TIMEOUTS = {
@@ -450,10 +461,77 @@ async function findNthLineWithText(page, searchText, occurrence = 1) {
   }, { text: searchText, n: occurrence });
 }
 
+/**
+ * Set up dialog listener to detect script execution (for XSS testing)
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @returns {{wasTriggered: () => boolean}} Object with trigger check function
+ */
+function setupDialogListener(page) {
+  let triggered = false;
+  page.on('dialog', async d => { triggered = true; await d.dismiss(); });
+  return { wasTriggered: () => triggered };
+}
+
+/**
+ * Wait for Mermaid diagrams to render
+ * Replaces arbitrary timeouts with deterministic wait for SVG elements
+ *
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @param {number} [minCount] - Minimum number of diagrams to wait for
+ * @param {number} [timeout] - Maximum wait time in milliseconds
+ * @returns {Promise<void>}
+ */
+async function waitForMermaidDiagrams(page, minCount = MERMAID_TEST_CONSTANTS.MIN_RENDERED_DIAGRAMS, timeout = MERMAID_TEST_CONSTANTS.RENDER_TIMEOUT) {
+  await page.waitForFunction(
+    (min) => document.querySelectorAll('.mermaid svg').length >= min,
+    minCount,
+    { timeout }
+  );
+}
+
+/**
+ * Known acceptable console errors for Mermaid rendering
+ * These errors don't indicate actual problems with diagram rendering
+ */
+const MERMAID_ACCEPTABLE_ERRORS = {
+  // Resource loading errors (favicon, fonts, etc.)
+  isResourceError: (err) => err.includes('net::ERR_ABORTED') || err.includes('net::ERR_FAILED'),
+  // 404 errors for optional resources
+  isMissingResource: (err) => err.includes('404') && (err.includes('favicon') || err.includes('.woff')),
+  // Mermaid deprecation warnings (expected with different versions)
+  isDeprecationWarning: (err) => err.includes('deprecated') && err.includes('mermaid'),
+  // Browser warnings (not errors)
+  isBrowserWarning: (err) => err.startsWith('Warning:') || err.includes('[Warning]'),
+  // Intentional test edge cases that may produce render errors
+  isExpectedRenderError: (err) => err.includes('Mermaid render error') && err.includes('malformed')
+};
+
+/**
+ * Filter console errors to find critical issues
+ * Uses whitelist approach - only allows known acceptable errors
+ *
+ * @param {string[]} errors - Array of console error messages
+ * @returns {string[]} Array of critical errors (not in acceptable list)
+ */
+function filterCriticalErrors(errors) {
+  return errors.filter(err => {
+    // Check against all acceptable error patterns
+    const isAcceptable =
+      MERMAID_ACCEPTABLE_ERRORS.isResourceError(err) ||
+      MERMAID_ACCEPTABLE_ERRORS.isMissingResource(err) ||
+      MERMAID_ACCEPTABLE_ERRORS.isDeprecationWarning(err) ||
+      MERMAID_ACCEPTABLE_ERRORS.isBrowserWarning(err) ||
+      MERMAID_ACCEPTABLE_ERRORS.isExpectedRenderError(err);
+
+    return !isAcceptable;
+  });
+}
+
 module.exports = {
   // Constants
   WAIT_TIMES,
   INIT_TIMEOUTS,
+  MERMAID_TEST_CONSTANTS,
 
   // Page setup
   waitForPageReady,
@@ -489,16 +567,10 @@ module.exports = {
   createStatusObserverScript,
 
   // Security testing helpers
-  setupDialogListener
-};
+  setupDialogListener,
 
-/**
- * Set up dialog listener to detect script execution (for XSS testing)
- * @param {import('@playwright/test').Page} page - Playwright page object
- * @returns {{wasTriggered: () => boolean}} Object with trigger check function
- */
-function setupDialogListener(page) {
-  let triggered = false;
-  page.on('dialog', async d => { triggered = true; await d.dismiss(); });
-  return { wasTriggered: () => triggered };
-}
+  // Mermaid testing helpers
+  waitForMermaidDiagrams,
+  filterCriticalErrors,
+  MERMAID_ACCEPTABLE_ERRORS
+};
