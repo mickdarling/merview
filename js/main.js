@@ -133,6 +133,25 @@ function setupKeyboardShortcuts() {
 }
 
 /**
+ * Clean up observers and resources when page is being unloaded
+ * Prevents memory leaks and ensures proper cleanup on navigation
+ */
+function setupPageCleanup() {
+    // Use pagehide event for better support on iOS/Safari
+    // Also cleanup on beforeunload for desktop browsers
+    const cleanup = () => {
+        // Disconnect Mermaid lazy loading observer
+        if (state.mermaidObserver) {
+            state.mermaidObserver.disconnect();
+            state.mermaidObserver = null;
+        }
+    };
+
+    window.addEventListener('pagehide', cleanup);
+    window.addEventListener('beforeunload', cleanup);
+}
+
+/**
  * Handle loading content from a remote URL parameter.
  * Resolves relative doc paths and handles private repo tokens.
  * @param {string} remoteURL - The URL to load
@@ -345,6 +364,9 @@ async function initializeApp() {
 
     // Set up keyboard shortcuts
     setupKeyboardShortcuts();
+
+    // Set up page cleanup handlers for proper resource disposal
+    setupPageCleanup();
 
     // Handle URL parameters (this will trigger initial render if content is loaded)
     // Errors are caught and handled within handleURLParameters and its callees

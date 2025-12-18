@@ -209,4 +209,190 @@ graph TD
         expect(observer1).not.toBeNull();
         expect(observer2).not.toBeNull();
     });
+
+    test('malformed diagrams should show error state', async ({ page }) => {
+        const content = `# Test
+
+\`\`\`mermaid
+graph TD
+    Invalid syntax here [
+\`\`\`
+`;
+
+        await setCodeMirrorContent(page, content);
+        await renderMarkdownAndWait(page, WAIT_TIMES.LONG);
+
+        // Wait for diagram to attempt render
+        await page.waitForTimeout(WAIT_TIMES.SHORT);
+
+        // Check that error state is shown
+        const errorState = await page.evaluate(() => {
+            const diagram = document.querySelector('.mermaid');
+            return {
+                hasErrorClass: diagram?.classList.contains('mermaid-error'),
+                renderedState: diagram?.dataset.mermaidRendered,
+                hasErrorDetails: !!diagram?.querySelector('.mermaid-error-details')
+            };
+        });
+
+        expect(errorState.hasErrorClass).toBe(true);
+        expect(errorState.renderedState).toBe('error');
+        expect(errorState.hasErrorDetails).toBe(true);
+    });
+
+    test('loading indicator should appear for pending diagrams', async ({ page }) => {
+        const content = `# Test
+
+${'\\n'.repeat(100)}
+
+\`\`\`mermaid
+graph TD
+    A[Far Down]
+\`\`\`
+`;
+
+        await setCodeMirrorContent(page, content);
+        await renderMarkdownAndWait(page, WAIT_TIMES.MEDIUM);
+
+        // Check loading state before scroll
+        const loadingState = await page.evaluate(() => {
+            const diagram = document.querySelector('.mermaid');
+            return {
+                hasLoadingClass: diagram?.classList.contains('mermaid-loading'),
+                renderedState: diagram?.dataset.mermaidRendered
+            };
+        });
+
+        // Should have loading indicator if still pending
+        if (loadingState.renderedState === 'pending') {
+            expect(loadingState.hasLoadingClass).toBe(true);
+        }
+    });
+
+    test('performance: multiple diagrams render efficiently', async ({ page }) => {
+        // Create content with 10 diagrams
+        const diagrams = Array.from({ length: 10 }, (_, i) => `
+${'\\n'.repeat(20)}
+
+\`\`\`mermaid
+graph TD
+    A${i}[Diagram ${i}]
+\`\`\`
+`).join('');
+
+        const content = `# Performance Test\n${diagrams}`;
+
+        await setCodeMirrorContent(page, content);
+
+        const startTime = Date.now();
+        await renderMarkdownAndWait(page, WAIT_TIMES.MEDIUM);
+        const renderTime = Date.now() - startTime;
+
+        // Verify all diagrams exist
+        const diagramCount = await page.evaluate(() => {
+            return document.querySelectorAll('.mermaid').length;
+        });
+
+        expect(diagramCount).toBe(10);
+
+        // Initial render should be fast (not waiting for all diagrams)
+        expect(renderTime).toBeLessThan(3000);
+
+        // Scroll to bottom to trigger remaining diagrams
+        await page.evaluate(() => {
+            const preview = document.getElementById('preview');
+            if (preview) {
+                preview.scrollTop = preview.scrollHeight;
+            }
+        });
+
+        // Wait for diagrams to render
+        await page.waitForTimeout(WAIT_TIMES.LONG);
+
+        // Count rendered diagrams
+        const renderedCount = await page.evaluate(() => {
+            const diagrams = document.querySelectorAll('.mermaid');
+            return Array.from(diagrams).filter(d =>
+                d.dataset.mermaidRendered === 'true'
+            ).length;
+        });
+
+        // Several diagrams should be rendered after scrolling (at least 3)
+        expect(renderedCount).toBeGreaterThanOrEqual(3);
+    });
+
+    test('error tracking counts failed diagrams', async ({ page }) => {
+        const content = `# Error Tracking Test
+
+\`\`\`mermaid
+graph TD
+    A[Valid]
+\`\`\`
+
+\`\`\`mermaid
+invalid syntax
+\`\`\`
+
+\`\`\`mermaid
+graph TD
+    B[Valid 2]
+\`\`\`
+`;
+
+        await setCodeMirrorContent(page, content);
+        await renderMarkdownAndWait(page, WAIT_TIMES.LONG);
+
+        // Wait for all diagrams to attempt render
+        await page.waitForTimeout(WAIT_TIMES.MEDIUM);
+
+        // Count errors
+        const errorCount = await page.evaluate(() => {
+            return document.querySelectorAll('.mermaid-error').length;
+        });
+
+        // Should have 1 error from the invalid diagram
+        expect(errorCount).toBe(1);
+
+        // Check that valid diagrams rendered
+        const validCount = await page.evaluate(() => {
+            const diagrams = document.querySelectorAll('.mermaid:not(.mermaid-error)');
+            return Array.from(diagrams).filter(d =>
+                d.dataset.mermaidRendered === 'true'
+            ).length;
+        });
+
+        expect(validCount).toBeGreaterThan(0);
+    });
+
+    test('observer cleanup on page navigation', async ({ page }) => {
+        const content = `# Test
+
+\`\`\`mermaid
+graph TD
+    A[Start]
+\`\`\`
+`;
+
+        await setCodeMirrorContent(page, content);
+        await renderMarkdownAndWait(page, WAIT_TIMES.MEDIUM);
+
+        // Verify observer exists
+        const hasObserverBefore = await page.evaluate(() => {
+            return window.state?.mermaidObserver !== null;
+        });
+
+        expect(hasObserverBefore).toBe(true);
+
+        // Simulate page navigation by triggering pagehide event
+        await page.evaluate(() => {
+            window.dispatchEvent(new Event('pagehide'));
+        });
+
+        // Check that observer was cleaned up
+        const hasObserverAfter = await page.evaluate(() => {
+            return window.state?.mermaidObserver;
+        });
+
+        expect(hasObserverAfter).toBeNull();
+    });
 });

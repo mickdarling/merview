@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2025 Mick Darling
 /**
  * renderer.js - Markdown and Mermaid rendering module for Merview
  * Handles converting markdown to HTML with syntax highlighting and mermaid diagrams
@@ -16,6 +18,72 @@ import { validateCode } from './validation.js';
 function isDebugMermaidTheme() {
     return localStorage.getItem('debug-mermaid-theme') === 'true';
 }
+
+// Debug flag for Mermaid performance tracking (#326)
+// Enable via: localStorage.setItem('debug-mermaid-perf', 'true')
+function isDebugMermaidPerf() {
+    return localStorage.getItem('debug-mermaid-perf') === 'true';
+}
+
+/**
+ * Performance tracking for Mermaid lazy loading
+ * Tracks render times and error counts when debug-mermaid-perf is enabled
+ */
+const mermaidPerfMetrics = {
+    firstRenderTime: null,
+    totalRendered: 0,
+    totalPending: 0,
+    totalErrors: 0,
+    renderTimes: [],
+
+    reset() {
+        this.firstRenderTime = null;
+        this.totalRendered = 0;
+        this.totalPending = 0;
+        this.totalErrors = 0;
+        this.renderTimes = [];
+    },
+
+    recordRenderStart() {
+        if (!this.firstRenderTime) {
+            this.firstRenderTime = performance.now();
+        }
+        return performance.now();
+    },
+
+    recordRenderComplete(startTime) {
+        const duration = performance.now() - startTime;
+        this.renderTimes.push(duration);
+        this.totalRendered++;
+        if (isDebugMermaidPerf()) {
+            console.log(`[Mermaid Perf] Diagram rendered in ${duration.toFixed(2)}ms`);
+        }
+    },
+
+    recordError() {
+        this.totalErrors++;
+    },
+
+    updatePendingCount(count) {
+        this.totalPending = count;
+    },
+
+    logSummary() {
+        if (isDebugMermaidPerf() && this.renderTimes.length > 0) {
+            const avgTime = this.renderTimes.reduce((a, b) => a + b, 0) / this.renderTimes.length;
+            const timeToFirst = this.firstRenderTime ? `${(this.firstRenderTime - performance.now()).toFixed(2)}ms ago` : 'N/A';
+            console.log('[Mermaid Perf Summary]', {
+                timeToFirstRender: timeToFirst,
+                totalRendered: this.totalRendered,
+                totalPending: this.totalPending,
+                totalErrors: this.totalErrors,
+                averageRenderTime: `${avgTime.toFixed(2)}ms`,
+                minRenderTime: `${Math.min(...this.renderTimes).toFixed(2)}ms`,
+                maxRenderTime: `${Math.max(...this.renderTimes).toFixed(2)}ms`
+            });
+        }
+    }
+};
 
 // Initialize Mermaid with security settings (theme set dynamically)
 mermaid.initialize({
@@ -621,9 +689,14 @@ async function lazyRenderMermaid(element) {
         return;
     }
 
+    const startTime = mermaidPerfMetrics.recordRenderStart();
+
     try {
         // Mark as being rendered to prevent duplicate renders
         element.dataset.mermaidRendered = 'rendering';
+
+        // Remove loading indicator
+        element.classList.remove('mermaid-loading');
 
         const { svg } = await mermaid.render(element.id + '-svg', element.textContent);
         // Use two-pass sanitization for better security
@@ -633,9 +706,12 @@ async function lazyRenderMermaid(element) {
 
         // Mark as successfully rendered
         element.dataset.mermaidRendered = 'true';
+        mermaidPerfMetrics.recordRenderComplete(startTime);
     } catch (error) {
         console.error('Mermaid render error:', error);
+        mermaidPerfMetrics.recordError();
         element.classList.add('mermaid-error');
+        element.classList.remove('mermaid-loading');
         element.innerHTML = `<details class="mermaid-error-details">
             <summary>⚠️ Mermaid diagram failed to render</summary>
             <pre class="mermaid-error-message">${escapeHtml(error.message)}</pre>
@@ -650,6 +726,15 @@ async function lazyRenderMermaid(element) {
  * @param {NodeList} mermaidElements - The mermaid diagram elements
  */
 function setupMermaidLazyLoading(mermaidElements) {
+    // Disconnect previous observer if exists
+    if (state.mermaidObserver) {
+        state.mermaidObserver.disconnect();
+    }
+
+    // Reset performance metrics for new render
+    mermaidPerfMetrics.reset();
+    mermaidPerfMetrics.updatePendingCount(mermaidElements.length);
+
     // Create IntersectionObserver for lazy loading diagrams
     const observer = new IntersectionObserver(
         (entries) => {
@@ -657,7 +742,17 @@ function setupMermaidLazyLoading(mermaidElements) {
                 if (entry.isIntersecting) {
                     const element = entry.target;
                     // Render the diagram
-                    lazyRenderMermaid(element);
+                    lazyRenderMermaid(element).then(() => {
+                        // Update pending count
+                        const pendingCount = document.querySelectorAll('.mermaid[data-mermaid-rendered="pending"]').length;
+                        mermaidPerfMetrics.updatePendingCount(pendingCount);
+
+                        // Log summary when all diagrams are done
+                        if (pendingCount === 0) {
+                            mermaidPerfMetrics.logSummary();
+                            showMermaidRenderStatus();
+                        }
+                    });
                     // Stop observing this element
                     observer.unobserve(element);
                 }
@@ -672,16 +767,35 @@ function setupMermaidLazyLoading(mermaidElements) {
 
     // Observe all mermaid diagrams
     mermaidElements.forEach(element => {
-        // Add a placeholder/loading state
+        // Add loading state with visual indicator
         element.dataset.mermaidRendered = 'pending';
+        element.classList.add('mermaid-loading');
         observer.observe(element);
     });
 
-    // Store observer in state for cleanup if needed
-    if (state.mermaidObserver) {
-        state.mermaidObserver.disconnect();
-    }
+    // Store observer in state for cleanup
     state.mermaidObserver = observer;
+
+    // Log initial state
+    if (isDebugMermaidPerf()) {
+        console.log(`[Mermaid Perf] Starting lazy load for ${mermaidElements.length} diagrams`);
+    }
+}
+
+/**
+ * Show status message after all Mermaid diagrams have rendered
+ * Displays error count if any diagrams failed
+ */
+async function showMermaidRenderStatus() {
+    const { totalErrors, totalRendered } = mermaidPerfMetrics;
+
+    if (totalErrors > 0) {
+        const { showStatus } = await import('./utils.js');
+        showStatus(
+            `${totalRendered} diagram${totalRendered !== 1 ? 's' : ''} rendered, ${totalErrors} failed`,
+            'warning'
+        );
+    }
 }
 
 /**
