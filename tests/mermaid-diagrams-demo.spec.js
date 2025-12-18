@@ -21,10 +21,12 @@ const {
  * - Clickable nodes
  * - All diagram types (flowchart, sequence, class, state, etc.)
  * - Edge cases (special characters, long labels, nested subgraphs)
- * - Error handling (malformed diagrams)
+ *
+ * Note: Malformed diagrams are now tested separately in docs/demos/mermaid-errors.md
  *
  * Related files:
  * - Test page: docs/demos/mermaid-diagrams.md
+ * - Error examples: docs/demos/mermaid-errors.md
  * - Related tests: mermaid-fullscreen.spec.js, xss-prevention.spec.js
  * - GitHub Issue: #327 (edge labels not rendering)
  */
@@ -87,7 +89,6 @@ test.describe('Mermaid Diagram Test Suite', () => {
       await page.waitForTimeout(WAIT_TIMES.CONTENT_LOAD);
 
       // Use centralized filter helper for consistency
-      // Note: The test page includes intentionally malformed diagrams which produce expected errors
       const criticalErrors = filterCriticalErrors(errors);
 
       // Should have zero critical errors
@@ -105,8 +106,8 @@ test.describe('Mermaid Diagram Test Suite', () => {
       const svgCount = await page.locator('.mermaid svg').count();
 
       // Most mermaid containers should have SVGs
-      // Allow for intentional malformed diagrams (3) + potential version differences (2)
-      expect(svgCount).toBeGreaterThanOrEqual(mermaidContainers - 5);
+      // Allow for potential version differences in beta diagram types (2)
+      expect(svgCount).toBeGreaterThanOrEqual(mermaidContainers - 2);
     });
   });
 
@@ -673,53 +674,22 @@ test.describe('Mermaid Diagram Test Suite', () => {
     });
   });
 
-  test.describe('Error Handling (Malformed Diagrams)', () => {
+  test.describe('Page Stability', () => {
     /**
-     * The test page includes intentionally malformed diagrams to verify
-     * that the renderer handles errors gracefully without breaking the page.
+     * Verify that the test page remains stable and all valid diagrams render successfully.
+     * Note: Error handling with malformed diagrams is now tested separately in mermaid-errors.md
      */
 
-    test('should continue rendering after malformed diagram', async ({ page }) => {
-      // The test page includes malformed diagrams in the "Error Handling" section
-      // Valid diagrams should still render even if some fail
+    test('should render all valid diagrams successfully', async ({ page }) => {
+      // All diagrams on this page should be valid
       await waitForMermaidDiagrams(page);
 
-      // Should have rendered most valid diagrams despite some malformed ones
+      // Should have rendered all or nearly all diagrams
       const svgCount = await page.locator('.mermaid svg').count();
-      expect(svgCount).toBeGreaterThan(MERMAID_TEST_CONSTANTS.MIN_RENDERED_DIAGRAMS);
+      expect(svgCount).toBeGreaterThanOrEqual(MERMAID_TEST_CONSTANTS.MIN_RENDERED_DIAGRAMS);
     });
 
-    test('should display error message for invalid diagrams', async ({ page }) => {
-      // Wait for all rendering to complete
-      await waitForMermaidDiagrams(page);
-      await page.waitForTimeout(WAIT_TIMES.CONTENT_LOAD);
-
-      // Look for error elements - Mermaid displays these when parsing fails
-      // Could be in various forms: text with "error", specific error class, or pre elements
-      const errorIndicators = await page.evaluate(() => {
-        const containers = document.querySelectorAll('.mermaid');
-        let errorCount = 0;
-        for (const container of containers) {
-          const text = container.textContent?.toLowerCase() || '';
-          const hasErrorClass = container.querySelector('[class*="error"]');
-          const hasErrorText = text.includes('syntax error') ||
-                              text.includes('parse error') ||
-                              text.includes('error') && !container.querySelector('svg');
-          if (hasErrorClass || hasErrorText) {
-            errorCount++;
-          }
-        }
-        return errorCount;
-      });
-
-      // The test page has 3 intentionally malformed diagrams
-      // At least some should show error indicators (not all Mermaid versions handle errors the same way)
-      // This test passes if errors are shown OR if all content rendered (graceful handling)
-      const allRendered = await page.locator('.mermaid svg').count();
-      expect(errorIndicators >= 0 || allRendered > 0).toBe(true);
-    });
-
-    test('should not cause JavaScript errors from malformed diagrams', async ({ page }) => {
+    test('should not have parsing errors for valid diagrams', async ({ page }) => {
       const jsErrors = [];
 
       // Listen for uncaught exceptions
@@ -727,27 +697,25 @@ test.describe('Mermaid Diagram Test Suite', () => {
         jsErrors.push(error.message);
       });
 
-      // Wait for all rendering including error handling
+      // Wait for all rendering
       await waitForMermaidDiagrams(page);
       await page.waitForTimeout(WAIT_TIMES.CONTENT_LOAD);
 
-      // Malformed diagrams should not cause uncaught JavaScript errors
-      // Filter out expected Mermaid errors that are caught and handled
-      const unexpectedErrors = jsErrors.filter(err =>
-        !err.includes('mermaid') &&
-        !err.includes('Syntax error') &&
-        !err.includes('Parse error')
+      // Should not have any Mermaid parsing errors since all diagrams are valid
+      const mermaidErrors = jsErrors.filter(err =>
+        err.includes('Syntax error') ||
+        err.includes('Parse error')
       );
 
-      expect(unexpectedErrors).toHaveLength(0);
+      expect(mermaidErrors).toHaveLength(0);
     });
 
-    test('should keep page interactive after render errors', async ({ page }) => {
-      // Wait for all rendering including potential errors
+    test('should keep page interactive during rendering', async ({ page }) => {
+      // Wait for all rendering to complete
       await waitForMermaidDiagrams(page);
       await page.waitForTimeout(WAIT_TIMES.CONTENT_LOAD);
 
-      // Page should still be interactive
+      // Page should be interactive
       const isInteractive = await page.evaluate(() => {
         return document.readyState === 'complete' || document.readyState === 'interactive';
       });

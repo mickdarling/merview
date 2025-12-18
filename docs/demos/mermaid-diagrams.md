@@ -830,36 +830,6 @@ graph LR
     I x--x J
 ```
 
-### Malformed Diagrams (Error Handling Tests)
-
-These intentionally malformed diagrams test the renderer's error handling:
-
-**Missing arrow (syntax error):**
-
-```mermaid
-graph LR
-    A[Start]
-    B[End]
-    A B
-```
-
-**Invalid diagram type:**
-
-```mermaid
-invalidtype
-    A --> B
-```
-
-**Unclosed subgraph:**
-
-```mermaid
-graph TD
-    subgraph Unclosed
-        A --> B
-```
-
-> **Expected behavior:** Malformed diagrams should either display an error message or gracefully fail without breaking the page. The renderer should continue processing subsequent diagrams.
-
 ---
 
 ## Accessibility

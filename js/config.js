@@ -148,8 +148,8 @@ export function getDocsBaseUrl() {
         const isDefaultPort = (protocol === 'http:' && port === '80') ||
                               (protocol === 'https:' && port === '443');
         cachedDocsBaseUrl = isDefaultPort
-            ? `${protocol}//localhost`
-            : `${protocol}//localhost:${port}`;
+            ? `${protocol}//${hostname}`
+            : `${protocol}//${hostname}:${port}`;
     } else {
         // Production - serve from GitHub raw
         cachedDocsBaseUrl = 'https://raw.githubusercontent.com/mickdarling/merview/main';
