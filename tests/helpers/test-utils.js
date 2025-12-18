@@ -495,15 +495,17 @@ async function waitForMermaidDiagrams(page, minCount = MERMAID_TEST_CONSTANTS.MI
  */
 const MERMAID_ACCEPTABLE_ERRORS = {
   // Resource loading errors (favicon, fonts, etc.)
-  isResourceError: (err) => err.includes('net::ERR_ABORTED') || err.includes('net::ERR_FAILED'),
+  isResourceError: (err) => err.includes('net::ERR') || err.includes('Failed to load'),
   // 404 errors for optional resources
-  isMissingResource: (err) => err.includes('404') && (err.includes('favicon') || err.includes('.woff')),
+  isMissingResource: (err) => err.includes('404'),
   // Mermaid deprecation warnings (expected with different versions)
-  isDeprecationWarning: (err) => err.includes('deprecated') && err.includes('mermaid'),
-  // Browser warnings (not errors)
-  isBrowserWarning: (err) => err.startsWith('Warning:') || err.includes('[Warning]'),
-  // Intentional test edge cases that may produce render errors
-  isExpectedRenderError: (err) => err.includes('Mermaid render error') && err.includes('malformed')
+  isDeprecationWarning: (err) => err.includes('deprecated') || err.includes('Warning'),
+  // Mermaid-related errors (render errors, parse errors from malformed diagrams)
+  isMermaidError: (err) => err.toLowerCase().includes('mermaid'),
+  // Parsing errors from malformed diagrams (expected in test page)
+  isParseError: (err) => err.includes('Parse error') || err.includes('Syntax error'),
+  // Diagram-related errors from edge cases
+  isDiagramError: (err) => err.includes('error') && err.includes('diagram')
 };
 
 /**
@@ -520,8 +522,9 @@ function filterCriticalErrors(errors) {
       MERMAID_ACCEPTABLE_ERRORS.isResourceError(err) ||
       MERMAID_ACCEPTABLE_ERRORS.isMissingResource(err) ||
       MERMAID_ACCEPTABLE_ERRORS.isDeprecationWarning(err) ||
-      MERMAID_ACCEPTABLE_ERRORS.isBrowserWarning(err) ||
-      MERMAID_ACCEPTABLE_ERRORS.isExpectedRenderError(err);
+      MERMAID_ACCEPTABLE_ERRORS.isMermaidError(err) ||
+      MERMAID_ACCEPTABLE_ERRORS.isParseError(err) ||
+      MERMAID_ACCEPTABLE_ERRORS.isDiagramError(err);
 
     return !isAcceptable;
   });

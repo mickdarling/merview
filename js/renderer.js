@@ -7,7 +7,7 @@ import { state } from './state.js';
 import { getElements } from './dom.js';
 import { saveMarkdownContent } from './storage.js';
 import { updateSessionContent, isSessionsInitialized } from './sessions.js';
-import { escapeHtml, slugify } from './utils.js';
+import { escapeHtml, slugify, showStatus } from './utils.js';
 import { validateCode } from './validation.js';
 
 // Debug flag for Mermaid theme investigation (#168)
@@ -642,6 +642,7 @@ export async function renderMarkdown() {
 
         // Render mermaid diagrams
         const mermaidElements = wrapper.querySelectorAll('.mermaid');
+        let mermaidErrorCount = 0;
 
         for (const element of mermaidElements) {
             try {
@@ -650,11 +651,22 @@ export async function renderMarkdown() {
                 element.innerHTML = '';
                 element.appendChild(element.ownerDocument.importNode(sanitizedSvg, true));
             } catch (error) {
-                console.error('Mermaid render error:', error);
-                element.innerHTML = `<div style="color: red; padding: 10px; border: 1px solid red; border-radius: 4px;">
-                    <strong>Mermaid Error:</strong><br>${escapeHtml(error.message)}
-                </div>`;
+                mermaidErrorCount++;
+                // Only log first error to console to reduce noise
+                if (mermaidErrorCount === 1) {
+                    console.error('Mermaid render error:', error);
+                }
+                // Show collapsible error with summary - reduces visual noise
+                element.innerHTML = `<details style="color: #b91c1c; padding: 8px; border: 1px solid #fca5a5; border-radius: 4px; background: #fef2f2;">
+                    <summary style="cursor: pointer; font-weight: 500;">⚠️ Mermaid diagram failed to render</summary>
+                    <pre style="margin-top: 8px; padding: 8px; background: #fff; border-radius: 4px; overflow-x: auto; font-size: 12px; white-space: pre-wrap;">${escapeHtml(error.message)}</pre>
+                </details>`;
             }
+        }
+
+        // Show status message if there were errors
+        if (mermaidErrorCount > 0) {
+            showStatus(`${mermaidErrorCount} Mermaid diagram${mermaidErrorCount > 1 ? 's' : ''} failed to render`, 'warning');
         }
 
         // Attach event listeners for mermaid expand functionality

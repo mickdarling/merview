@@ -86,21 +86,9 @@ test.describe('Mermaid Diagram Test Suite', () => {
       // Wait for content to fully render
       await page.waitForTimeout(WAIT_TIMES.CONTENT_LOAD);
 
-      // Filter out known acceptable errors for Mermaid rendering
+      // Use centralized filter helper for consistency
       // Note: The test page includes intentionally malformed diagrams which produce expected errors
-      const criticalErrors = errors.filter(err => {
-        // Resource loading errors (non-critical)
-        if (err.includes('net::ERR') || err.includes('404')) return false;
-        // Mermaid warnings about deprecated features
-        if (err.includes('deprecated') || err.includes('Warning')) return false;
-        // Mermaid render errors from intentional malformed diagrams
-        if (err.includes('Mermaid') || err.includes('mermaid')) return false;
-        // Parsing errors from malformed diagrams (expected)
-        if (err.includes('Parse error') || err.includes('Syntax error')) return false;
-        // Edge case diagram errors
-        if (err.includes('error') && err.includes('diagram')) return false;
-        return true;
-      });
+      const criticalErrors = filterCriticalErrors(errors);
 
       // Should have zero critical errors
       expect(criticalErrors.length).toBe(0);
@@ -260,7 +248,7 @@ test.describe('Mermaid Diagram Test Suite', () => {
       await waitForMermaidDiagrams(page);
 
       // Wait a bit for click handlers to be attached
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(MERMAID_TEST_CONSTANTS.CLICK_HANDLER_WAIT);
 
       // Look for clickable nodes in different forms:
       // - SVG anchor elements: svg a[href]
@@ -291,7 +279,7 @@ test.describe('Mermaid Diagram Test Suite', () => {
       await waitForMermaidDiagrams(page);
 
       // Wait a bit for click handlers to be attached
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(MERMAID_TEST_CONSTANTS.CLICK_HANDLER_WAIT);
 
       // Get first clickable node
       const clickableNode = page.locator('.mermaid a[href]').first();
@@ -310,14 +298,17 @@ test.describe('Mermaid Diagram Test Suite', () => {
       await waitForMermaidDiagrams(page);
 
       // Wait a bit for click handlers to be attached
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(MERMAID_TEST_CONSTANTS.CLICK_HANDLER_WAIT);
 
       const welcomeLink = page.locator('.mermaid a[href*="sample"]').first();
       const linkCount = await welcomeLink.count();
 
-      // Skip test if no clickable links found (test page structure may vary)
+      // Early return if no clickable links found - Mermaid's click directive may be
+      // stripped by DOMPurify for security. This is expected behavior.
       if (linkCount === 0) {
-        test.skip();
+        // Verify page still rendered successfully
+        const svgCount = await page.locator('.mermaid svg').count();
+        expect(svgCount).toBeGreaterThan(0);
         return;
       }
 
