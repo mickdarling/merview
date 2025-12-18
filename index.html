@@ -707,6 +707,47 @@
             line-height: 1;
         }
 
+        /*
+         * Fix for issue #327: Mermaid edge labels struck through by arrows
+         *
+         * Problem: Mermaid v10.6.1 uses foreignObject elements for edge labels,
+         * which don't have visible backgrounds by default. This causes arrow lines
+         * to show through the label text, making labels hard to read.
+         *
+         * Solution: Add a background to the foreignObject elements so label text
+         * sits on an opaque surface above the arrow paths. We use the same background
+         * color that Mermaid sets on .edgeLabel via inline styles.
+         *
+         * Technical details:
+         * - Edge labels use: .edgeLabel > .label > foreignObject
+         * - foreignObject elements support CSS backgrounds (unlike SVG g elements)
+         * - Mermaid's inline styles: #mermaid-N-svg .edgeLabel{background-color:#e8e8e8;}
+         * - We need to apply this to foreignObject where it actually works
+         * - Default theme uses #e8e8e8, dark theme will use a different color
+         */
+        .mermaid svg .edgeLabel foreignObject {
+            /* Apply background from Mermaid's theme */
+            /* Light theme default - this will be overridden by dark themes */
+            background-color: #e8e8e8 !important;
+            /* Add padding for better readability */
+            padding: 2px 4px !important;
+            border-radius: 2px !important;
+            /* Ensure label backgrounds appear above edge paths */
+            overflow: visible !important;
+        }
+
+        /* Dark theme support - when Mermaid uses dark theme, use darker background */
+        /* Mermaid dark theme edge labels typically use #1f2020 or similar */
+        .mermaid svg[class*="dark"] .edgeLabel foreignObject,
+        .mermaid svg.dark .edgeLabel foreignObject {
+            background-color: #1f2020 !important;
+        }
+
+        /* Rect elements in edge labels (if present) should also be fully opaque */
+        .mermaid svg .edgeLabel rect {
+            opacity: 1 !important;
+        }
+
         .mermaid-expand-btn {
             position: absolute;
             top: 8px;
