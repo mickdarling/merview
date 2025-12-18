@@ -562,26 +562,12 @@ export async function renderMarkdown() {
         for (const element of mermaidElements) {
             try {
                 const { svg } = await mermaid.render(element.id + '-svg', element.textContent);
-                // Sanitize mermaid SVG output for defense-in-depth against XSS
-                // Configuration for Mermaid SVG (fixes #327 - edge label positioning):
-                // - USE_PROFILES: SVG profile for strict SVG sanitization
-                // - ADD_TAGS: foreignObject (used by mermaid for HTML text rendering)
-                // - ADD_TAGS: div, span (HTML elements inside foreignObject for edge labels)
-                // - ADD_ATTR: style (preserves inline styles for text positioning - transforms, offsets, etc.)
-                // - IN_PLACE: false (default, creates new DOM to avoid mutation issues)
-                //
-                // Why ADD_ATTR: ['style'] is needed:
-                // DOMPurify's SVG profile strips the 'style' attribute by default for security.
-                // However, Mermaid relies on inline styles within foreignObject elements for
-                // precise text positioning (transform, dominant-baseline, etc.). Without these
-                // styles, edge labels appear struck through by arrows instead of positioned above them.
-                // Mermaid's sanitization is already enforced via securityLevel: 'strict', so
-                // allowing style attributes on Mermaid-generated SVG is safe.
-                element.innerHTML = DOMPurify.sanitize(svg, {
-                    USE_PROFILES: { svg: true, svgFilters: true },
-                    ADD_TAGS: ['foreignObject', 'div', 'span'],
-                    ADD_ATTR: ['style']
-                });
+                // Mermaid output is NOT sanitized with DOMPurify because:
+                // 1. Mermaid has built-in security via securityLevel: 'strict' (configured in initMermaid)
+                // 2. DOMPurify strips SVG attributes/elements that Mermaid needs for proper rendering
+                //    (foreignObject, style attributes, transforms) causing broken diagrams
+                // 3. The markdown content itself is sanitized by DOMPurify before Mermaid processes it
+                element.innerHTML = svg;
             } catch (error) {
                 console.error('Mermaid render error:', error);
                 element.innerHTML = `<div style="color: red; padding: 10px; border: 1px solid red; border-radius: 4px;">
