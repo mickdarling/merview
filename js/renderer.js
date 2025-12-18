@@ -9,7 +9,7 @@ import { state } from './state.js';
 import { getElements } from './dom.js';
 import { saveMarkdownContent } from './storage.js';
 import { updateSessionContent, isSessionsInitialized } from './sessions.js';
-import { escapeHtml, slugify } from './utils.js';
+import { escapeHtml, slugify, showStatus } from './utils.js';
 import { validateCode } from './validation.js';
 
 // Debug flag for Mermaid theme investigation (#168)
@@ -71,7 +71,7 @@ const mermaidPerfMetrics = {
     logSummary() {
         if (isDebugMermaidPerf() && this.renderTimes.length > 0) {
             const avgTime = this.renderTimes.reduce((a, b) => a + b, 0) / this.renderTimes.length;
-            const timeToFirst = this.firstRenderTime ? `${(this.firstRenderTime - performance.now()).toFixed(2)}ms ago` : 'N/A';
+            const timeToFirst = this.firstRenderTime ? `${(performance.now() - this.firstRenderTime).toFixed(2)}ms ago` : 'N/A';
             console.log('[Mermaid Perf Summary]', {
                 timeToFirstRender: timeToFirst,
                 totalRendered: this.totalRendered,
@@ -684,8 +684,9 @@ function sanitizeMermaidSvg(svg) {
  * @returns {Promise<void>}
  */
 async function lazyRenderMermaid(element) {
-    // Skip if already rendered
-    if (element.dataset.mermaidRendered === 'true') {
+    // Skip if already rendered or currently rendering (race condition guard)
+    if (element.dataset.mermaidRendered === 'true' ||
+        element.dataset.mermaidRendered === 'rendering') {
         return;
     }
 
@@ -704,14 +705,19 @@ async function lazyRenderMermaid(element) {
         element.innerHTML = '';
         element.appendChild(element.ownerDocument.importNode(sanitizedSvg, true));
 
-        // Mark as successfully rendered
+        // Mark as successfully rendered and update accessibility attributes
         element.dataset.mermaidRendered = 'true';
+        element.removeAttribute('aria-busy');
+        element.setAttribute('aria-label', 'Mermaid diagram');
         mermaidPerfMetrics.recordRenderComplete(startTime);
     } catch (error) {
         console.error('Mermaid render error:', error);
         mermaidPerfMetrics.recordError();
         element.classList.add('mermaid-error');
         element.classList.remove('mermaid-loading');
+        // Update accessibility attributes for error state
+        element.removeAttribute('aria-busy');
+        element.setAttribute('aria-label', 'Diagram failed to render');
         element.innerHTML = `<details class="mermaid-error-details">
             <summary>⚠️ Mermaid diagram failed to render</summary>
             <pre class="mermaid-error-message">${escapeHtml(error.message)}</pre>
@@ -726,9 +732,10 @@ async function lazyRenderMermaid(element) {
  * @param {NodeList} mermaidElements - The mermaid diagram elements
  */
 function setupMermaidLazyLoading(mermaidElements) {
-    // Disconnect previous observer if exists
+    // Disconnect and nullify previous observer if exists (explicit cleanup for GC)
     if (state.mermaidObserver) {
         state.mermaidObserver.disconnect();
+        state.mermaidObserver = null;
     }
 
     // Reset performance metrics for new render
@@ -767,9 +774,11 @@ function setupMermaidLazyLoading(mermaidElements) {
 
     // Observe all mermaid diagrams
     mermaidElements.forEach(element => {
-        // Add loading state with visual indicator
+        // Add loading state with visual indicator and accessibility attributes
         element.dataset.mermaidRendered = 'pending';
         element.classList.add('mermaid-loading');
+        element.setAttribute('aria-busy', 'true');
+        element.setAttribute('aria-label', 'Diagram loading...');
         observer.observe(element);
     });
 
@@ -786,11 +795,10 @@ function setupMermaidLazyLoading(mermaidElements) {
  * Show status message after all Mermaid diagrams have rendered
  * Displays error count if any diagrams failed
  */
-async function showMermaidRenderStatus() {
+function showMermaidRenderStatus() {
     const { totalErrors, totalRendered } = mermaidPerfMetrics;
 
     if (totalErrors > 0) {
-        const { showStatus } = await import('./utils.js');
         showStatus(
             `${totalRendered} diagram${totalRendered === 1 ? '' : 's'} rendered, ${totalErrors} failed`,
             'warning'
@@ -874,7 +882,6 @@ export async function renderMarkdown() {
         }
     } catch (error) {
         console.error('Critical error in renderMarkdown:', error);
-        const { showStatus } = await import('./utils.js');
         showStatus('Error rendering: ' + error.message, 'warning');
     }
 }

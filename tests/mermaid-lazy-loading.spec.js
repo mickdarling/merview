@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2025 Mick Darling
 /**
  * Mermaid Lazy Loading Tests
  * Tests for Issue #326 - Slow loading on documentation pages with multiple diagrams
@@ -18,6 +20,8 @@ const {
 
 test.describe('Mermaid Lazy Loading', () => {
     test.beforeEach(async ({ page }) => {
+        // Set explicit viewport size for consistent test behavior
+        await page.setViewportSize({ width: 1280, height: 720 });
         await waitForPageReady(page);
         await waitForGlobalFunction(page, 'openFile');
     });
