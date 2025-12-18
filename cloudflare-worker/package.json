@@ -17,6 +17,6 @@
   "author": "Merview",
   "license": "AGPL-3.0",
   "devDependencies": {
-    "wrangler": "^4.52.1"
+    "wrangler": "^4.55.0"
   }
 }
