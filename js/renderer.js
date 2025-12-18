@@ -759,6 +759,10 @@ function setupMermaidLazyLoading(mermaidElements) {
                             mermaidPerfMetrics.logSummary();
                             showMermaidRenderStatus();
                         }
+                    }).catch(err => {
+                        // Defensive error handling - lazyRenderMermaid has internal error handling
+                        // but this catches any unexpected errors that might slip through
+                        console.error('Unexpected error during lazy render:', err);
                     });
                     // Stop observing this element
                     observer.unobserve(element);

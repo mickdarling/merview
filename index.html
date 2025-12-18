@@ -721,6 +721,7 @@
             border-top-color: #3498db;
             border-radius: 50%;
             animation: mermaid-spinner 0.8s linear infinite;
+            will-change: transform; /* GPU acceleration for smoother animation */
         }
 
         .mermaid-loading::after {
