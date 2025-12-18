@@ -313,7 +313,7 @@ export function isAllowedMarkdownURL(url) {
         // Block ANY non-ASCII characters in hostname (IDN homograph attack prevention)
         // This includes pure international domains like 例え.com or 中文.com
         // While paths can contain international characters, hostnames must be ASCII-only
-        if (rawHostname && /[^\x00-\x7F]/.test(rawHostname)) {
+        if (rawHostname && /[\u0080-\uFFFF]/.test(rawHostname)) {
             console.warn('Markdown URL blocked: hostname contains non-ASCII characters (IDN homograph attack prevention)');
             return false;
         }
