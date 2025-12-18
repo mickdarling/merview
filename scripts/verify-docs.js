@@ -14,10 +14,10 @@
  * Exit code: 0 if all checks pass, 1 if any verification fails
  */
 
-import { readFileSync, existsSync } from 'fs';
-import { readdir } from 'fs/promises';
-import { join, dirname, relative } from 'path';
-import { fileURLToPath } from 'url';
+import { readFileSync, existsSync } from 'node:fs';
+import { readdir } from 'node:fs/promises';
+import { join, dirname, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // Get script directory for relative paths
 const __filename = fileURLToPath(import.meta.url);
@@ -84,7 +84,7 @@ function extractFileReferences(content) {
 
     // Match code blocks with file paths (backtick enclosed)
     // Matches: `js/file.js`, `docs/file.md`, `index.html`
-    const codePathRegex = /`([a-zA-Z0-9_-]+\/[a-zA-Z0-9_/-]+\.[a-zA-Z]+)`/g;
+    const codePathRegex = /`([\w-]+\/[\w/-]+\.[a-zA-Z]+)`/g;
     let match;
 
     while ((match = codePathRegex.exec(content)) !== null) {
@@ -131,7 +131,7 @@ function extractCodeReferences(content) {
     ]);
 
     // Match function calls: `functionName()`
-    const functionRegex = /`([a-zA-Z_][a-zA-Z0-9_]*)\(\)`/g;
+    const functionRegex = /`([a-zA-Z_]\w*)\(\)`/g;
     let match;
 
     while ((match = functionRegex.exec(content)) !== null) {
@@ -172,12 +172,12 @@ function parseJavaScriptFile(filePath) {
 
         // Match function declarations: function name() or const name = function()
         const functionPatterns = [
-            /function\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g,
-            /const\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*function/g,
-            /const\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*\([^)]*\)\s*=>/g,
-            /export\s+function\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g,
-            /export\s+const\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*function/g,
-            /export\s+const\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*\([^)]*\)\s*=>/g
+            /function\s+([a-zA-Z_]\w*)\s*\(/g,
+            /const\s+([a-zA-Z_]\w*)\s*=\s*function/g,
+            /const\s+([a-zA-Z_]\w*)\s*=\s*\([^)]*\)\s*=>/g,
+            /export\s+function\s+([a-zA-Z_]\w*)\s*\(/g,
+            /export\s+const\s+([a-zA-Z_]\w*)\s*=\s*function/g,
+            /export\s+const\s+([a-zA-Z_]\w*)\s*=\s*\([^)]*\)\s*=>/g
         ];
 
         for (const pattern of functionPatterns) {
@@ -202,7 +202,7 @@ function parseJavaScriptFile(filePath) {
         }
 
         // Match export function/const
-        const exportDirectPattern = /export\s+(?:function|const)\s+([a-zA-Z_][a-zA-Z0-9_]*)/g;
+        const exportDirectPattern = /export\s+(?:function|const)\s+([a-zA-Z_]\w*)/g;
         while ((match = exportDirectPattern.exec(content)) !== null) {
             definitions.exports.add(match[1]);
         }
@@ -295,38 +295,39 @@ async function verifyMarkdownFile(mdFile, codeIndex, isSessionNote = false) {
         }
     }
 
-    if (!skipCodeVerification) {
-        // Verify code references (functions/constants)
-        const codeRefs = extractCodeReferences(content);
-        for (const { name, type } of codeRefs) {
-            const found = type === 'function'
-                ? codeIndex.functions.has(name)
-                : codeIndex.constants.has(name);
-
-            if (found) {
-                results.codeRefs.passed.push({ file: relPath, name, type });
-            } else {
-                results.codeRefs.failed.push({ file: relPath, name, type });
-                console.log(`  ${COLORS.red}✗ ${type} not found: ${name}${COLORS.reset}`);
-            }
-        }
-
-        // Verify that documented exports exist (if any export syntax found)
-        const exportRefs = content.match(/export\s+(?:function|const|class)\s+([a-zA-Z_][a-zA-Z0-9_]*)/g) || [];
-        for (const ref of exportRefs) {
-            const match = ref.match(/export\s+(?:function|const|class)\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
-            if (match) {
-                const name = match[1];
-                if (codeIndex.exports.has(name)) {
-                    results.exportRefs.passed.push({ file: relPath, name });
-                } else {
-                    results.exportRefs.failed.push({ file: relPath, name });
-                    console.log(`  ${COLORS.red}✗ Export not found: ${name}${COLORS.reset}`);
-                }
-            }
-        }
-    } else {
+    if (skipCodeVerification) {
         console.log(`  ${COLORS.gray}(Skipping code verification for session note)${COLORS.reset}`);
+        return;
+    }
+
+    // Verify code references (functions/constants)
+    const codeRefs = extractCodeReferences(content);
+    for (const { name, type } of codeRefs) {
+        const found = type === 'function'
+            ? codeIndex.functions.has(name)
+            : codeIndex.constants.has(name);
+
+        if (found) {
+            results.codeRefs.passed.push({ file: relPath, name, type });
+        } else {
+            results.codeRefs.failed.push({ file: relPath, name, type });
+            console.log(`  ${COLORS.red}✗ ${type} not found: ${name}${COLORS.reset}`);
+        }
+    }
+
+    // Verify that documented exports exist (if any export syntax found)
+    const exportRefs = content.match(/export\s+(?:function|const|class)\s+([a-zA-Z_]\w*)/g) || [];
+    for (const ref of exportRefs) {
+        const match = ref.match(/export\s+(?:function|const|class)\s+([a-zA-Z_]\w*)/);
+        if (match) {
+            const name = match[1];
+            if (codeIndex.exports.has(name)) {
+                results.exportRefs.passed.push({ file: relPath, name });
+            } else {
+                results.exportRefs.failed.push({ file: relPath, name });
+                console.log(`  ${COLORS.red}✗ Export not found: ${name}${COLORS.reset}`);
+            }
+        }
     }
 }
 
@@ -338,10 +339,6 @@ function printSummary() {
     console.log(`${COLORS.blue}Verification Summary${COLORS.reset}`);
     console.log('='.repeat(60));
 
-    const totalFiles = results.fileRefs.passed.length + results.fileRefs.failed.length;
-    const totalCode = results.codeRefs.passed.length + results.codeRefs.failed.length;
-    const totalExports = results.exportRefs.passed.length + results.exportRefs.failed.length;
-
     console.log(`\n${COLORS.yellow}File References:${COLORS.reset}`);
     console.log(`  ${COLORS.green}✓ Passed: ${results.fileRefs.passed.length}${COLORS.reset}`);
     console.log(`  ${COLORS.red}✗ Failed: ${results.fileRefs.failed.length}${COLORS.reset}`);
@@ -350,7 +347,8 @@ function printSummary() {
     console.log(`  ${COLORS.green}✓ Passed: ${results.codeRefs.passed.length}${COLORS.reset}`);
     console.log(`  ${COLORS.red}✗ Failed: ${results.codeRefs.failed.length}${COLORS.reset}`);
 
-    if (totalExports > 0) {
+    const hasExports = results.exportRefs.passed.length > 0 || results.exportRefs.failed.length > 0;
+    if (hasExports) {
         console.log(`\n${COLORS.yellow}Export References:${COLORS.reset}`);
         console.log(`  ${COLORS.green}✓ Passed: ${results.exportRefs.passed.length}${COLORS.reset}`);
         console.log(`  ${COLORS.red}✗ Failed: ${results.exportRefs.failed.length}${COLORS.reset}`);
@@ -393,9 +391,9 @@ function printSummary() {
 }
 
 /**
- * Main verification function
+ * Run verification when executed directly
  */
-async function main() {
+if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(`${COLORS.blue}Documentation-to-Code Verification${COLORS.reset}`);
     console.log(`${COLORS.gray}Verifying documentation references match actual code...${COLORS.reset}\n`);
 
@@ -435,11 +433,6 @@ async function main() {
         console.error(error.stack);
         process.exit(1);
     }
-}
-
-// Run if executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-    main();
 }
 
 export { verifyMarkdownFile, buildCodeIndex, extractFileReferences, extractCodeReferences };
