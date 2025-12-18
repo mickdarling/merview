@@ -29,14 +29,13 @@ const WAIT_TIMES = {
  * Used in mermaid-diagrams-demo.spec.js for consistent assertions
  */
 const MERMAID_TEST_CONSTANTS = {
-  // Total diagrams in test page (including all types + malformed test cases)
-  EXPECTED_DIAGRAM_COUNT: 40,
+  // Total diagrams in test page (all valid diagrams, malformed moved to mermaid-errors.md)
+  EXPECTED_DIAGRAM_COUNT: 37,
   // Minimum successfully rendered diagrams for tests to pass
   // Tolerance accounts for:
-  // - 3 intentionally malformed diagrams (syntax errors, invalid types)
   // - Version differences in newer Mermaid features (block diagrams, etc.)
   // - Potential race conditions in async rendering
-  // 25% tolerance (40 → 30) is intentionally generous for CI stability
+  // ~19% tolerance (37 → 30) is intentionally generous for CI stability
   MIN_RENDERED_DIAGRAMS: 30,
   // Max time to wait for all diagrams to render (generous for slow CI)
   RENDER_TIMEOUT: 15000,

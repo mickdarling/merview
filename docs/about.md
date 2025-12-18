@@ -189,6 +189,8 @@ Try these interactive demos to explore Merview's capabilities:
 - [International Text](/?url=docs/demos/international-text.md) - CJK, RTL, Unicode support
 - [YAML Front Matter](/?url=docs/demos/yaml-front-matter.md) - Document metadata
 - [Error Handling](/?url=docs/demos/error-handling.md) - CORS, network, validation
+- [Mermaid Diagrams](/?url=docs/demos/mermaid-diagrams.md) - All diagram types, edge cases
+- [Mermaid Errors](/?url=docs/demos/mermaid-errors.md) - Syntax error examples
 
 [View All Demos →](/?url=docs/demos/index.md)
 
