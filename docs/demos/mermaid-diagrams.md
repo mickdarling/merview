@@ -549,19 +549,19 @@ pie showData
 
 ```mermaid
 quadrantChart
-    title Feature Priority Matrix
-    x-axis Low Effort --> High Effort
-    y-axis Low Impact --> High Impact
+    title Priority Matrix
+    x-axis Low --> High Effort
+    y-axis Low --> High Impact
     quadrant-1 Plan
     quadrant-2 Do First
     quadrant-3 Delegate
-    quadrant-4 Eliminate
+    quadrant-4 Drop
 
-    Feature A: [0.2, 0.8]
-    Feature B: [0.7, 0.9]
-    Feature C: [0.3, 0.3]
-    Feature D: [0.8, 0.2]
-    Feature E: [0.5, 0.6]
+    A: [0.2, 0.8]
+    B: [0.7, 0.9]
+    C: [0.3, 0.3]
+    D: [0.8, 0.2]
+    E: [0.5, 0.6]
 ```
 
 ---
@@ -659,20 +659,28 @@ mindmap
 timeline
     title Merview Development Timeline
 
-    2024-Q1 : Initial concept
-            : Basic markdown rendering
+    Nov 21 : Initial Release
+           : Markdown + Mermaid v1.0
 
-    2024-Q2 : Mermaid integration
-            : Multiple themes
-            : Code validation
+    Nov 27-30 : Security Hardening
+              : SRI, CSP, XSS prevention
+              : AGPL licensing
+              : Test infrastructure
 
-    2024-Q3 : Security hardening
-            : XSS prevention
-            : CSP implementation
+    Dec 1-7 : Core Features
+            : Session management
+            : Lint panel
+            : Editor themes
 
-    2024-Q4 : Performance optimization
-            : International text support
-            : Documentation
+    Dec 8-14 : Polish
+             : Fullscreen mode
+             : Performance tuning
+             : Bug fixes
+
+    Dec 15-18 : Quality
+              : Comprehensive test suite
+              : Accessibility docs
+              : Mermaid test coverage
 ```
 
 ---
