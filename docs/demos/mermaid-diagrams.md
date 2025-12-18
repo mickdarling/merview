@@ -547,6 +547,8 @@ pie showData
 
 ### Priority Matrix
 
+> **Note:** Quadrant charts have known rendering limitations - point labels overlap dots and axis labels may be clipped. This is a Mermaid limitation.
+
 ```mermaid
 quadrantChart
     title Priority Matrix
@@ -557,11 +559,10 @@ quadrantChart
     quadrant-3 Delegate
     quadrant-4 Drop
 
-    A: [0.2, 0.8]
-    B: [0.7, 0.9]
-    C: [0.3, 0.3]
-    D: [0.8, 0.2]
-    E: [0.5, 0.6]
+    "Quick Win": [0.2, 0.8]
+    "Strategic": [0.75, 0.85]
+    "Fill-in": [0.25, 0.25]
+    "Avoid": [0.8, 0.15]
 ```
 
 ---
@@ -756,8 +757,8 @@ Testing proper escaping and rendering:
 
 ```mermaid
 graph LR
-    A["Quotes: 'single' and \"double\""] --> B["Angle brackets: <html>"]
-    B --> C["Ampersand: A & B"]
+    A["Quotes: 'single' and #quot;double#quot;"] --> B["Angle brackets: #lt;html#gt;"]
+    B --> C["Ampersand: A #amp; B"]
     C --> D["Unicode: 日本語 中文"]
 ```
 
