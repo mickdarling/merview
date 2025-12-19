@@ -40,6 +40,69 @@ class UIReferenceVerifier {
   }
 
   /**
+   * Extract matches from HTML using a regex pattern
+   * @param {string} html - HTML content to search
+   * @param {RegExp} regex - Regular expression pattern
+   * @param {Function} processor - Function to process each match
+   */
+  extractMatches(html, regex, processor) {
+    let match;
+    while ((match = regex.exec(html)) !== null) {
+      processor(match);
+    }
+  }
+
+  /**
+   * Add known UI elements that require manual extraction
+   */
+  addKnownUIElements() {
+    // Add common button names that are in the HTML but need manual extraction
+    const knownButtons = [
+      'Save',
+      'Save as PDF',
+      'Share to Gist',
+      'Welcome',
+      'Code Validation',
+      'Clear',
+      'Cancel',
+      'Load',
+      'Close',
+      'Clear All',
+    ];
+    knownButtons.forEach(button => this.uiElements.buttons.add(button));
+
+    // Add dropdown and label names
+    const knownLabels = [
+      'Style',
+      'Code Theme',
+      'Editor Theme',
+      'Mermaid Theme',
+      'Current Document',
+      'Preview Style',
+      'Code Block Theme',
+      'Syntax Theme',
+      'Open',
+      'Open URL',
+      'Manage Sessions',
+      'Load from file...',
+      'Load from URL...',
+      'MarkedCustomStyles (external)',
+      'Manage sessions...',
+      'New document',
+      'Raw', // GitHub Raw button
+    ];
+    knownLabels.forEach(label => this.uiElements.labels.add(label));
+
+    // Add modal/dialog names
+    const knownTitles = [
+      'Load from URL',
+      'Private Repository Detected',
+      'Manage Sessions',
+    ];
+    knownTitles.forEach(title => this.uiElements.titles.add(title));
+  }
+
+  /**
    * Extract UI elements from index.html
    */
   extractUIElements(htmlPath) {
@@ -49,17 +112,16 @@ class UIReferenceVerifier {
 
     // Extract button text (visible text between button tags)
     const buttonRegex = /<button[^>]*>([^<]+)/gi;
-    let match;
-    while ((match = buttonRegex.exec(html)) !== null) {
-      const text = match[1].trim().replace(/[🔍💾📄🔗📋🗑️✕]/g, '').trim();
+    this.extractMatches(html, buttonRegex, (match) => {
+      const text = match[1].trim().replace(/[🔍💾📄🔗📋🗑️✕]/gu, '').trim();
       if (text) {
         this.uiElements.buttons.add(text);
       }
-    }
+    });
 
     // Extract dropdown/select element IDs and their options
     const selectRegex = /<select[^>]*id="([^"]+)"[^>]*>([\s\S]*?)<\/select>/gi;
-    while ((match = selectRegex.exec(html)) !== null) {
+    this.extractMatches(html, selectRegex, (match) => {
       const selectId = match[1];
       const selectContent = match[2];
 
@@ -68,78 +130,39 @@ class UIReferenceVerifier {
       // Extract options from this select
       const optionRegex = /<option[^>]*>([^<]+)<\/option>/gi;
       const options = new Set();
-      let optMatch;
-      while ((optMatch = optionRegex.exec(selectContent)) !== null) {
+      this.extractMatches(selectContent, optionRegex, (optMatch) => {
         const optText = optMatch[1].trim();
         if (optText && optText !== 'Document...' && optText !== 'Theme...' &&
             optText !== 'Style...' && optText !== 'Code...') {
           options.add(optText);
         }
-      }
+      });
 
       if (options.size > 0) {
         this.uiElements.dropdownOptions.set(selectId, options);
       }
-    }
+    });
 
     // Extract dialog/modal titles
     const h2Regex = /<h2[^>]*id="([^"]*)"[^>]*>([^<]+)<\/h2>/gi;
-    while ((match = h2Regex.exec(html)) !== null) {
+    this.extractMatches(html, h2Regex, (match) => {
       const title = match[2].trim();
       if (title) {
         this.uiElements.titles.add(title);
       }
-    }
+    });
 
     // Extract labels and spans with significant text
     const labelRegex = /<(?:label|span)[^>]*>([^<]+)<\/(?:label|span)>/gi;
-    while ((match = labelRegex.exec(html)) !== null) {
+    this.extractMatches(html, labelRegex, (match) => {
       const text = match[1].trim();
-      if (text && text.length > 2 && !text.match(/^\d+$/)) {
+      if (text && text.length > 2 && !/^\d+$/.test(text)) {
         this.uiElements.labels.add(text);
       }
-    }
+    });
 
-    // Add common UI element names that are in the HTML but need manual extraction
-    this.uiElements.buttons.add('Save');
-    this.uiElements.buttons.add('Save as PDF');
-    this.uiElements.buttons.add('Share to Gist');
-    this.uiElements.buttons.add('Welcome');
-    this.uiElements.buttons.add('Code Validation');
-    this.uiElements.buttons.add('Clear');
-    this.uiElements.buttons.add('Cancel');
-    this.uiElements.buttons.add('Load');
-    this.uiElements.buttons.add('Close');
-    this.uiElements.buttons.add('Clear All');
-
-    // Add dropdown names
-    this.uiElements.labels.add('Style');
-    this.uiElements.labels.add('Code Theme');
-    this.uiElements.labels.add('Editor Theme');
-    this.uiElements.labels.add('Mermaid Theme');
-    this.uiElements.labels.add('Current Document');
-    this.uiElements.labels.add('Preview Style');
-    this.uiElements.labels.add('Code Block Theme');
-    this.uiElements.labels.add('Mermaid Theme');
-    this.uiElements.labels.add('Syntax Theme');
-
-    // Add modal/dialog names
-    this.uiElements.titles.add('Load from URL');
-    this.uiElements.titles.add('Private Repository Detected');
-    this.uiElements.titles.add('Manage Sessions');
-
-    // Add menu items (from document selector dropdown and config.js)
-    this.uiElements.labels.add('Open');
-    this.uiElements.labels.add('Open URL');
-    this.uiElements.labels.add('Manage Sessions');
-    this.uiElements.labels.add('Load from file...');
-    this.uiElements.labels.add('Load from URL...');
-    this.uiElements.labels.add('MarkedCustomStyles (external)');
-    this.uiElements.labels.add('Manage sessions...');
-    this.uiElements.labels.add('New document');
-
-    // Add external UI elements (GitHub, etc.)
-    this.uiElements.labels.add('Raw'); // GitHub Raw button
+    // Add known UI elements that require manual extraction
+    this.addKnownUIElements();
 
     console.log(`${colors.green}✓ Found ${this.uiElements.buttons.size} buttons${colors.reset}`);
     console.log(`${colors.green}✓ Found ${this.uiElements.dropdowns.size} dropdowns${colors.reset}`);
@@ -199,7 +222,7 @@ class UIReferenceVerifier {
         // Pattern 4: File references - docs/*.md or paths
         const fileRefRegex = /\(?\/?docs\/[a-zA-Z0-9/_-]+\.md\)?/g;
         while ((match = fileRefRegex.exec(line)) !== null) {
-          const docPath = match[0].replace(/[()]/g, '');
+          const docPath = match[0].replaceAll(/[()]/g, '');
           this.docReferences.push({
             file: filePath,
             line: lineIndex + 1,
@@ -330,15 +353,15 @@ class UIReferenceVerifier {
 
     // Skip example URLs and placeholder paths
     const examplePatterns = [
-      /example\.com/i,
-      /username\.github/i,
-      /username\.gitlab/i,
-      /user\/repo/i,
-      /org\/repo/i,
-      /your-org/i,
-      /例え\.jp/i, // Japanese example domain
-      /cdn\.example/i,
-      /docs\/(api|guide|guides|faq|start|file|readme)\.md$/i, // Common example filenames
+      /(?:^|\/\/)example\.com\b/i,
+      /(?:^|\/\/)username\.github\b/i,
+      /(?:^|\/\/)username\.gitlab\b/i,
+      /(?:^|\/)\buser\/repo\b/i,
+      /(?:^|\/)\borg\/repo\b/i,
+      /\byour-org\b/i,
+      /(?:^|\/\/)例え\.jp\b/i, // Japanese example domain
+      /(?:^|\/\/)cdn\.example\b/i,
+      /\bdocs\/(api|guide|guides|faq|start|file|readme)\.md$/i, // Common example filenames
     ];
 
     for (const pattern of examplePatterns) {
@@ -394,7 +417,7 @@ class UIReferenceVerifier {
     const shorter = s1.length > s2.length ? s2 : s1;
 
     if (longer.length === 0) {
-      return 1.0;
+      return 1;
     }
 
     const editDistance = this.levenshteinDistance(longer, shorter);
