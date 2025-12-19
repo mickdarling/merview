@@ -167,6 +167,17 @@ function setupKeyboardShortcuts() {
             e.preventDefault();
             exportToPDF();
         }
+
+        // Ctrl/Cmd + M to open Mermaid snippet dropdown
+        if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
+            e.preventDefault();
+            const selector = document.getElementById('symbolsSelector');
+            if (selector) {
+                selector.focus();
+                // Programmatically show the dropdown options
+                selector.dispatchEvent(new MouseEvent('mousedown'));
+            }
+        }
     });
 }
 

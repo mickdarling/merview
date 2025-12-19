@@ -228,7 +228,7 @@ test.describe('Symbols Selector', () => {
 
   test('should have appropriate title attribute', async ({ page }) => {
     const title = await page.$eval('#symbolsSelector', el => el.getAttribute('title'));
-    expect(title).toBe('Insert Mermaid snippets and special characters');
+    expect(title).toContain('Insert Mermaid snippets and special characters');
   });
 
   test('should use panel-selector CSS class', async ({ page }) => {
@@ -360,5 +360,38 @@ test.describe('Symbols Selector Accessibility', () => {
 
     const stillFocused = await page.evaluate(() => document.activeElement?.id === 'symbolsSelector');
     expect(stillFocused).toBe(false);
+  });
+
+  test('should focus dropdown with Ctrl+M keyboard shortcut', async ({ page }) => {
+    // Focus somewhere else first (the editor)
+    await page.evaluate(() => {
+      globalThis.state.cmEditor.focus();
+    });
+
+    // Verify we're not on the selector
+    const beforeFocus = await page.evaluate(() => document.activeElement?.id);
+    expect(beforeFocus).not.toBe('symbolsSelector');
+
+    // Press Ctrl+M (or Cmd+M on Mac)
+    await page.keyboard.press('Control+m');
+    await page.waitForTimeout(100);
+
+    // Verify the selector is now focused
+    const afterFocus = await page.evaluate(() => document.activeElement?.id);
+    expect(afterFocus).toBe('symbolsSelector');
+  });
+
+  test('should mention keyboard shortcut in title attribute', async ({ page }) => {
+    const title = await page.$eval('#symbolsSelector', el => el.getAttribute('title'));
+    expect(title).toContain('Ctrl');
+    expect(title).toContain('Cmd');
+    expect(title).toContain('M');
+  });
+
+  test('should mention keyboard shortcut in aria-label for screen readers', async ({ page }) => {
+    const ariaLabel = await page.$eval('#symbolsSelector', el => el.getAttribute('aria-label'));
+    expect(ariaLabel).toContain('shortcut');
+    expect(ariaLabel).toContain('Control');
+    expect(ariaLabel).toContain('Command');
   });
 });
