@@ -293,5 +293,47 @@ test.describe('Relative URL Resolution', () => {
             const linkHref = await link.getAttribute('href');
             expect(linkHref).toBe('https://example.com/a/file.md');
         });
+
+        test('same-origin URLs should NOT be resolved', async ({ page }) => {
+            // When loading from same-origin (e.g., localhost), relative links should
+            // remain relative so the click handler can navigate to /?url=<relative-path>
+            // instead of resolving to an absolute localhost URL
+            await page.goto('/');
+            await page.waitForLoadState('networkidle');
+
+            // Get the current origin to simulate a same-origin loadedFromURL
+            const origin = await page.evaluate(() => globalThis.location.origin);
+
+            await page.evaluate((testOrigin) => {
+                // Set loadedFromURL to same-origin (simulating /?url=docs/guide.md)
+                globalThis.state.loadedFromURL = `${testOrigin}/docs/guide.md`;
+
+                const testContent = `# Test
+[Same dir link](./other.md)
+[Parent link](../README.md)
+![Relative image](./images/logo.png)
+`;
+                if (globalThis.setEditorContent) {
+                    globalThis.setEditorContent(testContent);
+                }
+            }, origin);
+
+            await page.waitForTimeout(500);
+
+            // Links should remain RELATIVE (not resolved to absolute localhost URLs)
+            const links = await page.locator('#wrapper a').all();
+            expect(links.length).toBe(2);
+
+            const firstHref = await links[0].getAttribute('href');
+            expect(firstHref).toBe('./other.md'); // NOT resolved to http://localhost/docs/other.md
+
+            const secondHref = await links[1].getAttribute('href');
+            expect(secondHref).toBe('../README.md'); // NOT resolved to http://localhost/README.md
+
+            // Images should also remain relative
+            const img = page.locator('#wrapper img').first();
+            const imgSrc = await img.getAttribute('src');
+            expect(imgSrc).toBe('./images/logo.png'); // NOT resolved
+        });
     });
 });

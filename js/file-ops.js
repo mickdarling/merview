@@ -159,6 +159,17 @@ export function isValidMarkdownContentType(contentType) {
  * @param {string} url - The URL to load markdown from (may be resolved/normalized)
  * @param {string} [displayUrl] - Optional URL to show in address bar (preserves original user-provided URL)
  * @returns {Promise<boolean>} True if successful, false on error
+ *
+ * @example
+ * // Basic usage - URL shown in address bar matches fetched URL
+ * await loadMarkdownFromURL('https://example.com/docs/guide.md');
+ * // Address bar: ?url=https://example.com/docs/guide.md
+ *
+ * @example
+ * // With displayUrl - preserve user's original relative path in address bar
+ * await loadMarkdownFromURL('https://example.com/docs/guide.md', 'docs/guide.md');
+ * // Address bar: ?url=docs/guide.md (cleaner for sharing)
+ * // Fetch uses: https://example.com/docs/guide.md (fully resolved)
  */
 export async function loadMarkdownFromURL(url, displayUrl) {
     // Normalize GitHub URLs (gist.github.com and github.com/blob) to raw URLs

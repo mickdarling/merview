@@ -25,6 +25,12 @@ function isDebugMermaidPerf() {
     return localStorage.getItem('debug-mermaid-perf') === 'true';
 }
 
+// Debug flag for URL resolution tracking (#345)
+// Enable via: localStorage.setItem('debug-url-resolution', 'true')
+function isDebugUrlResolution() {
+    return localStorage.getItem('debug-url-resolution') === 'true';
+}
+
 /**
  * Preload margin for lazy loading Mermaid diagrams (Issue #326)
  * Diagrams start rendering when they're this distance from the viewport.
@@ -165,6 +171,47 @@ renderer.heading = function(text, level) {
 };
 
 /**
+ * Resolve relative URL if loaded from a remote (non-same-origin) source
+ *
+ * Same-origin URLs (e.g., localhost) are NOT resolved because:
+ * - For local docs at /?url=docs/about.md with link ./guide.md
+ * - The link should remain relative so the click handler can intercept it
+ * - And navigate to /?url=docs/guide.md (not resolve against localhost)
+ *
+ * Remote URLs (e.g., GitHub raw) ARE resolved because:
+ * - Relative links need to become absolute to fetch from the correct location
+ * - ./other.md in a GitHub file should resolve to the same GitHub directory
+ *
+ * @param {string} relativeUrl - The potentially relative URL to resolve
+ * @returns {string|null} Resolved absolute URL, or null if resolution not needed/failed
+ */
+function resolveRemoteUrl(relativeUrl) {
+    if (!state.loadedFromURL || !isRelativeUrl(relativeUrl)) {
+        return null;
+    }
+    try {
+        const sourceUrl = new URL(state.loadedFromURL);
+        const isSameOrigin = sourceUrl.origin === globalThis.location.origin;
+        if (isSameOrigin) {
+            if (isDebugUrlResolution()) {
+                console.log('[URL Resolution] Skipping same-origin:', relativeUrl);
+            }
+            return null;
+        }
+        const resolved = resolveRelativeUrl(relativeUrl, state.loadedFromURL);
+        if (isDebugUrlResolution()) {
+            console.log('[URL Resolution] Resolved:', relativeUrl, '→', resolved);
+        }
+        return resolved;
+    } catch (error) {
+        if (isDebugUrlResolution()) {
+            console.warn('[URL Resolution] Failed for:', relativeUrl, error);
+        }
+        return null;
+    }
+}
+
+/**
  * Custom link renderer to resolve relative URLs against the source document URL (Issue #345)
  * When content is loaded from a remote URL (state.loadedFromURL), relative links
  * like "./other.md" or "../folder/file.md" are resolved to absolute URLs.
@@ -175,26 +222,7 @@ renderer.heading = function(text, level) {
  * for defense-in-depth, though DOMPurify also sanitizes the entire output in renderMarkdown().
  */
 renderer.link = function(href, title, text) {
-    // Resolve relative URLs ONLY for remote sources (not same-origin)
-    // For local docs, relative links should use normal browser navigation
-    // Example: local doc at /?url=docs/about.md with link to ./guide.md
-    //   → Should navigate to /?url=docs/guide.md (not resolve against localhost)
-    let resolvedHref = href;
-    if (state.loadedFromURL && isRelativeUrl(href)) {
-        try {
-            const sourceUrl = new URL(state.loadedFromURL);
-            const isSameOrigin = sourceUrl.origin === globalThis.location.origin;
-            // Only resolve relative URLs for remote/external sources
-            if (!isSameOrigin) {
-                const resolved = resolveRelativeUrl(href, state.loadedFromURL);
-                if (resolved) {
-                    resolvedHref = resolved;
-                }
-            }
-        } catch {
-            // Invalid URL - don't resolve
-        }
-    }
+    const resolvedHref = resolveRemoteUrl(href) || href;
 
     // Build attributes
     const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
@@ -220,24 +248,7 @@ renderer.link = function(href, title, text) {
  * like "./images/diagram.png" are resolved to absolute URLs so images display correctly.
  */
 renderer.image = function(href, title, text) {
-    // Resolve relative URLs ONLY for remote sources (not same-origin)
-    // For local docs, relative image paths work fine with normal browser resolution
-    let resolvedHref = href;
-    if (state.loadedFromURL && isRelativeUrl(href)) {
-        try {
-            const sourceUrl = new URL(state.loadedFromURL);
-            const isSameOrigin = sourceUrl.origin === globalThis.location.origin;
-            // Only resolve relative URLs for remote/external sources
-            if (!isSameOrigin) {
-                const resolved = resolveRelativeUrl(href, state.loadedFromURL);
-                if (resolved) {
-                    resolvedHref = resolved;
-                }
-            }
-        } catch {
-            // Invalid URL - don't resolve
-        }
-    }
+    const resolvedHref = resolveRemoteUrl(href) || href;
 
     // Build attributes
     const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
