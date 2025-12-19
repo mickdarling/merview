@@ -184,7 +184,7 @@ When documentation uses new reference patterns:
 
 ### Dependencies
 
-- Node.js 18+ (uses built-in modules only)
+- Node.js 20+ (uses built-in modules only)
 - No external dependencies required
 
 ### Testing

@@ -142,7 +142,12 @@ class UIReferenceVerifier {
     // Extract button text (visible text between button tags)
     const buttonRegex = /<button[^>]*>([^<]+)/gi;
     this.extractMatches(html, buttonRegex, (match) => {
-      const text = match[1].trim().replaceAll(/[🔍💾📄🔗📋✕]/gu, '').replaceAll('🗑️', '').trim();
+      // Remove emojis using Unicode ranges (more robust than hardcoded list)
+      const text = match[1].trim()
+        .replaceAll(/[\u{1F300}-\u{1F9FF}]/gu, '')  // Misc symbols, emoticons, etc.
+        .replaceAll(/[\u{2700}-\u{27BF}]/gu, '')    // Dingbats (✕, etc.)
+        .replaceAll(/\uFE0F/gu, '')                  // Variation selector
+        .trim();
       if (text) {
         this.uiElements.buttons.add(text);
       }
