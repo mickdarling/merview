@@ -102,4 +102,100 @@ graph LR
             expect(numericValue).toBeLessThan(25);
         }
     });
+
+    // Issue #342 - Academic and Newspaper theme compatibility
+    test('mermaid typography stays isolated with Academic theme', async ({ page }) => {
+        const mermaidDiv = page.locator('.mermaid').first();
+        await expect(mermaidDiv).toBeVisible();
+
+        // Switch to Academic style (font-size: 18px, font-family: Georgia/serif)
+        await page.evaluate(() => {
+            if (globalThis.changeStyle) {
+                globalThis.changeStyle('academic');
+            }
+        });
+        await page.waitForTimeout(1500);
+
+        // Verify typography properties are isolated from Academic theme
+        const styles = await mermaidDiv.evaluate((el) => {
+            const computed = globalThis.getComputedStyle(el);
+            return {
+                fontSize: computed.fontSize,
+                fontFamily: computed.fontFamily,
+                letterSpacing: computed.letterSpacing,
+                lineHeight: computed.lineHeight,
+            };
+        });
+
+        // font-size should not be Academic's 18px
+        const fontSize = Number.parseFloat(styles.fontSize);
+        expect(fontSize).toBeLessThanOrEqual(16);
+
+        // font-family should not be Georgia/serif
+        expect(styles.fontFamily.toLowerCase()).not.toContain('georgia');
+
+        // letter-spacing should be normal (0px)
+        expect(styles.letterSpacing).toBe('normal');
+    });
+
+    test('mermaid typography stays isolated with Newspaper theme', async ({ page }) => {
+        const mermaidDiv = page.locator('.mermaid').first();
+        await expect(mermaidDiv).toBeVisible();
+
+        // Switch to Newspaper style (font-size: 14px, font-family: Times New Roman)
+        await page.evaluate(() => {
+            if (globalThis.changeStyle) {
+                globalThis.changeStyle('newspaper');
+            }
+        });
+        await page.waitForTimeout(1500);
+
+        // Verify typography properties are isolated from Newspaper theme
+        const styles = await mermaidDiv.evaluate((el) => {
+            const computed = globalThis.getComputedStyle(el);
+            return {
+                fontSize: computed.fontSize,
+                fontFamily: computed.fontFamily,
+                letterSpacing: computed.letterSpacing,
+                textTransform: computed.textTransform,
+            };
+        });
+
+        // font-family should not be Times New Roman
+        expect(styles.fontFamily.toLowerCase()).not.toContain('times');
+
+        // text-transform should be none (Newspaper uses uppercase on some elements)
+        expect(styles.textTransform).toBe('none');
+
+        // letter-spacing should be normal
+        expect(styles.letterSpacing).toBe('normal');
+    });
+
+    test('mermaid SVG text elements are isolated from theme styles', async ({ page }) => {
+        // Wait for mermaid SVG to fully render
+        const mermaidSvg = page.locator('.mermaid svg').first();
+        await expect(mermaidSvg).toBeVisible({ timeout: 10000 });
+
+        // Switch to Academic style which has the most aggressive typography
+        await page.evaluate(() => {
+            if (globalThis.changeStyle) {
+                globalThis.changeStyle('academic');
+            }
+        });
+        await page.waitForTimeout(1500);
+
+        // Check SVG element styles (text elements may be nested deep)
+        const svgStyles = await mermaidSvg.evaluate((el) => {
+            const computed = globalThis.getComputedStyle(el);
+            return {
+                letterSpacing: computed.letterSpacing,
+                wordSpacing: computed.wordSpacing,
+                textTransform: computed.textTransform,
+            };
+        });
+
+        // SVG should have isolated typography
+        expect(svgStyles.letterSpacing).toBe('normal');
+        expect(svgStyles.textTransform).toBe('none');
+    });
 });
