@@ -189,7 +189,7 @@ renderer.link = function(href, title, text) {
 
     // Security: Sanitize link text to prevent XSS from raw HTML in markdown
     // Uses DOMPurify inline to preserve legitimate formatting while removing dangerous content
-    const safeText = DOMPurify.sanitize(text);
+    const safeText = DOMPurify.sanitize(text || '');
 
     // Check if this is a markdown link that should open in Merview
     if (isMarkdownUrl(resolvedHref)) {
