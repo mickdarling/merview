@@ -10,6 +10,7 @@
     "test:headed": "npx playwright test --headed",
     "test:report": "npx playwright show-report",
     "lint": "eslint js/",
+    "verify:docs": "node scripts/verify-docs.js",
     "check:links": "npx lychee --config .lychee.toml '**/*.md' 'index.html'",
     "docker:build": "docker build -t merview:latest .",
     "docker:run": "docker run -d -p 8080:80 --name merview merview:latest",

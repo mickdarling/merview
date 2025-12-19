@@ -135,7 +135,7 @@ https://example.com/themes/custom.css
 
 **Functions Added:**
 - `loadCSSFromFile(file)` - Load CSS from uploaded file
-- `promptForURL()` - Prompt user for CSS URL
+- `promptForURLWithResult()` - Prompt user for CSS URL
 - `loadCSSFromURL(url)` - Load CSS from URL
 - `promptForRepositoryStyle(config)` - Load from repo
 - `applyCSSDirectly(cssText, sourceName)` - Apply CSS

@@ -1,0 +1,46 @@
+name: Verify Documentation
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'docs/**'
+      - 'js/**'
+      - 'README.md'
+      - 'SECURITY.md'
+      - 'CONTRIBUTING.md'
+      - 'CHANGELOG.md'
+      - 'scripts/verify-docs.js'
+      - '.github/workflows/verify-docs.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'docs/**'
+      - 'js/**'
+      - 'README.md'
+      - 'SECURITY.md'
+      - 'CONTRIBUTING.md'
+      - 'CHANGELOG.md'
+      - 'scripts/verify-docs.js'
+      - '.github/workflows/verify-docs.yml'
+  workflow_dispatch:
+    # Allow manual triggering for on-demand verification
+
+permissions:
+  contents: read
+
+jobs:
+  verify-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # No npm cache needed - script uses only Node.js built-ins
+
+      - name: Run documentation verification
+        run: node scripts/verify-docs.js

@@ -65,7 +65,7 @@ gh api repos/mickdarling/merview/branches/BRANCH_NAME/protection -X PUT --input 
 EOF
 ```
 
-Replace `BRANCH_NAME` with the branch to update (e.g., `main` or `develop`).
+Replace `<BRANCH_NAME>` with the branch to update (e.g., `main` or `develop`).
 
 ## Benefits
 
