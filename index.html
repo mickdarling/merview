@@ -745,6 +745,23 @@
             opacity: 1 !important;
         }
 
+        /* Edge label text - ensure readable against background (Issue #361)
+         * Root cause: Mermaid's default theme sets text fill to match the background color,
+         * making relationship labels invisible (e.g., both purple on default theme).
+         * Fix: Make background semi-transparent so text is visible, and ensure text is dark.
+         * Note: Uses !important due to inline styles from Mermaid's SVG generation. */
+        #wrapper .mermaid .edgeLabel text,
+        .mermaid .edgeLabel text {
+            fill: #000 !important;
+        }
+
+        #wrapper .mermaid .edgeLabel rect.background,
+        .mermaid .edgeLabel rect.background,
+        #wrapper .mermaid .edgeLabel rect,
+        .mermaid .edgeLabel rect {
+            fill: rgba(255, 255, 255, 0.85) !important;
+        }
+
         /* Mermaid loading state - Issue #326 */
         .mermaid-loading {
             min-height: 100px;
@@ -903,6 +920,16 @@
             transition: none;
             max-width: 100%;
             max-height: 100%;
+        }
+
+        /* Edge label visibility in fullscreen mode (Issue #361) */
+        .mermaid-fullscreen-overlay .edgeLabel text {
+            fill: #000 !important;
+        }
+
+        .mermaid-fullscreen-overlay .edgeLabel rect.background,
+        .mermaid-fullscreen-overlay .edgeLabel rect {
+            fill: rgba(255, 255, 255, 0.85) !important;
         }
 
         /* Double-click hint cursor on mermaid diagrams */
