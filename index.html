@@ -711,6 +711,36 @@
             font-weight: normal;
         }
 
+        /* Prevent theme drop cap styles from bleeding into Mermaid foreignObject content */
+        #wrapper .mermaid *::first-letter,
+        .mermaid *::first-letter {
+            float: none !important;
+            font-size: inherit !important;
+            line-height: inherit !important;
+            margin: 0 !important;
+            font-weight: inherit !important;
+        }
+
+        /* Reset all typography inside Mermaid foreignObject elements */
+        #wrapper .mermaid foreignObject *,
+        .mermaid foreignObject * {
+            font-size: inherit !important;
+            font-family: inherit !important;
+            font-weight: normal !important;
+            font-style: normal !important;
+            letter-spacing: normal !important;
+            word-spacing: normal !important;
+            text-transform: none !important;
+            line-height: 1.2 !important;
+        }
+
+        /* Edge label backgrounds - inherit from Mermaid's generated styles */
+        #wrapper .mermaid .edgeLabel rect,
+        .mermaid .edgeLabel rect {
+            fill: var(--mermaid-background, white) !important;
+            opacity: 1 !important;
+        }
+
         /* Mermaid loading state - Issue #326 */
         .mermaid-loading {
             min-height: 100px;
