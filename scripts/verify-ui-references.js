@@ -146,7 +146,7 @@ class UIReferenceVerifier {
       const text = match[1].trim()
         .replaceAll(/[\u{1F300}-\u{1F9FF}]/gu, '')  // Misc symbols, emoticons, etc.
         .replaceAll(/[\u{2700}-\u{27BF}]/gu, '')    // Dingbats (✕, etc.)
-        .replaceAll(/\uFE0F/gu, '')                  // Variation selector
+        .replaceAll('\uFE0F', '')                    // Variation selector
         .trim();
       if (text) {
         this.uiElements.buttons.add(text);
