@@ -180,6 +180,32 @@ test.describe('Symbols Selector', () => {
     expect(cursorPos).toEqual({ line: 0, ch: 5 }); // 1 (A) + 4 (<-->) = 5
   });
 
+  test('should position cursor correctly after multi-line insertion', async ({ page }) => {
+    await setCodeMirrorContent(page, 'Start\nEnd');
+
+    await page.evaluate(() => {
+      const editor = globalThis.state.cmEditor;
+      editor.setCursor({ line: 0, ch: 5 }); // After "Start"
+    });
+
+    // Insert subgraph which has multiple lines: "subgraph \n    \n    end"
+    await page.selectOption('#symbolsSelector', 'subgraph \n    \n    end');
+    await page.waitForTimeout(100);
+
+    // Check cursor position - should be at end of last line of inserted text
+    const cursorPos = await page.evaluate(() => {
+      const editor = globalThis.state.cmEditor;
+      const cursor = editor.getCursor();
+      return { line: cursor.line, ch: cursor.ch };
+    });
+
+    // Inserted "subgraph \n    \n    end" (3 lines)
+    // Starting at line 0, cursor should now be at line 2 (0 + 3 - 1)
+    // ch should be length of "    end" = 7
+    expect(cursorPos.line).toBe(2);
+    expect(cursorPos.ch).toBe(7);
+  });
+
   test('should work with multiline content', async ({ page }) => {
     await setCodeMirrorContent(page, 'Line 1\nLine 2\nLine 3');
 

@@ -54,10 +54,14 @@ function insertSpecialCharacter(text) {
     // Insert the text at cursor position
     cmEditor.replaceRange(text, cursor);
 
-    // Move cursor after inserted text
+    // Move cursor after inserted text, handling multi-line insertions
+    const lines = text.split('\n');
+    const lineCount = lines.length;
+    const lastLineLength = lines[lineCount - 1].length;
+
     const newCursor = {
-        line: cursor.line,
-        ch: cursor.ch + text.length
+        line: cursor.line + lineCount - 1,
+        ch: lineCount === 1 ? cursor.ch + lastLineLength : lastLineLength
     };
     cmEditor.setCursor(newCursor);
 
