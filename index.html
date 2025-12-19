@@ -620,6 +620,11 @@
             background: #415b76;
         }
 
+        .panel-selector:focus {
+            outline: 2px solid #3498db;
+            outline-offset: 1px;
+        }
+
         #editor-container {
             flex: 1;
             overflow: hidden;
@@ -1369,6 +1374,100 @@
                     <select class="panel-selector" id="documentSelector" title="Current document">
                         <optgroup label="Current Document">
                             <option value="">Document...</option>
+                        </optgroup>
+                    </select>
+                    <select class="panel-selector" id="symbolsSelector" onchange="insertSpecialCharacter(this.value)" title="Insert Mermaid snippets and special characters" aria-label="Insert Mermaid snippet - select to insert diagram syntax at cursor position">
+                        <optgroup label="Mermaid Block">
+                            <option value="">Mermaid Snippet...</option>
+                            <option value="```mermaid&#10;&#10;```">``` mermaid block</option>
+                        </optgroup>
+                        <optgroup label="Diagram Types">
+                            <option value="graph LR&#10;    ">graph LR (left → right)</option>
+                            <option value="graph RL&#10;    ">graph RL (right → left)</option>
+                            <option value="graph TD&#10;    ">graph TD (top → down)</option>
+                            <option value="graph BT&#10;    ">graph BT (bottom → top)</option>
+                            <option value="flowchart LR&#10;    ">flowchart LR</option>
+                            <option value="flowchart TD&#10;    ">flowchart TD</option>
+                            <option value="sequenceDiagram&#10;    ">sequenceDiagram</option>
+                            <option value="classDiagram&#10;    ">classDiagram</option>
+                            <option value="stateDiagram-v2&#10;    ">stateDiagram</option>
+                            <option value="erDiagram&#10;    ">erDiagram</option>
+                            <option value="gantt&#10;    ">gantt</option>
+                            <option value="pie&#10;    ">pie chart</option>
+                            <option value="gitGraph&#10;    ">gitGraph</option>
+                            <option value="mindmap&#10;    ">mindmap</option>
+                            <option value="timeline&#10;    ">timeline</option>
+                        </optgroup>
+                        <optgroup label="Flowchart Syntax">
+                            <option value="subgraph &#10;    &#10;    end">subgraph ... end</option>
+                            <option value="|label|">|label| edge text</option>
+                            <option value="[]">[text] rectangle</option>
+                            <option value="()">(text) rounded</option>
+                            <option value="{}">{text} diamond</option>
+                            <option value="[[]]">[[text]] subroutine</option>
+                            <option value="[()]">[(text)] database</option>
+                            <option value="(())">(( )) circle</option>
+                        </optgroup>
+                        <optgroup label="Sequence Syntax">
+                            <option value="participant ">participant</option>
+                            <option value="actor ">actor</option>
+                            <option value="autonumber">autonumber</option>
+                            <option value="activate ">activate</option>
+                            <option value="deactivate ">deactivate</option>
+                            <option value="Note right of ">Note right of</option>
+                            <option value="Note left of ">Note left of</option>
+                            <option value="Note over ">Note over</option>
+                            <option value="loop &#10;    &#10;    end">loop ... end</option>
+                            <option value="alt &#10;    &#10;    else &#10;    &#10;    end">alt ... else ... end</option>
+                            <option value="opt &#10;    &#10;    end">opt ... end</option>
+                        </optgroup>
+                        <optgroup label="Class Syntax">
+                            <option value="class ">class</option>
+                            <option value="&lt;&lt;interface&gt;&gt;">«interface»</option>
+                            <option value="&lt;&lt;abstract&gt;&gt;">«abstract»</option>
+                            <option value="&lt;&lt;enumeration&gt;&gt;">«enumeration»</option>
+                            <option value="&lt;|--">&lt;|-- inheritance</option>
+                            <option value="*--">*-- composition</option>
+                            <option value="o--">o-- aggregation</option>
+                            <option value="&lt;|..">&lt;|.. implements</option>
+                        </optgroup>
+                        <optgroup label="State Syntax">
+                            <option value="[*]">[*] start/end</option>
+                            <option value="state  {&#10;    &#10;    }">state { } composite</option>
+                            <option value="&lt;&lt;fork&gt;&gt;">«fork»</option>
+                            <option value="&lt;&lt;join&gt;&gt;">«join»</option>
+                            <option value="&lt;&lt;choice&gt;&gt;">«choice»</option>
+                            <option value="note right of ">note right of</option>
+                            <option value="note left of ">note left of</option>
+                        </optgroup>
+                        <optgroup label="ER Syntax">
+                            <option value="||--o{">||--o{ one to many</option>
+                            <option value="||--|{">||--|{ one to one+</option>
+                            <option value="}|--|{">}|--|{ many to many</option>
+                            <option value="o{--o{">o{--o{ zero+ to zero+</option>
+                            <option value=" PK"> PK (primary key)</option>
+                            <option value=" FK"> FK (foreign key)</option>
+                        </optgroup>
+                        <optgroup label="Gantt Syntax">
+                            <option value="dateFormat YYYY-MM-DD&#10;    ">dateFormat</option>
+                            <option value="section ">section</option>
+                        </optgroup>
+                        <optgroup label="Special Characters">
+                            <option value="#quot;">" double quote</option>
+                            <option value="#apos;">' single quote</option>
+                            <option value="#lt;">&lt; less than</option>
+                            <option value="#gt;">&gt; greater than</option>
+                            <option value="#amp;">&amp; ampersand</option>
+                        </optgroup>
+                        <optgroup label="Arrows">
+                            <option value="-->">&rarr; --&gt; solid arrow</option>
+                            <option value="---">--- solid line</option>
+                            <option value="-.->">&rarr; -.-&gt; dotted arrow</option>
+                            <option value="-.->">-.- dotted line</option>
+                            <option value="==>">&rArr; ==&gt; thick arrow</option>
+                            <option value="->>">-&gt;&gt; async arrow</option>
+                            <option value="-->>">--&gt;&gt; async dashed</option>
+                            <option value="<-->">&harr; &lt;--&gt; bidirectional</option>
                         </optgroup>
                     </select>
                 </div>

@@ -39,6 +39,43 @@ function clearEditor() {
 }
 
 /**
+ * Insert a special character at the current cursor position
+ * @param {string} text - The text to insert
+ */
+function insertSpecialCharacter(text) {
+    if (!text) return; // Skip if empty (placeholder option)
+
+    const { cmEditor } = state;
+    if (!cmEditor) return;
+
+    // Get current cursor position
+    const cursor = cmEditor.getCursor();
+
+    // Insert the text at cursor position
+    cmEditor.replaceRange(text, cursor);
+
+    // Move cursor after inserted text, handling multi-line insertions
+    const lines = text.split('\n');
+    const lineCount = lines.length;
+    const lastLineLength = lines[lineCount - 1].length;
+
+    const newCursor = {
+        line: cursor.line + lineCount - 1,
+        ch: lineCount === 1 ? cursor.ch + lastLineLength : lastLineLength
+    };
+    cmEditor.setCursor(newCursor);
+
+    // Focus the editor
+    cmEditor.focus();
+
+    // Reset the dropdown back to placeholder
+    const selector = document.getElementById('symbolsSelector');
+    if (selector) {
+        selector.value = '';
+    }
+}
+
+/**
  * Expose functions to globalThis for onclick handlers in HTML
  */
 function exposeGlobalFunctions() {
@@ -50,6 +87,7 @@ function exposeGlobalFunctions() {
     globalThis.getEditorContent = getEditorContent;
     globalThis.setEditorContent = setEditorContent;
     globalThis.clearEditor = clearEditor;
+    globalThis.insertSpecialCharacter = insertSpecialCharacter;
 
     // Rendering functions
     globalThis.renderMarkdown = renderMarkdown;
