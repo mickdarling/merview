@@ -39,13 +39,32 @@ test.describe('Mermaid Diagram Test Suite', () => {
    * The test page contains EXPECTED_DIAGRAM_COUNT diagrams across all Mermaid types
    */
   test.beforeEach(async ({ page }) => {
-    await waitForPageReady(page, { url: TEST_PAGE_URL });
+    // Navigate and wait for network to settle (ensures markdown file is fetched)
+    await page.goto(TEST_PAGE_URL, { waitUntil: 'networkidle' });
 
-    // Wait for content to load
+    // Wait for CodeMirror to be ready
+    await page.waitForSelector('.CodeMirror', { timeout: 10000 });
+
+    // Wait for wrapper content to load
     await page.waitForSelector('#wrapper', { timeout: 10000 });
 
-    // Wait for at least one mermaid diagram to start rendering
+    // Wait for mermaid diagrams to be set up (initial lazy loading state)
     await page.waitForSelector('.mermaid', { timeout: 10000 });
+
+    // Wait for expected number of diagrams to ensure content is fully rendered
+    await page.waitForFunction(
+      (expectedMin) => document.querySelectorAll('.mermaid').length >= expectedMin,
+      MERMAID_TEST_CONSTANTS.MIN_RENDERED_DIAGRAMS,
+      { timeout: 10000 }
+    );
+
+    // Force render all mermaid diagrams immediately (bypasses lazy loading)
+    // IntersectionObserver doesn't reliably fire in headless browsers
+    await page.evaluate(async () => {
+      if (typeof globalThis.forceRenderAllMermaidDiagrams === 'function') {
+        await globalThis.forceRenderAllMermaidDiagrams();
+      }
+    });
 
     // Wait for diagrams to render using helper function
     await waitForMermaidDiagrams(page);
@@ -200,8 +219,16 @@ test.describe('Mermaid Diagram Test Suite', () => {
         }
       });
 
-      // Reload page to capture errors from initial render
-      await page.reload();
+      // Reload page and wait for network to settle (ensures markdown file is fetched)
+      await page.reload({ waitUntil: 'networkidle' });
+
+      // Force render all diagrams (bypasses lazy loading in headless browser)
+      await page.evaluate(async () => {
+        if (typeof globalThis.forceRenderAllMermaidDiagrams === 'function') {
+          await globalThis.forceRenderAllMermaidDiagrams();
+        }
+      });
+
       await waitForMermaidDiagrams(page);
 
       // The test page includes a diagram with special chars: <>&

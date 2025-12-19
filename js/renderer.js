@@ -903,6 +903,21 @@ async function lazyRenderMermaid(element) {
 }
 
 /**
+ * Force render all pending mermaid diagrams immediately (bypasses lazy loading)
+ * Exposed globally for testing purposes - allows tests to trigger rendering
+ * without relying on IntersectionObserver which may not work in headless browsers
+ * @returns {Promise<void>}
+ */
+async function forceRenderAllMermaidDiagrams() {
+    const pendingDiagrams = document.querySelectorAll('.mermaid[data-mermaid-rendered="pending"]');
+    const renderPromises = Array.from(pendingDiagrams).map(element => lazyRenderMermaid(element));
+    await Promise.all(renderPromises);
+}
+
+// Expose for testing
+globalThis.forceRenderAllMermaidDiagrams = forceRenderAllMermaidDiagrams;
+
+/**
  * Set up lazy loading for mermaid diagrams using IntersectionObserver
  * Diagrams are rendered when they become visible in the viewport (Issue #326)
  * @param {NodeList} mermaidElements - The mermaid diagram elements
