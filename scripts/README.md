@@ -125,19 +125,57 @@ The script is integrated into GitHub Actions via `.github/workflows/verify-ui-re
 
 ### Maintenance
 
-When adding new UI elements:
+#### Hardcoded UI Elements
 
-1. Add them to the appropriate section in the script:
-   - Buttons: `this.uiElements.buttons.add('Button Text')`
-   - Labels: `this.uiElements.labels.add('Label Text')`
-   - Titles: `this.uiElements.titles.add('Dialog Title')`
+The script automatically extracts most UI elements from HTML, but some elements require manual registration in the `addKnownUIElements()` method. **This is a maintenance requirement** - when UI elements are added/renamed/removed, this list must be updated.
 
-2. Or better: Ensure they're properly structured in HTML so the parser finds them automatically
+**Why hardcoded elements exist:**
+- Some button text is dynamically generated or contains icons stripped during parsing
+- External UI elements (e.g., GitHub's "Raw" button referenced in docs)
+- Menu items defined in JavaScript config rather than HTML
+- Elements added via JavaScript after page load
 
-When adding new documentation patterns:
+**Current hardcoded elements location:** `scripts/verify-ui-references.js` in the `addKnownUIElements()` method
+
+**When to update:**
+- Adding a new button/menu item referenced in documentation
+- Renaming an existing UI element
+- Removing a UI element (remove from both UI and hardcoded list)
+- Adding documentation that references external UI (e.g., third-party buttons)
+
+**How to update:**
+```javascript
+// In addKnownUIElements() method:
+const knownButtons = [
+  'Save',
+  'Save as PDF',
+  'Your New Button',  // Add new buttons here
+  // ...
+];
+
+const knownLabels = [
+  'Style',
+  'Code Theme',
+  'Your New Label',  // Add new labels/menu items here
+  // ...
+];
+
+const knownTitles = [
+  'Load from URL',
+  'Your New Dialog Title',  // Add new dialog titles here
+  // ...
+];
+```
+
+**Best practice:** When adding new UI elements to the application, ensure they're properly structured in HTML so the parser finds them automatically. Only add to `addKnownUIElements()` when automatic extraction isn't possible.
+
+#### Adding New Documentation Patterns
+
+When documentation uses new reference patterns:
 
 1. Add regex patterns to `extractDocReferences()` method
 2. Test with sample documentation to ensure matches are correct
+3. Add appropriate tests to `tests/verify-ui-references.spec.js`
 
 ### Exit Codes
 

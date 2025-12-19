@@ -9,6 +9,7 @@
     "test:ui": "npx playwright test --ui",
     "test:headed": "npx playwright test --headed",
     "test:report": "npx playwright show-report",
+    "test:unit": "node tests/verify-ui-references.spec.js",
     "lint": "eslint js/",
     "check:links": "npx lychee --config .lychee.toml '**/*.md' 'index.html'",
     "check:ui-refs": "node scripts/verify-ui-references.js",

@@ -26,6 +26,14 @@ const colors = {
 };
 
 class UIReferenceVerifier {
+  /**
+   * Creates a new UI reference verifier instance
+   * @description Initializes the verifier with empty collections for tracking
+   * UI elements, documentation references, errors, and warnings.
+   * @example
+   * const verifier = new UIReferenceVerifier();
+   * verifier.run('/path/to/project');
+   */
   constructor() {
     this.errors = [];
     this.warnings = [];
@@ -41,9 +49,17 @@ class UIReferenceVerifier {
 
   /**
    * Extract matches from HTML using a regex pattern
+   * @description Iterates through all regex matches in the HTML content and
+   * applies a processor function to each match. Used for extracting UI elements
+   * like buttons, dropdowns, and labels.
    * @param {string} html - HTML content to search
-   * @param {RegExp} regex - Regular expression pattern
-   * @param {Function} processor - Function to process each match
+   * @param {RegExp} regex - Regular expression pattern with global flag
+   * @param {Function} processor - Function to process each match (receives RegExpExecArray)
+   * @returns {void}
+   * @example
+   * this.extractMatches(html, /<button[^>]*>([^<]+)/gi, (match) => {
+   *   console.log('Found button:', match[1]);
+   * });
    */
   extractMatches(html, regex, processor) {
     let match;
@@ -54,6 +70,10 @@ class UIReferenceVerifier {
 
   /**
    * Add known UI elements that require manual extraction
+   * @description Adds hardcoded UI element names that cannot be easily extracted
+   * from HTML via regex (e.g., dynamically generated text, icon-only buttons).
+   * This ensures common buttons, labels, and dialog titles are recognized.
+   * @returns {void}
    */
   addKnownUIElements() {
     // Add common button names that are in the HTML but need manual extraction
@@ -104,6 +124,13 @@ class UIReferenceVerifier {
 
   /**
    * Extract UI elements from index.html
+   * @description Parses the HTML file to extract all UI elements including buttons,
+   * dropdowns, labels, and dialog titles. Populates the uiElements collections
+   * for later verification against documentation references.
+   * @param {string} htmlPath - Absolute path to the index.html file
+   * @returns {void}
+   * @example
+   * verifier.extractUIElements('/path/to/project/index.html');
    */
   extractUIElements(htmlPath) {
     console.log(`${colors.cyan}Extracting UI elements from ${htmlPath}...${colors.reset}`);
@@ -171,6 +198,13 @@ class UIReferenceVerifier {
 
   /**
    * Extract UI references from documentation files
+   * @description Scans all markdown files in the docs directory for references
+   * to UI elements (quoted text in bold, click/select patterns) and file paths.
+   * Populates the docReferences array with all found references.
+   * @param {string} docsPath - Absolute path to the documentation directory
+   * @returns {void}
+   * @example
+   * verifier.extractDocReferences('/path/to/project/docs');
    */
   extractDocReferences(docsPath) {
     console.log(`${colors.cyan}Extracting references from documentation...${colors.reset}`);
@@ -239,6 +273,13 @@ class UIReferenceVerifier {
 
   /**
    * Get all markdown files recursively
+   * @description Recursively traverses a directory to find all markdown files (.md).
+   * Used to locate all documentation files that need reference verification.
+   * @param {string} dir - Root directory to search
+   * @returns {string[]} Array of absolute paths to markdown files
+   * @example
+   * const mdFiles = verifier.getAllMarkdownFiles('/path/to/docs');
+   * // Returns: ['/path/to/docs/guide.md', '/path/to/docs/api/reference.md']
    */
   getAllMarkdownFiles(dir) {
     const files = [];
@@ -263,6 +304,13 @@ class UIReferenceVerifier {
 
   /**
    * Check if normalized reference exists in a collection (case-insensitive)
+   * @description Performs case-insensitive search for a reference string within
+   * a Set or Array of UI element names.
+   * @param {string} normalized - Lowercase reference string to search for
+   * @param {Set<string>|Array<string>} collection - Collection of UI element names
+   * @returns {boolean} True if the reference exists in the collection
+   * @example
+   * existsInCollection('save', new Set(['Save', 'Cancel'])) // returns true
    */
   existsInCollection(normalized, collection) {
     for (const item of collection) {
@@ -275,6 +323,12 @@ class UIReferenceVerifier {
 
   /**
    * Check if normalized reference exists in any dropdown options
+   * @description Searches through all dropdown option sets to find a matching
+   * reference. Used to verify that documented dropdown options actually exist.
+   * @param {string} normalized - Lowercase reference string to search for
+   * @returns {boolean} True if the reference exists in any dropdown's options
+   * @example
+   * existsInDropdownOptions('github') // returns true if 'GitHub' is in any dropdown
    */
   existsInDropdownOptions(normalized) {
     for (const [, options] of this.uiElements.dropdownOptions) {
@@ -287,6 +341,12 @@ class UIReferenceVerifier {
 
   /**
    * Check if a reference matches any known UI element
+   * @description Searches all UI element collections (buttons, titles, labels,
+   * dropdown options) to determine if a documentation reference is valid.
+   * @param {string} normalized - Lowercase reference string to search for
+   * @returns {boolean} True if the reference matches any known UI element
+   * @example
+   * findUIElement('save') // returns true if 'Save' exists in any UI collection
    */
   findUIElement(normalized) {
     return this.existsInCollection(normalized, this.uiElements.buttons) ||
@@ -297,6 +357,12 @@ class UIReferenceVerifier {
 
   /**
    * Add error for unmatched UI reference
+   * @description Records an error when a documentation reference doesn't match
+   * any known UI element. Includes fuzzy match suggestions if available.
+   * @param {Object} ref - Reference object containing file, line, reference text, and context
+   * @param {string} normalized - Lowercase normalized reference string
+   * @param {string} projectRoot - Project root path for creating relative file paths
+   * @returns {void}
    */
   addUnmatchedError(ref, normalized, projectRoot) {
     const suggestions = this.findSimilar(normalized);
@@ -314,6 +380,12 @@ class UIReferenceVerifier {
 
   /**
    * Verify UI element references
+   * @description Checks all documentation references against known UI elements
+   * and file paths. Populates the errors array with any mismatches found.
+   * @param {string} projectRoot - Project root path for file resolution
+   * @returns {void}
+   * @example
+   * verifier.verifyReferences('/path/to/project');
    */
   verifyReferences(projectRoot) {
     console.log(`${colors.cyan}Verifying references...${colors.reset}`);
@@ -341,6 +413,11 @@ class UIReferenceVerifier {
 
   /**
    * Verify file reference exists
+   * @description Checks if a file path referenced in documentation actually exists.
+   * Skips validation for example URLs and placeholder paths.
+   * @param {Object} ref - Reference object containing file path and metadata
+   * @param {string} projectRoot - Project root path for file resolution
+   * @returns {void}
    */
   verifyFileReference(ref, projectRoot) {
     // Extract clean path
@@ -385,6 +462,12 @@ class UIReferenceVerifier {
 
   /**
    * Find similar UI elements (fuzzy matching)
+   * @description Uses string similarity calculation to find UI elements that
+   * closely match an unmatched reference. Helpful for suggesting corrections.
+   * @param {string} needle - Lowercase reference string to find matches for
+   * @returns {string[]} Array of up to 3 similar UI element names
+   * @example
+   * findSimilar('sav') // returns ['Save', 'Save as PDF']
    */
   findSimilar(needle) {
     const suggestions = [];
@@ -406,6 +489,14 @@ class UIReferenceVerifier {
 
   /**
    * Calculate string similarity (simple Levenshtein-based)
+   * @description Computes similarity between two strings as a ratio (0-1) based
+   * on Levenshtein edit distance. Higher values indicate greater similarity.
+   * @param {string} s1 - First string to compare
+   * @param {string} s2 - Second string to compare
+   * @returns {number} Similarity ratio between 0 (completely different) and 1 (identical)
+   * @example
+   * calculateSimilarity('save', 'Save') // returns 1.0
+   * calculateSimilarity('save', 'load') // returns 0.25
    */
   calculateSimilarity(s1, s2) {
     const longer = s1.length > s2.length ? s1 : s2;
@@ -421,6 +512,14 @@ class UIReferenceVerifier {
 
   /**
    * Calculate Levenshtein distance
+   * @description Computes the minimum number of single-character edits (insertions,
+   * deletions, or substitutions) required to change one string into another.
+   * @param {string} s1 - First string
+   * @param {string} s2 - Second string
+   * @returns {number} Minimum number of edits required
+   * @example
+   * levenshteinDistance('kitten', 'sitting') // returns 3
+   * levenshteinDistance('save', 'Save') // returns 0
    */
   levenshteinDistance(s1, s2) {
     const matrix = [];
@@ -452,6 +551,12 @@ class UIReferenceVerifier {
 
   /**
    * Print report
+   * @description Outputs a formatted report of all errors and warnings found during
+   * verification. Includes file locations, context, and suggestions for fixes.
+   * @returns {number} Exit code (0 for success, 1 if errors found)
+   * @example
+   * const exitCode = verifier.printReport();
+   * process.exit(exitCode);
    */
   printReport() {
     console.log('\n' + '='.repeat(80));
@@ -498,6 +603,15 @@ class UIReferenceVerifier {
 
   /**
    * Main verification flow
+   * @description Orchestrates the complete verification process: extracts UI elements
+   * from HTML, extracts references from documentation, verifies matches, and prints
+   * a report. This is the primary entry point for the verification tool.
+   * @param {string} projectRoot - Absolute path to the project root directory
+   * @returns {number} Exit code (0 for success, 1 if errors found)
+   * @example
+   * const verifier = new UIReferenceVerifier();
+   * const exitCode = verifier.run('/path/to/project');
+   * process.exit(exitCode);
    */
   run(projectRoot) {
     const htmlPath = path.join(projectRoot, 'index.html');
