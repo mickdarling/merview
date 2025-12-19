@@ -438,9 +438,12 @@ test.describe('Relative URL Resolution', () => {
             await page.waitForTimeout(100);
 
             // Verify navigation target is ?url=docs/other.md (resolved relative to docs/guide.md)
-            // URL encoding turns "/" into "%2F"
-            expect(navigatedUrl).toContain('?url=');
-            expect(navigatedUrl).toMatch(/\?url=.*docs(%2F|\/)other\.md/);
+            expect(navigatedUrl).toBeTruthy();
+            const parsedUrl = new URL(navigatedUrl);
+            expect(parsedUrl.searchParams.has('url')).toBe(true);
+            const urlParam = parsedUrl.searchParams.get('url');
+            // Should be "docs/other.md" (path resolved from docs/guide.md + ./other.md)
+            expect(urlParam).toBe('docs/other.md');
         });
     });
 });

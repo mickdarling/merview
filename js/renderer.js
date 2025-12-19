@@ -12,23 +12,44 @@ import { updateSessionContent, isSessionsInitialized } from './sessions.js';
 import { escapeHtml, slugify, showStatus, isRelativeUrl, resolveRelativeUrl, isMarkdownUrl } from './utils.js';
 import { validateCode } from './validation.js';
 
-// Debug flag for Mermaid theme investigation (#168)
-// Enable via: localStorage.setItem('debug-mermaid-theme', 'true')
-// Note: Checked at runtime so changes take effect immediately without page refresh
+/**
+ * Debug flag for Mermaid theme investigation (#168)
+ * @returns {boolean} True if debug mode enabled
+ * @example localStorage.setItem('debug-mermaid-theme', 'true')
+ */
 function isDebugMermaidTheme() {
     return localStorage.getItem('debug-mermaid-theme') === 'true';
 }
 
-// Debug flag for Mermaid performance tracking (#326)
-// Enable via: localStorage.setItem('debug-mermaid-perf', 'true')
+/**
+ * Debug flag for Mermaid performance tracking (#326)
+ * @returns {boolean} True if debug mode enabled
+ * @example localStorage.setItem('debug-mermaid-perf', 'true')
+ */
 function isDebugMermaidPerf() {
     return localStorage.getItem('debug-mermaid-perf') === 'true';
 }
 
-// Debug flag for URL resolution tracking (#345)
-// Enable via: localStorage.setItem('debug-url-resolution', 'true')
+/**
+ * Debug flag for URL resolution tracking (#345)
+ * @returns {boolean} True if debug mode enabled
+ * @example localStorage.setItem('debug-url-resolution', 'true')
+ */
 function isDebugUrlResolution() {
     return localStorage.getItem('debug-url-resolution') === 'true';
+}
+
+/**
+ * Check if a URL is same-origin as the current page
+ * @param {string} url - URL to check (must be absolute or parseable with a base)
+ * @returns {boolean} True if same-origin, false if cross-origin or invalid
+ */
+function isSameOriginUrl(url) {
+    try {
+        return new URL(url).origin === globalThis.location.origin;
+    } catch {
+        return false;
+    }
 }
 
 /**
@@ -183,16 +204,18 @@ renderer.heading = function(text, level) {
  * - ./other.md in a GitHub file should resolve to the same GitHub directory
  *
  * @param {string} relativeUrl - The potentially relative URL to resolve
- * @returns {string|null} Resolved absolute URL, or null if resolution not needed/failed
+ * @returns {string|null} Resolved absolute URL, or null if:
+ *   - No source URL loaded (state.loadedFromURL not set)
+ *   - URL is already absolute (not relative)
+ *   - Same-origin URL (should remain relative for in-app navigation)
+ *   - Resolution fails (invalid URL)
  */
 function resolveRemoteUrl(relativeUrl) {
     if (!state.loadedFromURL || !isRelativeUrl(relativeUrl)) {
         return null;
     }
     try {
-        const sourceUrl = new URL(state.loadedFromURL);
-        const isSameOrigin = sourceUrl.origin === globalThis.location.origin;
-        if (isSameOrigin) {
+        if (isSameOriginUrl(state.loadedFromURL)) {
             if (isDebugUrlResolution()) {
                 console.log('[URL Resolution] Skipping same-origin:', relativeUrl);
             }
@@ -234,7 +257,8 @@ renderer.link = function(href, title, text) {
     // 1. Catches XSS earlier in the pipeline, before string concatenation
     // 2. Protects against future refactoring that might bypass the final sanitization
     // 3. Ensures each component is independently secure (defense-in-depth principle)
-    const safeText = DOMPurify.sanitize(text || '');
+    // Fallback to href if text is empty (ensures clickable, accessible links)
+    const safeText = DOMPurify.sanitize(text || href || 'Link');
 
     // Check if this is a remote markdown link that should open in Merview
     // Don't intercept root-relative URLs (/?url=..., /docs/...) - they navigate normally
@@ -985,10 +1009,9 @@ function attachMarkdownLinkHandlers(wrapper) {
                         const resolved = resolveRelativeUrl(url, state.loadedFromURL);
                         if (resolved) {
                             // Extract just the path for same-origin URLs
-                            const resolvedUrlObj = new URL(resolved);
-                            if (resolvedUrlObj.origin === globalThis.location.origin) {
+                            if (isSameOriginUrl(resolved)) {
                                 // Same-origin: use path without origin (e.g., "docs/other.md")
-                                targetUrl = resolvedUrlObj.pathname.replace(/^\//, '');
+                                targetUrl = new URL(resolved).pathname.replace(/^\//, '');
                             } else {
                                 // Remote: use full resolved URL
                                 targetUrl = resolved;
