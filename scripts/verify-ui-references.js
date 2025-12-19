@@ -74,6 +74,8 @@ class UIReferenceVerifier {
    * from HTML via regex (e.g., dynamically generated text, icon-only buttons).
    * This ensures common buttons, labels, and dialog titles are recognized.
    * @returns {void}
+   * @maintenance REQUIRED: Update this list when adding/renaming UI elements.
+   * See scripts/README.md#hardcoded-ui-elements for details.
    */
   addKnownUIElements() {
     // Add common button names that are in the HTML but need manual extraction
@@ -256,7 +258,7 @@ class UIReferenceVerifier {
         // Pattern 4: File references - docs/*.md or paths
         const fileRefRegex = /\(?\/?docs\/[a-zA-Z0-9/_-]+\.md\)?/g;
         while ((match = fileRefRegex.exec(line)) !== null) {
-          const docPath = match[0].replaceAll(/[()]/g, '');
+          const docPath = match[0].replace(/[()]/gu, '');
           this.docReferences.push({
             file: filePath,
             line: lineIndex + 1,
