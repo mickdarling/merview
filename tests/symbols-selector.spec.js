@@ -33,9 +33,9 @@ test.describe('Symbols Selector', () => {
     ]);
   });
 
-  test('should have placeholder "Insert..." as first option', async ({ page }) => {
+  test('should have placeholder "Mermaid Snippet..." as first option', async ({ page }) => {
     const firstOption = await page.$eval('#symbolsSelector option:first-child', el => el.textContent);
-    expect(firstOption).toBe('Insert...');
+    expect(firstOption).toBe('Mermaid Snippet...');
   });
 
   test('should have mermaid block option', async ({ page }) => {
@@ -298,7 +298,7 @@ test.describe('Symbols Selector Accessibility', () => {
     // Check that the element has some focus styling (outline or box-shadow)
     const focusStyles = await page.evaluate(() => {
       const el = document.getElementById('symbolsSelector');
-      const styles = window.getComputedStyle(el);
+      const styles = globalThis.getComputedStyle(el);
       return {
         outline: styles.outline,
         outlineWidth: styles.outlineWidth,
