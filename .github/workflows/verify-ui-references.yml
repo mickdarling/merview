@@ -1,0 +1,107 @@
+name: Verify UI References
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'docs/**/*.md'
+      - 'index.html'
+      - 'scripts/verify-ui-references.js'
+      - '.github/workflows/verify-ui-references.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'docs/**/*.md'
+      - 'index.html'
+      - 'scripts/verify-ui-references.js'
+      - '.github/workflows/verify-ui-references.yml'
+  workflow_dispatch: # Allow manual triggering
+
+# Prevent multiple runs on rapid pushes
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write  # Allow commenting on PRs
+
+jobs:
+  verify-ui-references:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
+        with:
+          node-version: '20'
+
+      - name: Verify UI references in documentation
+        id: verify
+        run: |
+          node scripts/verify-ui-references.js > ui-references-report.txt 2>&1 || echo "verification_failed=true" >> $GITHUB_OUTPUT
+          cat ui-references-report.txt
+        continue-on-error: true
+
+      - name: Upload verification report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ui-references-report-${{ github.run_id }}
+          path: ui-references-report.txt
+          retention-days: 30
+
+      - name: Comment PR with results (if errors found)
+        if: always() && github.event_name == 'pull_request' && steps.verify.outputs.verification_failed == 'true'
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const fs = require('fs');
+            let report = '';
+            try {
+              report = fs.readFileSync('./ui-references-report.txt', 'utf8');
+              if (!report || report.trim().length === 0) {
+                console.log('Report file is empty, skipping comment');
+                return;
+              }
+            } catch (error) {
+              console.log('No report file found, skipping comment');
+              return;
+            }
+
+            const body = `## UI Reference Verification Failed
+
+The documentation contains references to UI elements that don't match the actual application.
+
+<details>
+<summary>Click to view report</summary>
+
+\`\`\`
+${report}
+\`\`\`
+
+</details>
+
+Please update the documentation to match the actual UI element names in \`index.html\`.
+
+**Common issues:**
+- Button labels with/without ellipsis (e.g., "Load from URL..." vs "Load from URL")
+- Menu items that have been renamed
+- Referenced document paths that don't exist
+
+See \`scripts/verify-ui-references.js\` for details on what is checked.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Fail if verification errors found
+        if: steps.verify.outputs.verification_failed == 'true'
+        run: |
+          echo "❌ UI reference verification failed. Please fix the errors above."
+          exit 1
