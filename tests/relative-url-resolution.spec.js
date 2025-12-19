@@ -10,6 +10,12 @@ const { test, expect } = require('@playwright/test');
  * markdown files from remote URLs like GitHub.
  */
 
+/**
+ * Timeout for waiting for markdown to render after setting content.
+ * Centralized constant for easier maintenance and tuning.
+ */
+const RENDER_TIMEOUT_MS = 500;
+
 test.describe('Relative URL Resolution', () => {
     // Test the utility functions exposed on the page
     test.describe('Utility Functions', () => {
@@ -62,7 +68,7 @@ test.describe('Relative URL Resolution', () => {
             });
 
             // Wait for render
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(RENDER_TIMEOUT_MS);
 
             // Check that links were resolved correctly
             const links = await page.locator('#wrapper a[data-merview-link="true"]').all();
@@ -95,7 +101,7 @@ test.describe('Relative URL Resolution', () => {
                 }
             });
 
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(RENDER_TIMEOUT_MS);
 
             const images = await page.locator('#wrapper img').all();
             expect(images.length).toBe(2);
@@ -126,7 +132,7 @@ test.describe('Relative URL Resolution', () => {
                 }
             });
 
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(RENDER_TIMEOUT_MS);
 
             // Markdown links should have the data attribute
             const mdLinks = await page.locator('#wrapper a[data-merview-link="true"]').count();
@@ -152,7 +158,7 @@ test.describe('Relative URL Resolution', () => {
                 }
             });
 
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(RENDER_TIMEOUT_MS);
 
             // Get the link and check its href
             const link = page.locator('#wrapper a[data-merview-link="true"]').first();
@@ -182,7 +188,7 @@ test.describe('Relative URL Resolution', () => {
                 }
             });
 
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(RENDER_TIMEOUT_MS);
 
             // Links should keep their original relative paths
             const link = page.locator('#wrapper a').first();
@@ -212,7 +218,7 @@ test.describe('Relative URL Resolution', () => {
                 }
             });
 
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(RENDER_TIMEOUT_MS);
 
             const link = page.locator('#wrapper a').first();
             const linkHref = await link.getAttribute('href');
@@ -238,11 +244,50 @@ test.describe('Relative URL Resolution', () => {
                 }
             });
 
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(RENDER_TIMEOUT_MS);
 
             const link = page.locator('#wrapper a').first();
             const linkHref = await link.getAttribute('href');
             expect(linkHref).toBe('#section-name');
+        });
+
+        test('root-relative URLs should not get in-app navigation', async ({ page }) => {
+            // Root-relative URLs (starting with /) are excluded from in-app navigation because:
+            // 1. They already work with browser's native navigation
+            // 2. URLs like /?url=docs/about.md should load directly
+            // 3. Wrapping them in ?url= would create malformed URLs like /?url=/?url=...
+            await page.goto('/');
+            await page.waitForLoadState('networkidle');
+
+            await page.evaluate(() => {
+                globalThis.state.loadedFromURL = 'https://example.com/docs/test.md';
+
+                const testContent = `# Test
+[Root-relative link](/docs/about.md)
+[Query param link](/?url=docs/guide.md)
+[Relative link](./other.md)
+`;
+                if (globalThis.setEditorContent) {
+                    globalThis.setEditorContent(testContent);
+                }
+            });
+
+            await page.waitForTimeout(RENDER_TIMEOUT_MS);
+
+            // Root-relative and query param links should NOT have data-merview-link
+            const rootLink = page.locator('#wrapper a').nth(0);
+            const queryLink = page.locator('#wrapper a').nth(1);
+            const relativeLink = page.locator('#wrapper a').nth(2);
+
+            expect(await rootLink.getAttribute('data-merview-link')).toBeNull();
+            expect(await queryLink.getAttribute('data-merview-link')).toBeNull();
+            // Only the relative link gets in-app navigation
+            expect(await relativeLink.getAttribute('data-merview-link')).toBe('true');
+
+            // Verify hrefs are preserved correctly
+            expect(await rootLink.getAttribute('href')).toBe('/docs/about.md');
+            expect(await queryLink.getAttribute('href')).toBe('/?url=docs/guide.md');
+            expect(await relativeLink.getAttribute('href')).toBe('https://example.com/docs/other.md');
         });
 
         test('protocol-relative URLs should not be modified', async ({ page }) => {
@@ -261,7 +306,7 @@ test.describe('Relative URL Resolution', () => {
                 }
             });
 
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(RENDER_TIMEOUT_MS);
 
             const link = page.locator('#wrapper a').first();
             const linkHref = await link.getAttribute('href');
@@ -289,7 +334,7 @@ test.describe('Relative URL Resolution', () => {
                 }
             });
 
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(RENDER_TIMEOUT_MS);
 
             const links = await page.locator('#wrapper a').all();
             expect(links.length).toBe(3);
@@ -323,7 +368,7 @@ test.describe('Relative URL Resolution', () => {
                 }
             });
 
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(RENDER_TIMEOUT_MS);
 
             // Only plain .md URL gets data-merview-link attribute
             const mviewLinks = await page.locator('#wrapper a[data-merview-link="true"]').all();
@@ -350,7 +395,7 @@ test.describe('Relative URL Resolution', () => {
                 }
             });
 
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(RENDER_TIMEOUT_MS);
 
             const link = page.locator('#wrapper a').first();
             const linkHref = await link.getAttribute('href');
@@ -381,7 +426,7 @@ test.describe('Relative URL Resolution', () => {
                 }
             }, origin);
 
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(RENDER_TIMEOUT_MS);
 
             // Links should remain RELATIVE (not resolved to absolute localhost URLs)
             const links = await page.locator('#wrapper a').all();
@@ -418,7 +463,7 @@ test.describe('Relative URL Resolution', () => {
                 }
             }, origin);
 
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(RENDER_TIMEOUT_MS);
 
             // Get the link
             const link = page.locator('#wrapper a[data-merview-link="true"]').first();

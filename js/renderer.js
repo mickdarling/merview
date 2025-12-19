@@ -42,7 +42,10 @@ function isDebugUrlResolution() {
 /**
  * Check if a URL is same-origin as the current page
  * @param {string} url - URL to check (must be absolute or parseable with a base)
- * @returns {boolean} True if same-origin, false if cross-origin or invalid
+ * @returns {boolean} True if same-origin, false if cross-origin, invalid, or relative
+ * @note Relative URLs (./file.md, ../dir/file.md) return false because new URL()
+ *       throws without a base. This is intentional - callers should use isRelativeUrl()
+ *       to check for relative URLs before calling this function.
  */
 function isSameOriginUrl(url) {
     try {
@@ -261,7 +264,11 @@ renderer.link = function(href, title, text) {
     const safeText = DOMPurify.sanitize(text || href || 'Link');
 
     // Check if this is a remote markdown link that should open in Merview
-    // Don't intercept root-relative URLs (/?url=..., /docs/...) - they navigate normally
+    // Root-relative URLs (starting with /) are excluded from in-app navigation because:
+    // 1. They already work correctly with browser's native navigation
+    // 2. URLs like /?url=docs/about.md or /docs/file.md should load directly
+    // 3. Wrapping them in ?url= would create malformed URLs like /?url=/?url=...
+    // Only relative paths (./other.md) and absolute remote URLs need special handling
     if (isMarkdownUrl(resolvedHref) && !resolvedHref.startsWith('/')) {
         // Add data attribute for JavaScript click handler to intercept
         return `<a href="${escapeHtml(resolvedHref)}"${titleAttr} data-merview-link="true">${safeText}</a>`;
