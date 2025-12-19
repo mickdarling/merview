@@ -168,6 +168,7 @@ function setupPageCleanup() {
  */
 async function handleRemoteURLParam(remoteURL) {
     let resolvedURL = remoteURL;
+    const originalURL = remoteURL; // Preserve original for URL bar
 
     // Resolve relative doc paths (e.g., "docs/about.md") to full URLs
     if (isRelativeDocPath(remoteURL)) {
@@ -188,8 +189,8 @@ async function handleRemoteURLParam(remoteURL) {
         // Show modal for private repo content
         showPrivateUrlModal(resolvedURL);
     } else {
-        // Load normally with shareable URL
-        loadMarkdownFromURL(resolvedURL);
+        // Load normally - pass both resolved URL (for fetching) and original URL (for URL bar)
+        loadMarkdownFromURL(resolvedURL, originalURL);
     }
 }
 

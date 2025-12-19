@@ -175,12 +175,22 @@ renderer.heading = function(text, level) {
  * for defense-in-depth, though DOMPurify also sanitizes the entire output in renderMarkdown().
  */
 renderer.link = function(href, title, text) {
-    // Resolve relative URLs if we have a source URL context
+    // Resolve relative URLs if we have a source URL context from a REMOTE origin
+    // Don't resolve for same-origin URLs (local docs) - they work fine with normal navigation
     let resolvedHref = href;
     if (state.loadedFromURL && isRelativeUrl(href)) {
-        const resolved = resolveRelativeUrl(href, state.loadedFromURL);
-        if (resolved) {
-            resolvedHref = resolved;
+        try {
+            const sourceUrl = new URL(state.loadedFromURL);
+            const isSameOrigin = sourceUrl.origin === globalThis.location.origin;
+            // Only resolve relative URLs for remote/external sources
+            if (!isSameOrigin) {
+                const resolved = resolveRelativeUrl(href, state.loadedFromURL);
+                if (resolved) {
+                    resolvedHref = resolved;
+                }
+            }
+        } catch {
+            // Invalid URL - don't resolve
         }
     }
 
@@ -191,8 +201,9 @@ renderer.link = function(href, title, text) {
     // Uses DOMPurify inline to preserve legitimate formatting while removing dangerous content
     const safeText = DOMPurify.sanitize(text || '');
 
-    // Check if this is a markdown link that should open in Merview
-    if (isMarkdownUrl(resolvedHref)) {
+    // Check if this is a remote markdown link that should open in Merview
+    // Don't intercept root-relative URLs (/?url=..., /docs/...) - they navigate normally
+    if (isMarkdownUrl(resolvedHref) && !resolvedHref.startsWith('/')) {
         // Add data attribute for JavaScript click handler to intercept
         return `<a href="${escapeHtml(resolvedHref)}"${titleAttr} data-merview-link="true">${safeText}</a>`;
     }
@@ -207,12 +218,22 @@ renderer.link = function(href, title, text) {
  * like "./images/diagram.png" are resolved to absolute URLs so images display correctly.
  */
 renderer.image = function(href, title, text) {
-    // Resolve relative URLs if we have a source URL context
+    // Resolve relative URLs if we have a source URL context from a REMOTE origin
+    // Don't resolve for same-origin URLs (local docs) - they work fine with normal navigation
     let resolvedHref = href;
     if (state.loadedFromURL && isRelativeUrl(href)) {
-        const resolved = resolveRelativeUrl(href, state.loadedFromURL);
-        if (resolved) {
-            resolvedHref = resolved;
+        try {
+            const sourceUrl = new URL(state.loadedFromURL);
+            const isSameOrigin = sourceUrl.origin === globalThis.location.origin;
+            // Only resolve relative URLs for remote/external sources
+            if (!isSameOrigin) {
+                const resolved = resolveRelativeUrl(href, state.loadedFromURL);
+                if (resolved) {
+                    resolvedHref = resolved;
+                }
+            }
+        } catch {
+            // Invalid URL - don't resolve
         }
     }
 
@@ -935,6 +956,22 @@ function attachMarkdownLinkHandlers(wrapper) {
             e.preventDefault();
             const url = link.getAttribute('href');
             if (url) {
+                // Debug: log what's being clicked
+                console.log('[Merview Link] Clicked:', url);
+
+                // Safety: Don't double-wrap URLs that already have ?url= or are same-origin
+                try {
+                    const urlObj = new URL(url, globalThis.location.origin);
+                    if (urlObj.origin === globalThis.location.origin) {
+                        // Same-origin URL - just navigate directly
+                        console.log('[Merview Link] Same-origin, navigating directly');
+                        globalThis.location.href = url;
+                        return;
+                    }
+                } catch {
+                    // Invalid URL - continue with wrapping
+                }
+
                 // Navigate within Merview by updating the URL parameter
                 // This triggers a page load with the new content
                 const newUrl = new URL(globalThis.location.href);
@@ -944,6 +981,7 @@ function attachMarkdownLinkHandlers(wrapper) {
                 // URL clean also makes sharing links easier. If we need to preserve specific params
                 // in the future (e.g., ?style=), we can use URLSearchParams selectively.
                 newUrl.search = `?url=${encodeURIComponent(url)}`;
+                console.log('[Merview Link] Wrapping in ?url=:', newUrl.toString());
                 globalThis.location.href = newUrl.toString();
             }
         });

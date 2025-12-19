@@ -240,6 +240,10 @@ export function isRelativeUrl(url) {
     // Anchor links (starting with #) should not be resolved - they're page-internal
     if (url.startsWith('#')) return false;
 
+    // Root-relative URLs (starting with /) should not be resolved - they're absolute paths
+    // Examples: /docs/about.md, /?sample, /?url=...
+    if (url.startsWith('/')) return false;
+
     // Absolute URLs start with protocol (http://, https://, etc.) or protocol-relative (//)
     // Also check for data: URIs, javascript:, mailto:, tel:, and other URI schemes
     const absolutePatterns = /^([a-z][a-z0-9+.-]*:|\/\/)/i;
