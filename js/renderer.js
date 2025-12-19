@@ -175,8 +175,10 @@ renderer.heading = function(text, level) {
  * for defense-in-depth, though DOMPurify also sanitizes the entire output in renderMarkdown().
  */
 renderer.link = function(href, title, text) {
-    // Resolve relative URLs if we have a source URL context from a REMOTE origin
-    // Don't resolve for same-origin URLs (local docs) - they work fine with normal navigation
+    // Resolve relative URLs ONLY for remote sources (not same-origin)
+    // For local docs, relative links should use normal browser navigation
+    // Example: local doc at /?url=docs/about.md with link to ./guide.md
+    //   → Should navigate to /?url=docs/guide.md (not resolve against localhost)
     let resolvedHref = href;
     if (state.loadedFromURL && isRelativeUrl(href)) {
         try {
@@ -218,8 +220,8 @@ renderer.link = function(href, title, text) {
  * like "./images/diagram.png" are resolved to absolute URLs so images display correctly.
  */
 renderer.image = function(href, title, text) {
-    // Resolve relative URLs if we have a source URL context from a REMOTE origin
-    // Don't resolve for same-origin URLs (local docs) - they work fine with normal navigation
+    // Resolve relative URLs ONLY for remote sources (not same-origin)
+    // For local docs, relative image paths work fine with normal browser resolution
     let resolvedHref = href;
     if (state.loadedFromURL && isRelativeUrl(href)) {
         try {
@@ -956,15 +958,11 @@ function attachMarkdownLinkHandlers(wrapper) {
             e.preventDefault();
             const url = link.getAttribute('href');
             if (url) {
-                // Debug: log what's being clicked
-                console.log('[Merview Link] Clicked:', url);
-
                 // Safety: Don't double-wrap URLs that already have ?url= or are same-origin
                 try {
                     const urlObj = new URL(url, globalThis.location.origin);
                     if (urlObj.origin === globalThis.location.origin) {
                         // Same-origin URL - just navigate directly
-                        console.log('[Merview Link] Same-origin, navigating directly');
                         globalThis.location.href = url;
                         return;
                     }
@@ -981,7 +979,6 @@ function attachMarkdownLinkHandlers(wrapper) {
                 // URL clean also makes sharing links easier. If we need to preserve specific params
                 // in the future (e.g., ?style=), we can use URLSearchParams selectively.
                 newUrl.search = `?url=${encodeURIComponent(url)}`;
-                console.log('[Merview Link] Wrapping in ?url=:', newUrl.toString());
                 globalThis.location.href = newUrl.toString();
             }
         });
