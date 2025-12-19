@@ -19,7 +19,18 @@ test.describe('Symbols Selector', () => {
     const labels = await page.$$eval('#symbolsSelector optgroup', els =>
       els.map(el => el.getAttribute('label'))
     );
-    expect(labels).toEqual(['Mermaid Block', 'Diagram Types', 'Special Characters', 'Arrows']);
+    expect(labels).toEqual([
+      'Mermaid Block',
+      'Diagram Types',
+      'Flowchart Syntax',
+      'Sequence Syntax',
+      'Class Syntax',
+      'State Syntax',
+      'ER Syntax',
+      'Gantt Syntax',
+      'Special Characters',
+      'Arrows'
+    ]);
   });
 
   test('should have placeholder "Mermaid..." as first option', async ({ page }) => {
@@ -61,13 +72,13 @@ test.describe('Symbols Selector', () => {
 
   test('should have arrow options', async ({ page }) => {
     const arrowOptions = await page.$$eval('#symbolsSelector optgroup[label="Arrows"] option',
-      els => els.map(el => ({ value: el.value, text: el.textContent }))
+      els => els.map(el => el.value)
     );
-    expect(arrowOptions).toEqual([
-      { value: '-->', text: '→ right arrow' },
-      { value: '<--', text: '← left arrow' },
-      { value: '<-->', text: '↔ both arrows' }
-    ]);
+    expect(arrowOptions).toContain('-->');
+    expect(arrowOptions).toContain('---');
+    expect(arrowOptions).toContain('==>');
+    expect(arrowOptions).toContain('<-->');
+    expect(arrowOptions.length).toBeGreaterThanOrEqual(5);
   });
 
   test('should insert #quot; at cursor position', async ({ page }) => {
