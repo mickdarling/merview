@@ -540,24 +540,27 @@ graph TD
         });
 
         test('should handle case-insensitive extensions', async ({ page }) => {
-            // Helper to check extension type - avoids deep nesting
-            const checkExtension = (filename) => page.evaluate((name) => {
-                const lower = name.toLowerCase();
-                return {
-                    isMermaid: lower.endsWith('.mermaid') || lower.endsWith('.mmd'),
-                    isMarkdown: lower.endsWith('.md') || lower.endsWith('.markdown')
-                };
-            }, filename);
+            // Test extension detection with various case combinations
+            // Using direct string methods to avoid nested function callbacks
+            const testCases = [
+                { name: 'DIAGRAM.MERMAID', expectMermaid: true },
+                { name: 'Diagram.Mmd', expectMermaid: true },
+                { name: 'Document.MD', expectMarkdown: true },
+                { name: 'file.MARKDOWN', expectMarkdown: true }
+            ];
 
-            const mermaidUpper = await checkExtension('DIAGRAM.MERMAID');
-            const mermaidMixed = await checkExtension('Diagram.Mmd');
-            const markdownUpper = await checkExtension('Document.MD');
-            const markdownLong = await checkExtension('file.MARKDOWN');
+            for (const tc of testCases) {
+                const lower = tc.name.toLowerCase();
+                const isMermaid = lower.endsWith('.mermaid') || lower.endsWith('.mmd');
+                const isMarkdown = lower.endsWith('.md') || lower.endsWith('.markdown');
 
-            expect(mermaidUpper.isMermaid).toBe(true);
-            expect(mermaidMixed.isMermaid).toBe(true);
-            expect(markdownUpper.isMarkdown).toBe(true);
-            expect(markdownLong.isMarkdown).toBe(true);
+                if (tc.expectMermaid) {
+                    expect(isMermaid).toBe(true);
+                }
+                if (tc.expectMarkdown) {
+                    expect(isMarkdown).toBe(true);
+                }
+            }
         });
     });
 });
