@@ -23,18 +23,12 @@ const {
     WAIT_TIMES
 } = require('../helpers/test-utils');
 
-test.describe('Mermaid Style Change Flicker - Issue #371', () => {
-    test.beforeEach(async ({ page }) => {
-        await page.setViewportSize({ width: 1280, height: 720 });
-        await waitForPageReady(page);
-        await waitForGlobalFunction(page, 'renderMarkdown');
-    });
-
-    /**
-     * Helper to set up a page with mermaid diagrams and wait for them to render
-     */
-    async function setupMermaidContent(page) {
-        const content = `# Test Document
+/**
+ * Helper to set up a page with mermaid diagrams and wait for them to render
+ * Moved to module scope to comply with S7721 (no async functions inside describe blocks)
+ */
+async function setupMermaidContent(page) {
+    const content = `# Test Document
 
 \`\`\`mermaid
 graph TD
@@ -50,16 +44,23 @@ sequenceDiagram
     Bob-->>Alice: Hi back
 \`\`\`
 `;
-        await setCodeMirrorContent(page, content);
-        await renderMarkdownAndWait(page, WAIT_TIMES.EXTRA_LONG);
+    await setCodeMirrorContent(page, content);
+    await renderMarkdownAndWait(page, WAIT_TIMES.EXTRA_LONG);
 
-        // Wait for diagrams to fully render
-        await page.waitForFunction(() => {
-            const diagrams = document.querySelectorAll('.mermaid');
-            return diagrams.length >= 2 &&
-                   Array.from(diagrams).every(d => d.dataset.mermaidRendered === 'true');
-        }, { timeout: 10000 });
-    }
+    // Wait for diagrams to fully render
+    await page.waitForFunction(() => {
+        const diagrams = document.querySelectorAll('.mermaid');
+        return diagrams.length >= 2 &&
+               Array.from(diagrams).every(d => d.dataset.mermaidRendered === 'true');
+    }, { timeout: 10000 });
+}
+
+test.describe('Mermaid Style Change Flicker - Issue #371', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.setViewportSize({ width: 1280, height: 720 });
+        await waitForPageReady(page);
+        await waitForGlobalFunction(page, 'renderMarkdown');
+    });
 
     test('mermaid diagrams should be fully rendered before style change', async ({ page }) => {
         await setupMermaidContent(page);
@@ -85,62 +86,60 @@ sequenceDiagram
     test('should re-render mermaid diagrams smoothly when changing preview style', async ({ page }) => {
         await setupMermaidContent(page);
 
-        // Set up mutation observer to detect DOM changes during style change
-        const renderBehavior = await page.evaluate(async () => {
-            return new Promise((resolve) => {
-                let sawLoadingClass = false;
-                let finalState = 'unknown';
+        // Set up observer and trigger style change
+        await page.evaluate(() => {
+            const state = { sawLoadingClass: false };
+            const diagrams = document.querySelectorAll('.mermaid');
 
-                const diagrams = document.querySelectorAll('.mermaid');
-
-                // Create mutation observer to watch for render behavior
-                const observer = new MutationObserver((mutations) => {
-                    for (const mutation of mutations) {
-                        const target = mutation.target;
-
-                        // Check for loading class (indicates slow/visible re-render)
-                        if (target.classList?.contains('mermaid-loading')) {
-                            sawLoadingClass = true;
-                        }
-                    }
-                });
-
-                // Observe all mermaid diagrams
-                diagrams.forEach(diagram => {
-                    observer.observe(diagram, {
-                        childList: true,
-                        subtree: true,
-                        attributes: true,
-                        characterData: true,
-                        attributeFilter: ['data-mermaid-rendered', 'class']
-                    });
-                });
-
-                // Change the preview style
-                const styleSelector = document.getElementById('styleSelector');
-                if (styleSelector) {
-                    // Get current value and change to something different
-                    const currentValue = styleSelector.value;
-                    const options = Array.from(styleSelector.options);
-                    const newOption = options.find(o => o.value !== currentValue && o.value !== '');
-                    if (newOption) {
-                        styleSelector.value = newOption.value;
-                        styleSelector.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
+            // Named callback to reduce nesting depth (S2004)
+            function handleMutation(mutation) {
+                if (mutation.target.classList?.contains('mermaid-loading')) {
+                    state.sawLoadingClass = true;
                 }
+            }
 
-                // Wait for any re-render to complete
-                setTimeout(() => {
-                    observer.disconnect();
-                    const diagram = document.querySelector('.mermaid');
-                    finalState = diagram?.dataset.mermaidRendered || 'missing';
-                    resolve({
-                        sawLoadingClass,
-                        finalState,
-                        hasSvg: diagram?.querySelector('svg') !== null
-                    });
-                }, 2000);
-            });
+            const observer = new MutationObserver(mutations => mutations.forEach(handleMutation));
+            const observerConfig = {
+                childList: true, subtree: true, attributes: true,
+                characterData: true, attributeFilter: ['data-mermaid-rendered', 'class']
+            };
+
+            for (const diagram of diagrams) {
+                observer.observe(diagram, observerConfig);
+            }
+
+            // Store state globally for later retrieval
+            globalThis.__testObserverState = state;
+            globalThis.__testObserver = observer;
+
+            // Change the preview style
+            const styleSelector = document.getElementById('styleSelector');
+            if (styleSelector) {
+                const currentValue = styleSelector.value;
+                const newOption = Array.from(styleSelector.options)
+                    .find(o => o.value !== currentValue && o.value !== '');
+                if (newOption) {
+                    styleSelector.value = newOption.value;
+                    styleSelector.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        });
+
+        // Wait for re-render to complete
+        await page.waitForTimeout(2000);
+
+        // Collect results
+        const renderBehavior = await page.evaluate(() => {
+            globalThis.__testObserver?.disconnect();
+            const diagram = document.querySelector('.mermaid');
+            const result = {
+                sawLoadingClass: globalThis.__testObserverState?.sawLoadingClass || false,
+                finalState: diagram?.dataset.mermaidRendered || 'missing',
+                hasSvg: diagram?.querySelector('svg') !== null
+            };
+            delete globalThis.__testObserverState;
+            delete globalThis.__testObserver;
+            return result;
         });
 
         console.log('Render behavior results:', renderBehavior);
@@ -183,27 +182,26 @@ sequenceDiagram
     test('diagram should end up in rendered state after style change', async ({ page }) => {
         await setupMermaidContent(page);
 
-        // Monitor final state after style change
-        const finalState = await page.evaluate(async () => {
-            return new Promise((resolve) => {
-                // Trigger style change
-                const styleSelector = document.getElementById('styleSelector');
-                if (styleSelector) {
-                    const currentIndex = styleSelector.selectedIndex;
-                    styleSelector.selectedIndex = currentIndex === 0 ? 1 : 0;
-                    styleSelector.dispatchEvent(new Event('change', { bubbles: true }));
-                }
+        // Trigger style change
+        await page.evaluate(() => {
+            const styleSelector = document.getElementById('styleSelector');
+            if (styleSelector) {
+                const currentIndex = styleSelector.selectedIndex;
+                styleSelector.selectedIndex = currentIndex === 0 ? 1 : 0;
+                styleSelector.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
 
-                // Wait for re-render to complete
-                setTimeout(() => {
-                    const diagrams = document.querySelectorAll('.mermaid');
-                    const states = Array.from(diagrams).map(d => ({
-                        rendered: d.dataset.mermaidRendered,
-                        hasSvg: d.querySelector('svg') !== null
-                    }));
-                    resolve(states);
-                }, 2000);
-            });
+        // Wait for re-render to complete
+        await page.waitForTimeout(2000);
+
+        // Collect final state
+        const finalState = await page.evaluate(() => {
+            const diagrams = document.querySelectorAll('.mermaid');
+            return Array.from(diagrams).map(d => ({
+                rendered: d.dataset.mermaidRendered,
+                hasSvg: d.querySelector('svg') !== null
+            }));
         });
 
         console.log('Final diagram states:', finalState);
@@ -218,44 +216,53 @@ sequenceDiagram
     test('rapid style changes should not cause cumulative flicker', async ({ page }) => {
         await setupMermaidContent(page);
 
-        // Rapidly change styles multiple times
-        const flickerCount = await page.evaluate(async () => {
-            return new Promise((resolve) => {
-                let pendingStateCount = 0;
+        // Set up observer to track pending states
+        await page.evaluate(() => {
+            const state = { pendingStateCount: 0 };
+            const diagrams = document.querySelectorAll('.mermaid');
 
-                const diagrams = document.querySelectorAll('.mermaid');
+            // Named callback to reduce nesting depth (S2004)
+            function handleMutation(mutation) {
+                if (mutation.target.dataset?.mermaidRendered === 'pending') {
+                    state.pendingStateCount++;
+                }
+            }
 
-                const observer = new MutationObserver((mutations) => {
-                    for (const mutation of mutations) {
-                        if (mutation.target.dataset?.mermaidRendered === 'pending') {
-                            pendingStateCount++;
-                        }
-                    }
+            const observer = new MutationObserver(mutations => mutations.forEach(handleMutation));
+
+            for (const diagram of diagrams) {
+                observer.observe(diagram, {
+                    attributes: true,
+                    attributeFilter: ['data-mermaid-rendered']
                 });
+            }
 
-                diagrams.forEach(diagram => {
-                    observer.observe(diagram, {
-                        attributes: true,
-                        attributeFilter: ['data-mermaid-rendered']
-                    });
-                });
+            globalThis.__testObserverState = state;
+            globalThis.__testObserver = observer;
+        });
 
-                // Rapidly toggle styles
+        // Rapidly toggle styles
+        for (let i = 0; i < 5; i++) {
+            await page.evaluate((index) => {
                 const styleSelector = document.getElementById('styleSelector');
                 if (styleSelector) {
-                    for (let i = 0; i < 5; i++) {
-                        setTimeout(() => {
-                            styleSelector.selectedIndex = i % styleSelector.options.length;
-                            styleSelector.dispatchEvent(new Event('change', { bubbles: true }));
-                        }, i * 100);
-                    }
+                    styleSelector.selectedIndex = index % styleSelector.options.length;
+                    styleSelector.dispatchEvent(new Event('change', { bubbles: true }));
                 }
+            }, i);
+            await page.waitForTimeout(100);
+        }
 
-                setTimeout(() => {
-                    observer.disconnect();
-                    resolve(pendingStateCount);
-                }, 2000);
-            });
+        // Wait for all changes to settle
+        await page.waitForTimeout(1500);
+
+        // Collect results
+        const flickerCount = await page.evaluate(() => {
+            globalThis.__testObserver?.disconnect();
+            const count = globalThis.__testObserverState?.pendingStateCount || 0;
+            delete globalThis.__testObserverState;
+            delete globalThis.__testObserver;
+            return count;
         });
 
         // After fix: should be 0 (no pending states)
@@ -267,50 +274,45 @@ sequenceDiagram
     test('mermaid diagrams should remain visible during style transition', async ({ page }) => {
         await setupMermaidContent(page);
 
-        // Take visual snapshots to detect flicker
-        // This captures the diagram visibility state at multiple points
-        const visibilityDuringChange = await page.evaluate(async () => {
-            return new Promise((resolve) => {
-                const snapshots = [];
-
-                const captureState = () => {
-                    const diagrams = document.querySelectorAll('.mermaid');
-                    return Array.from(diagrams).map(d => ({
-                        hasSvg: d.querySelector('svg') !== null,
-                        svgVisible: d.querySelector('svg')?.style.display !== 'none',
-                        hasLoadingClass: d.classList.contains('mermaid-loading'),
-                        rendered: d.dataset.mermaidRendered
-                    }));
-                };
-
-                // Capture initial state
-                snapshots.push({ time: 'before', state: captureState() });
-
-                // Change style
-                const styleSelector = document.getElementById('styleSelector');
-                if (styleSelector) {
-                    styleSelector.selectedIndex = 1;
-                    styleSelector.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-
-                // Capture states at intervals during re-render
-                const intervals = [50, 100, 200, 500, 1000];
-                intervals.forEach(ms => {
-                    setTimeout(() => {
-                        snapshots.push({ time: `${ms}ms`, state: captureState() });
-                    }, ms);
-                });
-
-                setTimeout(() => {
-                    resolve(snapshots);
-                }, 1500);
+        // Helper to capture diagram visibility state
+        const captureState = async (label) => {
+            const state = await page.evaluate(() => {
+                const diagrams = document.querySelectorAll('.mermaid');
+                return Array.from(diagrams).map(d => ({
+                    hasSvg: d.querySelector('svg') !== null,
+                    svgVisible: d.querySelector('svg')?.style.display !== 'none',
+                    hasLoadingClass: d.classList.contains('mermaid-loading'),
+                    rendered: d.dataset.mermaidRendered
+                }));
             });
+            return { time: label, state };
+        };
+
+        const snapshots = [];
+
+        // Capture initial state
+        snapshots.push(await captureState('before'));
+
+        // Change style
+        await page.evaluate(() => {
+            const styleSelector = document.getElementById('styleSelector');
+            if (styleSelector) {
+                styleSelector.selectedIndex = 1;
+                styleSelector.dispatchEvent(new Event('change', { bubbles: true }));
+            }
         });
 
-        console.log('Visibility snapshots:', JSON.stringify(visibilityDuringChange, null, 2));
+        // Capture states at intervals during re-render
+        const intervals = [50, 100, 200, 500, 1000];
+        for (const ms of intervals) {
+            await page.waitForTimeout(ms - (intervals[intervals.indexOf(ms) - 1] || 0));
+            snapshots.push(await captureState(`${ms}ms`));
+        }
+
+        console.log('Visibility snapshots:', JSON.stringify(snapshots, null, 2));
 
         // All snapshots should show diagrams with SVGs visible
-        for (const snapshot of visibilityDuringChange) {
+        for (const snapshot of snapshots) {
             for (const diagram of snapshot.state) {
                 expect(diagram.hasSvg).toBe(true);
                 expect(diagram.hasLoadingClass).toBe(false);
@@ -353,7 +355,7 @@ graph TD
             const text = svg.querySelector('text, .nodeLabel');
             return {
                 hasSvg: true,
-                rectFill: rect?.getAttribute('fill') || window.getComputedStyle(rect).fill,
+                rectFill: rect?.getAttribute('fill') || globalThis.getComputedStyle(rect).fill,
                 textContent: text?.textContent
             };
         });
@@ -417,10 +419,8 @@ graph TD
             return diagram?.dataset.mermaidRendered === 'true';
         }, { timeout: 10000 });
 
-        // Get the current mermaid theme from state
-        const initialTheme = await page.evaluate(() => {
-            return window.state?.mermaidTheme || 'unknown';
-        });
+        // Note: We just need to verify the diagram is rendered after style changes
+        // The initial theme value is not needed for this test's assertions
 
         // Change style and check theme updates
         await page.evaluate(() => {
@@ -439,7 +439,7 @@ graph TD
             return {
                 rendered: diagram?.dataset.mermaidRendered,
                 hasSvg: diagram?.querySelector('svg') !== null,
-                theme: window.state?.mermaidTheme
+                theme: globalThis.state?.mermaidTheme
             };
         });
 
@@ -475,39 +475,49 @@ def greet():
         await setCodeMirrorContent(page, content);
         await renderMarkdownAndWait(page, WAIT_TIMES.LONG);
 
-        // Monitor for any content removal during style change
-        const codeBlockFlicker = await page.evaluate(async () => {
-            return new Promise((resolve) => {
-                let contentRemoved = false;
+        // Set up observer to monitor for content removal
+        await page.evaluate(() => {
+            const state = { contentRemoved: false };
+            const codeBlocks = document.querySelectorAll('pre code');
+            const originalCount = codeBlocks.length;
 
-                const codeBlocks = document.querySelectorAll('pre code');
-                const originalContent = Array.from(codeBlocks).map(cb => cb.innerHTML);
-
-                const observer = new MutationObserver(() => {
-                    const currentContent = Array.from(document.querySelectorAll('pre code'))
-                        .map(cb => cb.innerHTML);
-                    if (currentContent.length < originalContent.length) {
-                        contentRemoved = true;
-                    }
-                });
-
-                const preview = document.getElementById('preview');
-                if (preview) {
-                    observer.observe(preview, { childList: true, subtree: true });
+            // Named callback to reduce nesting depth (S2004)
+            function handleMutation() {
+                const currentCount = document.querySelectorAll('pre code').length;
+                if (currentCount < originalCount) {
+                    state.contentRemoved = true;
                 }
+            }
 
-                // Change style
-                const styleSelector = document.getElementById('styleSelector');
-                if (styleSelector) {
-                    styleSelector.selectedIndex = 1;
-                    styleSelector.dispatchEvent(new Event('change', { bubbles: true }));
-                }
+            const observer = new MutationObserver(handleMutation);
+            const preview = document.getElementById('preview');
+            if (preview) {
+                observer.observe(preview, { childList: true, subtree: true });
+            }
 
-                setTimeout(() => {
-                    observer.disconnect();
-                    resolve({ contentRemoved });
-                }, 1500);
-            });
+            globalThis.__testObserverState = state;
+            globalThis.__testObserver = observer;
+        });
+
+        // Change style
+        await page.evaluate(() => {
+            const styleSelector = document.getElementById('styleSelector');
+            if (styleSelector) {
+                styleSelector.selectedIndex = 1;
+                styleSelector.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+
+        // Wait for any changes to settle
+        await page.waitForTimeout(1500);
+
+        // Collect results
+        const codeBlockFlicker = await page.evaluate(() => {
+            globalThis.__testObserver?.disconnect();
+            const result = { contentRemoved: globalThis.__testObserverState?.contentRemoved || false };
+            delete globalThis.__testObserverState;
+            delete globalThis.__testObserver;
+            return result;
         });
 
         // Code blocks currently also get re-rendered, but they don't "flicker"
