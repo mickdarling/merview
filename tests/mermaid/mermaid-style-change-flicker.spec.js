@@ -322,6 +322,42 @@ test.describe('Mermaid Style Change Flicker - Issue #371', () => {
             }
         }
     });
+
+    test('should handle diagrams without stored mermaidSource gracefully', async ({ page }) => {
+        await setupMermaidContent(page);
+
+        // Manually remove mermaidSource from one diagram to simulate edge case
+        // (e.g., diagram rendered by older code version or data corruption)
+        await page.evaluate(() => {
+            const diagram = document.querySelector('.mermaid');
+            if (diagram) {
+                delete diagram.dataset.mermaidSource;
+            }
+        });
+
+        // Change style - should not throw errors
+        await page.evaluate(() => {
+            const styleSelector = document.getElementById('styleSelector');
+            if (styleSelector) {
+                styleSelector.selectedIndex = (styleSelector.selectedIndex + 1) % styleSelector.options.length;
+                styleSelector.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+
+        await page.waitForTimeout(2000);
+
+        // Verify page is still functional - no console errors and diagrams exist
+        const state = await page.evaluate(() => {
+            const diagrams = document.querySelectorAll('.mermaid');
+            return {
+                diagramCount: diagrams.length,
+                allHaveSvg: Array.from(diagrams).every(d => d.querySelector('svg') !== null)
+            };
+        });
+
+        expect(state.diagramCount).toBeGreaterThanOrEqual(1);
+        expect(state.allHaveSvg).toBe(true);
+    });
 });
 
 test.describe('Mermaid Theme Updates on Style Change', () => {

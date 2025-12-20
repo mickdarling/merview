@@ -881,7 +881,8 @@ async function lazyRenderMermaid(element) {
         }
 
         // Store original mermaid code for potential re-renders (Issue #371)
-        // This allows theme updates without full markdown re-render
+        // Used by renderMarkdown() optimization to re-render diagrams on style changes
+        // without replacing the entire DOM (prevents flicker)
         if (!element.dataset.mermaidSource) {
             element.dataset.mermaidSource = element.textContent.trim();
         }
@@ -1253,19 +1254,17 @@ export async function renderMarkdown() {
 
         // OPTIMIZATION: Skip full re-render if content hasn't changed (Issue #371)
         // This prevents mermaid diagram flickering on style-only changes
-        if (markdown === state.lastRenderedContent && wrapper?.querySelector('.mermaid[data-mermaid-rendered="true"]')) {
+        // Only target diagrams with stored source (set during first render in lazyRenderMermaid)
+        const selector = '.mermaid[data-mermaid-rendered="true"][data-mermaid-source]';
+        if (markdown === state.lastRenderedContent && wrapper?.querySelector(selector)) {
             // Content unchanged and diagrams already rendered - just update mermaid themes
-            const diagrams = wrapper.querySelectorAll('.mermaid[data-mermaid-rendered="true"]');
+            const diagrams = wrapper.querySelectorAll(selector);
             if (diagrams.length > 0) {
                 // Re-render mermaid diagrams with current theme
                 await Promise.all(Array.from(diagrams).map(async (element) => {
                     try {
-                        // Get stored original mermaid source code
+                        // Get stored original mermaid source code (guaranteed to exist by selector)
                         const mermaidSource = element.dataset.mermaidSource;
-                        if (!mermaidSource) {
-                            // No stored source - can't re-render without full refresh
-                            return;
-                        }
 
                         // Reset state to allow re-render
                         element.dataset.mermaidRendered = 'pending';
