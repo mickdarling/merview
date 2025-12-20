@@ -52,7 +52,7 @@ jobs:
     # - PRs targeting main (pre-merge gate from develop)
     # - Pushes to main (post-merge verification)
     # - Manual workflow_dispatch with force_e2e enabled
-    if: (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main') || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.event.inputs.force_e2e == 'true') || (github.event_name == 'workflow_dispatch' && github.event.inputs.force_e2e == 'true')
+    if: (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main') || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.event.inputs.force_e2e == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
