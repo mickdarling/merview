@@ -880,6 +880,12 @@ async function lazyRenderMermaid(element) {
             diagramCode = '%%{init: {"flowchart": {"htmlLabels": false}}}%%\n' + diagramCode;
         }
 
+        // Store original mermaid code for potential re-renders (Issue #371)
+        // This allows theme updates without full markdown re-render
+        if (!element.dataset.mermaidSource) {
+            element.dataset.mermaidSource = element.textContent.trim();
+        }
+
         const { svg } = await mermaid.render(element.id + '-svg', diagramCode);
         // Use two-pass sanitization for better security
         const sanitizedSvg = sanitizeMermaidSvg(svg);
@@ -1248,12 +1254,25 @@ export async function renderMarkdown() {
         // OPTIMIZATION: Skip full re-render if content hasn't changed (Issue #371)
         // This prevents mermaid diagram flickering on style-only changes
         if (markdown === state.lastRenderedContent && wrapper?.querySelector('.mermaid[data-mermaid-rendered="true"]')) {
-            // Content unchanged and diagrams already rendered - just update mermaid themes if needed
+            // Content unchanged and diagrams already rendered - just update mermaid themes
             const diagrams = wrapper.querySelectorAll('.mermaid[data-mermaid-rendered="true"]');
             if (diagrams.length > 0) {
-                // Re-render mermaid diagrams with current theme (preserves SVGs, updates colors)
+                // Re-render mermaid diagrams with current theme
                 await Promise.all(Array.from(diagrams).map(async (element) => {
                     try {
+                        // Get stored original mermaid source code
+                        const mermaidSource = element.dataset.mermaidSource;
+                        if (!mermaidSource) {
+                            // No stored source - can't re-render without full refresh
+                            return;
+                        }
+
+                        // Reset state to allow re-render
+                        element.dataset.mermaidRendered = 'pending';
+
+                        // Restore original mermaid code for re-parsing
+                        element.textContent = mermaidSource;
+
                         await lazyRenderMermaid(element);
                     } catch {
                         // Individual diagram errors are handled in lazyRenderMermaid
