@@ -1051,6 +1051,48 @@ function attachMermaidEventListeners(wrapper) {
 }
 
 /**
+ * Check if a URL is already a Merview URL with ?url= parameter
+ * Used to avoid double-encoding when clicking links to merview.com
+ * @param {string} url - URL to check
+ * @returns {boolean} True if URL is a Merview URL with url parameter
+ * @private
+ */
+function isMerviewUrl(url) {
+    try {
+        const parsedUrl = new URL(url);
+        return parsedUrl.hostname === 'merview.com' && parsedUrl.searchParams.has('url');
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Resolve a relative URL to the appropriate target for Merview navigation
+ * @param {string} url - The URL to resolve
+ * @returns {string} Resolved URL for use in ?url= parameter
+ * @private
+ */
+function resolveNavigationTarget(url) {
+    if (!state.loadedFromURL || !isRelativeUrl(url)) {
+        return url;
+    }
+
+    try {
+        const resolved = resolveRelativeUrl(url, state.loadedFromURL);
+        if (!resolved) {
+            return url;
+        }
+        // Same-origin: use path without origin (e.g., "docs/other.md")
+        // Remote: use full resolved URL
+        return isSameOriginUrl(resolved)
+            ? new URL(resolved).pathname.replace(/^\//, '')
+            : resolved;
+    } catch {
+        return url;
+    }
+}
+
+/**
  * Attach click handlers for markdown links to enable in-app navigation (Issue #345)
  * Links marked with data-merview-link="true" open within Merview instead of navigating away.
  * This allows seamless navigation between related markdown documents.
@@ -1061,55 +1103,19 @@ function attachMarkdownLinkHandlers(wrapper) {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const url = link.getAttribute('href');
-            if (url) {
-                // Check if this is already a Merview URL with ?url= parameter
-                // If so, navigate directly to avoid double-encoding
-                try {
-                    const parsedUrl = new URL(url);
-                    if (parsedUrl.hostname === 'merview.com' && parsedUrl.searchParams.has('url')) {
-                        // Already a Merview URL - navigate directly
-                        globalThis.location.href = url;
-                        return;
-                    }
-                } catch {
-                    // Not a valid absolute URL, continue with normal handling
-                }
+            if (!url) return;
 
-                // Determine the target URL for ?url= parameter
-                let targetUrl = url;
-
-                // For relative URLs (./other.md, ../README.md), resolve against source document
-                // This handles same-origin docs loaded via ?url=docs/guide.md
-                if (state.loadedFromURL && isRelativeUrl(url)) {
-                    try {
-                        // Resolve relative URL against the source document
-                        const resolved = resolveRelativeUrl(url, state.loadedFromURL);
-                        if (resolved) {
-                            // Extract just the path for same-origin URLs
-                            if (isSameOriginUrl(resolved)) {
-                                // Same-origin: use path without origin (e.g., "docs/other.md")
-                                targetUrl = new URL(resolved).pathname.replace(/^\//, '');
-                            } else {
-                                // Remote: use full resolved URL
-                                targetUrl = resolved;
-                            }
-                        }
-                    } catch {
-                        // Resolution failed - use original URL
-                    }
-                }
-
-                // Navigate within Merview by updating the URL parameter
-                // This triggers a page load with the new content
-                const newUrl = new URL(globalThis.location.href);
-                // Intentionally replace the entire query string rather than preserving other params.
-                // Rationale: The ?url= param is the primary content source. Other params like ?style=
-                // are user preferences that should persist in localStorage, not the URL. Keeping the
-                // URL clean also makes sharing links easier. If we need to preserve specific params
-                // in the future (e.g., ?style=), we can use URLSearchParams selectively.
-                newUrl.search = `?url=${encodeURIComponent(targetUrl)}`;
-                globalThis.location.href = newUrl.toString();
+            // Already a Merview URL - navigate directly to avoid double-encoding
+            if (isMerviewUrl(url)) {
+                globalThis.location.href = url;
+                return;
             }
+
+            // Resolve relative URLs and navigate within Merview
+            const targetUrl = resolveNavigationTarget(url);
+            const newUrl = new URL(globalThis.location.href);
+            newUrl.search = `?url=${encodeURIComponent(targetUrl)}`;
+            globalThis.location.href = newUrl.toString();
         });
     });
 }
