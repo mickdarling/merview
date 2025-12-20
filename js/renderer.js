@@ -1062,6 +1062,19 @@ function attachMarkdownLinkHandlers(wrapper) {
             e.preventDefault();
             const url = link.getAttribute('href');
             if (url) {
+                // Check if this is already a Merview URL with ?url= parameter
+                // If so, navigate directly to avoid double-encoding
+                try {
+                    const parsedUrl = new URL(url);
+                    if (parsedUrl.hostname === 'merview.com' && parsedUrl.searchParams.has('url')) {
+                        // Already a Merview URL - navigate directly
+                        globalThis.location.href = url;
+                        return;
+                    }
+                } catch {
+                    // Not a valid absolute URL, continue with normal handling
+                }
+
                 // Determine the target URL for ?url= parameter
                 let targetUrl = url;
 
