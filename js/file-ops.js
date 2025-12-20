@@ -25,15 +25,15 @@ import { renderMarkdown } from './renderer.js';
 import { restorePanelWidths } from './resize.js';
 
 /**
- * Validate file type (text or markdown)
- * Security: Only accept specific MIME types or valid markdown extensions
+ * Validate file type (text, markdown, or mermaid)
+ * Security: Only accept specific MIME types or valid extensions
  * Empty MIME type requires valid extension (some browsers don't set MIME for .md files)
  * @param {File} file - The file to validate
- * @returns {boolean} True if file is a valid markdown/text file
+ * @returns {boolean} True if file is a valid markdown/text/mermaid file
  */
 export function isValidMarkdownFile(file) {
-    const validMimeTypes = ['text/plain', 'text/markdown', 'text/x-markdown'];
-    const validExtensions = /\.(md|markdown|txt|text)$/i;
+    const validMimeTypes = ['text/plain', 'text/markdown', 'text/x-markdown', 'text/vnd.mermaid'];
+    const validExtensions = /\.(md|markdown|txt|text|mermaid|mmd)$/i;
 
     // If MIME type is set and valid, accept
     if (file.type && validMimeTypes.includes(file.type)) {
@@ -60,6 +60,10 @@ export async function loadMarkdownFile(file) {
 
         state.currentFilename = file.name;
         state.loadedFromURL = null; // Clear URL source when loading from file
+
+        // Set document mode based on file extension (#367)
+        const isMermaidFile = /\.(mermaid|mmd)$/i.test(file.name);
+        state.documentMode = isMermaidFile ? 'mermaid' : 'markdown';
 
         // Clear URL parameter from address bar when loading local file (Issue #204)
         clearURLParameter();
@@ -227,6 +231,10 @@ export async function loadMarkdownFromURL(url, displayUrl) {
         state.currentFilename = urlPath.split('/').pop() || 'remote.md';
         state.loadedFromURL = normalizedUrl; // Track URL source
 
+        // Set document mode based on file extension (#367)
+        const isMermaidFile = /\.(mermaid|mmd)$/i.test(urlPath);
+        state.documentMode = isMermaidFile ? 'mermaid' : 'markdown';
+
         // Persist the original URL (not normalized) in address bar for sharing (Issue #204)
         // Use displayUrl if provided (preserves relative doc paths like "docs/about.md"),
         // otherwise fall back to the url parameter
@@ -290,28 +298,133 @@ export function saveFile() {
 /**
  * Save As - always prompts for filename
  * Shows a prompt dialog for the user to enter a filename
+ * Supports .md, .markdown, .mermaid, .mmd extensions (#367)
  */
 export function saveFileAs() {
     const defaultName = state.currentFilename || 'document.md';
     const filename = prompt('Save as:', defaultName);
 
     if (filename) {
-        // Ensure .md extension
-        const finalName = filename.endsWith('.md') ? filename : filename + '.md';
+        // Check for valid extensions
+        const hasValidExt = /\.(md|markdown|txt|text|mermaid|mmd)$/i.test(filename);
+        // Default to .md if no recognized extension
+        const finalName = hasValidExt ? filename : filename + '.md';
+
         state.currentFilename = finalName;
+        // Update document mode based on new filename (#367)
+        state.documentMode = /\.(mermaid|mmd)$/i.test(finalName) ? 'mermaid' : 'markdown';
+
         downloadFile(finalName);
     }
 }
 
 /**
+ * Strip mermaid code fences from content if present
+ * Used when saving pure Mermaid content to .mermaid/.mmd files (#367)
+ * Uses string methods instead of regex to avoid ReDoS vulnerability
+ * @param {string} content - The content to process
+ * @returns {string} Content with fences stripped
+ */
+export function stripMermaidFences(content) {
+    const trimmed = content.trim();
+    const OPEN_FENCE = '```mermaid';
+    const CLOSE_FENCE = '```';
+
+    // Check if content starts with ```mermaid
+    if (!trimmed.startsWith(OPEN_FENCE)) {
+        return content;
+    }
+
+    // Find the first newline after the opening fence
+    const firstNewline = trimmed.indexOf('\n');
+    if (firstNewline === -1) {
+        return content;
+    }
+
+    // Verify only whitespace between ```mermaid and the newline
+    const afterOpenFence = trimmed.slice(OPEN_FENCE.length, firstNewline);
+    if (afterOpenFence.trim() !== '') {
+        return content; // Has attributes like ```mermaid {theme: 'forest'}
+    }
+
+    // Find the last closing fence
+    const lastFenceIndex = trimmed.lastIndexOf(CLOSE_FENCE);
+    if (lastFenceIndex <= firstNewline) {
+        return content; // No closing fence found after content
+    }
+
+    // Verify only whitespace after the closing fence
+    const afterCloseFence = trimmed.slice(lastFenceIndex + CLOSE_FENCE.length);
+    if (afterCloseFence.trim() !== '') {
+        return content; // Content after closing fence
+    }
+
+    // Extract and return the content between fences
+    return trimmed.slice(firstNewline + 1, lastFenceIndex).trim();
+}
+
+/**
+ * Check if content has properly formatted mermaid fences (opening + closing)
+ * Used to determine if content needs to be wrapped when saving (#367)
+ * Uses string methods to avoid ReDoS vulnerability
+ * Case-insensitive for opening fence per CommonMark spec
+ * @param {string} content - The content to check
+ * @returns {boolean} True if content has proper mermaid fences
+ */
+export function hasProperMermaidFences(content) {
+    const trimmed = content.trim();
+    const lowerContent = trimmed.toLowerCase();
+
+    // Find opening fence (case-insensitive per CommonMark)
+    const openIndex = lowerContent.indexOf('```mermaid');
+    if (openIndex === -1) {
+        return false;
+    }
+
+    // Find the newline after opening fence
+    const afterOpen = lowerContent.indexOf('\n', openIndex + '```mermaid'.length);
+    if (afterOpen === -1) {
+        return false;
+    }
+
+    // Find closing fence after the opening (case-insensitive for consistency)
+    const closeIndex = lowerContent.indexOf('```', afterOpen);
+    return closeIndex !== -1;
+}
+
+/**
  * Download the markdown content as a file
  * Creates a blob and triggers a download via a temporary anchor element
+ * Handles content transformation based on file type (#367):
+ * - .mermaid/.mmd: Strip fences if present (save as pure mermaid)
+ * - .md: Wrap in fences if content is pure mermaid
  * @param {string} filename - The filename to save as
  */
 function downloadFile(filename) {
     const { cmEditor } = state;
-    const content = cmEditor ? cmEditor.getValue() : '';
-    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+    let content = cmEditor ? cmEditor.getValue() : '';
+
+    // Handle content transformation based on file type (#367)
+    // Use string methods instead of regex for consistency and ReDoS prevention
+    const lowerFilename = filename.toLowerCase();
+    const isMermaidFile = lowerFilename.endsWith('.mermaid') || lowerFilename.endsWith('.mmd');
+    const isMarkdownFile = lowerFilename.endsWith('.md') || lowerFilename.endsWith('.markdown');
+
+    if (isMermaidFile) {
+        // Saving as .mermaid/.mmd: strip fences if present
+        content = stripMermaidFences(content);
+    } else if (isMarkdownFile && state.documentMode === 'mermaid') {
+        // Saving pure Mermaid content as Markdown: wrap in fences
+        // Check if content has properly formatted fences (opening + closing)
+        const hasFences = hasProperMermaidFences(content);
+        if (!hasFences) {
+            content = '```mermaid\n' + content.trim() + '\n```\n';
+        }
+    }
+
+    // Use official MIME type per Mermaid.js ecosystem recommendations (#367)
+    const mimeType = isMermaidFile ? 'text/vnd.mermaid;charset=utf-8' : 'text/markdown;charset=utf-8';
+    const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement('a');
@@ -453,6 +566,7 @@ export async function loadWelcomePage() {
         // Set document name for the welcome page
         state.currentFilename = 'Welcome.md';
         state.loadedFromURL = null;
+        state.documentMode = 'markdown'; // Welcome page is always markdown (#367)
 
         // Clear URL parameter when loading welcome page (Issue #204)
         clearURLParameter();
@@ -495,6 +609,7 @@ A client-side Markdown editor with first-class Mermaid diagram support.
         // Set document name for the fallback
         state.currentFilename = 'Welcome.md';
         state.loadedFromURL = null;
+        state.documentMode = 'markdown'; // Welcome page is always markdown (#367)
 
         renderMarkdown();
 
@@ -515,7 +630,7 @@ export function initFileInputHandlers() {
         mdFileInput = document.createElement('input');
         mdFileInput.type = 'file';
         mdFileInput.id = 'mdFileInput';
-        mdFileInput.accept = '.md,.markdown,.txt,.text';
+        mdFileInput.accept = '.md,.markdown,.txt,.text,.mermaid,.mmd';
         mdFileInput.style.display = 'none';
         document.body.appendChild(mdFileInput);
     }

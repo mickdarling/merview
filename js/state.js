@@ -33,6 +33,7 @@ export const state = {
     // File management
     currentFilename: null,               // Current open file name (for Save functionality)
     loadedFromURL: null,                 // URL if content was loaded from a remote source
+    documentMode: null,                  // Document type: 'markdown', 'mermaid', or null (auto-detect)
 
     // Rendering
     mermaidCounter: 0,                   // Counter for generating unique Mermaid diagram IDs

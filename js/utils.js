@@ -308,14 +308,17 @@ export function resolveRelativeUrl(relativeUrl, baseUrl) {
 }
 
 /**
- * Check if a URL points to a markdown file
+ * Check if a URL points to a markdown or mermaid file
  * @param {string} url - URL to check
- * @returns {boolean} True if the URL appears to be a markdown file
+ * @returns {boolean} True if the URL appears to be a markdown or mermaid file
  */
 export function isMarkdownUrl(url) {
     if (!url || typeof url !== 'string') return false;
 
-    // Check file extension (case-insensitive)
+    // Check file extension (case-insensitive) - includes .mermaid/.mmd (#367)
     const lowerUrl = url.toLowerCase();
-    return lowerUrl.endsWith('.md') || lowerUrl.endsWith('.markdown');
+    return lowerUrl.endsWith('.md') ||
+           lowerUrl.endsWith('.markdown') ||
+           lowerUrl.endsWith('.mermaid') ||
+           lowerUrl.endsWith('.mmd');
 }

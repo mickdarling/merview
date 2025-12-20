@@ -312,6 +312,7 @@ export function newDocument() {
 
     state.currentFilename = null;
     state.loadedFromURL = null;
+    state.documentMode = null; // Reset to auto-detect mode (#367)
 
     // Clear URL parameter when creating new document (Issue #204)
     clearURLParameter();

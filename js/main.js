@@ -8,7 +8,7 @@ import { state } from './state.js';
 import { initCodeMirror, getEditorContent, setEditorContent } from './editor.js';
 import { renderMarkdown, scheduleRender } from './renderer.js';
 import { initStyleSelector, initSyntaxThemeSelector, initEditorThemeSelector, initMermaidThemeSelector, initPreviewDragDrop, initURLModalHandlers, changeStyle, changeSyntaxTheme, changeEditorTheme, changeMermaidTheme, applyPreviewBackground, applyCachedBackground } from './themes.js';
-import { loadMarkdownFromURL, loadWelcomePage, clearWelcomePageCache, openFile, saveFile, saveFileAs, isValidMarkdownFile, isValidMarkdownContentType, exportToPDF, initFileInputHandlers } from './file-ops.js';
+import { loadMarkdownFromURL, loadWelcomePage, clearWelcomePageCache, openFile, saveFile, saveFileAs, isValidMarkdownFile, isValidMarkdownContentType, exportToPDF, initFileInputHandlers, stripMermaidFences, hasProperMermaidFences } from './file-ops.js';
 import { initDocumentSelector, changeDocument, updateDocumentSelector } from './documents.js';
 import { shareToGist, hideGistModal, openGitHubAuth, startDeviceFlow, copyGistUrl, disconnectGitHub } from './gist.js';
 import { toggleLintPanel, validateCode } from './validation.js';
@@ -114,6 +114,8 @@ function exposeGlobalFunctions() {
     globalThis.isValidMarkdownFile = isValidMarkdownFile;
     globalThis.isValidMarkdownContentType = isValidMarkdownContentType;
     globalThis.exportToPDF = exportToPDF;
+    globalThis.stripMermaidFences = stripMermaidFences;
+    globalThis.hasProperMermaidFences = hasProperMermaidFences;
 
     // Document management functions
     // Only changeDocument needs to be global (for keyboard shortcuts)
