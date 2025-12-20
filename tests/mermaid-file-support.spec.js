@@ -13,11 +13,23 @@ const { test, expect } = require('@playwright/test');
  * - Save transformation between .mermaid and .md formats
  */
 
+// Test timing constants (in milliseconds)
+const TIMEOUTS = {
+    /** Maximum time to wait for CodeMirror editor to initialize */
+    EDITOR_INIT: 15000,
+    /** Maximum time to wait for mermaid diagram SVG to render */
+    MERMAID_RENDER: 5000,
+    /** Fallback wait time if mermaid render condition times out */
+    MERMAID_FALLBACK: 2000,
+    /** Time to wait for preview to render when NO mermaid is expected */
+    PREVIEW_RENDER: 1500
+};
+
 /**
  * Wait for mermaid diagram to be rendered (SVG present)
  * Uses waitForFunction for efficiency, falls back to timeout if needed
  */
-async function waitForMermaidRender(page, timeout = 5000) {
+async function waitForMermaidRender(page, timeout = TIMEOUTS.MERMAID_RENDER) {
     try {
         await page.waitForFunction(() => {
             const mermaidEl = document.querySelector('.mermaid');
@@ -25,7 +37,7 @@ async function waitForMermaidRender(page, timeout = 5000) {
         }, { timeout });
     } catch {
         // Fallback: wait fixed time if condition never met
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(TIMEOUTS.MERMAID_FALLBACK);
     }
 }
 
@@ -33,7 +45,7 @@ async function waitForMermaidRender(page, timeout = 5000) {
  * Wait for content to be rendered in preview
  * Used for tests where we expect NO mermaid to render
  */
-async function waitForPreviewRender(page, timeout = 1500) {
+async function waitForPreviewRender(page, timeout = TIMEOUTS.PREVIEW_RENDER) {
     // For negative tests (no mermaid expected), we need to wait long enough
     // to be confident the content has had time to render
     await page.waitForTimeout(timeout);
@@ -42,7 +54,7 @@ async function waitForPreviewRender(page, timeout = 1500) {
 test.describe('Mermaid File Support (Issue #367)', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/');
-        await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+        await page.waitForSelector('.CodeMirror', { timeout: TIMEOUTS.EDITOR_INIT });
     });
 
     test.describe('Pure Mermaid Content Detection', () => {

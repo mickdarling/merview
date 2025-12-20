@@ -367,29 +367,28 @@ export function stripMermaidFences(content) {
  * Check if content has properly formatted mermaid fences (opening + closing)
  * Used to determine if content needs to be wrapped when saving (#367)
  * Uses string methods to avoid ReDoS vulnerability
+ * Case-insensitive for opening fence per CommonMark spec
  * @param {string} content - The content to check
  * @returns {boolean} True if content has proper mermaid fences
  */
 export function hasProperMermaidFences(content) {
     const trimmed = content.trim();
-    const OPEN_FENCE = '```mermaid';
-    const CLOSE_FENCE = '```';
-
-    // Find opening fence (case-insensitive)
     const lowerContent = trimmed.toLowerCase();
-    const openIndex = lowerContent.indexOf(OPEN_FENCE.toLowerCase());
+
+    // Find opening fence (case-insensitive per CommonMark)
+    const openIndex = lowerContent.indexOf('```mermaid');
     if (openIndex === -1) {
         return false;
     }
 
     // Find the newline after opening fence
-    const afterOpen = trimmed.indexOf('\n', openIndex + OPEN_FENCE.length);
+    const afterOpen = lowerContent.indexOf('\n', openIndex + '```mermaid'.length);
     if (afterOpen === -1) {
         return false;
     }
 
-    // Find closing fence after the opening
-    const closeIndex = trimmed.indexOf(CLOSE_FENCE, afterOpen);
+    // Find closing fence after the opening (case-insensitive for consistency)
+    const closeIndex = lowerContent.indexOf('```', afterOpen);
     return closeIndex !== -1;
 }
 
@@ -423,7 +422,8 @@ function downloadFile(filename) {
         }
     }
 
-    const mimeType = isMermaidFile ? 'text/plain;charset=utf-8' : 'text/markdown;charset=utf-8';
+    // Use official MIME type per Mermaid.js ecosystem recommendations (#367)
+    const mimeType = isMermaidFile ? 'text/vnd.mermaid;charset=utf-8' : 'text/markdown;charset=utf-8';
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
 

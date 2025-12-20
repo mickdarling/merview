@@ -1202,13 +1202,22 @@ export async function renderMarkdown() {
         // Priority: 1) documentMode set by file extension, 2) auto-detect from content
         let isPureMermaid = false;
         if (state.documentMode === 'mermaid') {
-            // File was loaded with .mermaid/.mmd extension
-            isPureMermaid = true;
+            // File was loaded with .mermaid/.mmd extension - re-check if still pure mermaid
+            // This handles the case where user adds markdown text to a .mermaid file
+            isPureMermaid = await isPureMermaidContent(markdown);
+            if (!isPureMermaid) {
+                // Content is no longer pure mermaid, switch to auto-detect mode
+                state.documentMode = null;
+            }
         } else if (state.documentMode === null) {
             // Auto-detect mode for content typed/pasted into editor
             isPureMermaid = await isPureMermaidContent(markdown);
+            // Update state so Save correctly wraps content in fences if saving as .md
+            if (isPureMermaid) {
+                state.documentMode = 'mermaid';
+            }
         }
-        // documentMode === 'markdown' means always treat as markdown
+        // documentMode === 'markdown' means always treat as markdown (e.g., loaded .md file)
 
         if (isPureMermaid) {
             // Render as single Mermaid diagram
