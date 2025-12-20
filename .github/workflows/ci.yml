@@ -37,14 +37,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            playwright-${{ runner.os }}-
-      - run: npx playwright install --with-deps chromium
+      # Note: No browser installation needed - unit tests don't use browsers
       - run: npm run test:unit
 
   e2e-core:
@@ -341,54 +334,21 @@ jobs:
     steps:
       - name: Check all jobs succeeded
         run: |
-          # Check if any required job failed or was cancelled
-          if [[ "${{ needs.lint.result }}" != "success" ]]; then
-            echo "lint failed or was cancelled"
+          # Use jq to check all job results from needs context
+          # This automatically handles any jobs added to or removed from 'needs'
+          results='${{ toJSON(needs) }}'
+          echo "Job results:"
+          echo "$results" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+
+          # Find any jobs that failed or were cancelled (not success and not skipped)
+          failed=$(echo "$results" | jq -r 'to_entries[] | select(.value.result != "success" and .value.result != "skipped") | .key')
+
+          if [[ -n "$failed" ]]; then
+            echo ""
+            echo "The following jobs failed or were cancelled:"
+            echo "$failed"
             exit 1
           fi
-          if [[ "${{ needs.unit-tests.result }}" != "success" ]]; then
-            echo "unit-tests failed or was cancelled"
-            exit 1
-          fi
-          # E2E jobs might be skipped (on develop), so check for success OR skipped
-          if [[ "${{ needs.e2e-core.result }}" != "success" && "${{ needs.e2e-core.result }}" != "skipped" ]]; then
-            echo "e2e-core failed or was cancelled"
-            exit 1
-          fi
-          if [[ "${{ needs.e2e-mermaid.result }}" != "success" && "${{ needs.e2e-mermaid.result }}" != "skipped" ]]; then
-            echo "e2e-mermaid failed or was cancelled"
-            exit 1
-          fi
-          if [[ "${{ needs.e2e-yaml.result }}" != "success" && "${{ needs.e2e-yaml.result }}" != "skipped" ]]; then
-            echo "e2e-yaml failed or was cancelled"
-            exit 1
-          fi
-          if [[ "${{ needs.e2e-url.result }}" != "success" && "${{ needs.e2e-url.result }}" != "skipped" ]]; then
-            echo "e2e-url failed or was cancelled"
-            exit 1
-          fi
-          if [[ "${{ needs.e2e-file-ops.result }}" != "success" && "${{ needs.e2e-file-ops.result }}" != "skipped" ]]; then
-            echo "e2e-file-ops failed or was cancelled"
-            exit 1
-          fi
-          if [[ "${{ needs.e2e-security.result }}" != "success" && "${{ needs.e2e-security.result }}" != "skipped" ]]; then
-            echo "e2e-security failed or was cancelled"
-            exit 1
-          fi
-          if [[ "${{ needs.e2e-ui.result }}" != "success" && "${{ needs.e2e-ui.result }}" != "skipped" ]]; then
-            echo "e2e-ui failed or was cancelled"
-            exit 1
-          fi
-          if [[ "${{ needs.e2e-i18n.result }}" != "success" && "${{ needs.e2e-i18n.result }}" != "skipped" ]]; then
-            echo "e2e-i18n failed or was cancelled"
-            exit 1
-          fi
-          if [[ "${{ needs.e2e-docs.result }}" != "success" && "${{ needs.e2e-docs.result }}" != "skipped" ]]; then
-            echo "e2e-docs failed or was cancelled"
-            exit 1
-          fi
-          if [[ "${{ needs.e2e-lint-panel.result }}" != "success" && "${{ needs.e2e-lint-panel.result }}" != "skipped" ]]; then
-            echo "e2e-lint-panel failed or was cancelled"
-            exit 1
-          fi
+
+          echo ""
           echo "All required tests passed!"
