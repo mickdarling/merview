@@ -55,6 +55,23 @@ sequenceDiagram
     }, { timeout: 10000 });
 }
 
+/**
+ * Helper to capture diagram visibility state at a specific point
+ * Moved to module scope to comply with S2004 (reduce nesting depth)
+ */
+async function captureDiagramVisibility(page, label) {
+    const state = await page.evaluate(() => {
+        const diagrams = document.querySelectorAll('.mermaid');
+        return Array.from(diagrams).map(d => ({
+            hasSvg: d.querySelector('svg') !== null,
+            svgVisible: d.querySelector('svg')?.style.display !== 'none',
+            hasLoadingClass: d.classList.contains('mermaid-loading'),
+            rendered: d.dataset.mermaidRendered
+        }));
+    });
+    return { time: label, state };
+}
+
 test.describe('Mermaid Style Change Flicker - Issue #371', () => {
     test.beforeEach(async ({ page }) => {
         await page.setViewportSize({ width: 1280, height: 720 });
@@ -274,24 +291,10 @@ test.describe('Mermaid Style Change Flicker - Issue #371', () => {
     test('mermaid diagrams should remain visible during style transition', async ({ page }) => {
         await setupMermaidContent(page);
 
-        // Helper to capture diagram visibility state
-        const captureState = async (label) => {
-            const state = await page.evaluate(() => {
-                const diagrams = document.querySelectorAll('.mermaid');
-                return Array.from(diagrams).map(d => ({
-                    hasSvg: d.querySelector('svg') !== null,
-                    svgVisible: d.querySelector('svg')?.style.display !== 'none',
-                    hasLoadingClass: d.classList.contains('mermaid-loading'),
-                    rendered: d.dataset.mermaidRendered
-                }));
-            });
-            return { time: label, state };
-        };
-
         const snapshots = [];
 
-        // Capture initial state
-        snapshots.push(await captureState('before'));
+        // Capture initial state using module-level helper
+        snapshots.push(await captureDiagramVisibility(page, 'before'));
 
         // Change style
         await page.evaluate(() => {
@@ -306,7 +309,7 @@ test.describe('Mermaid Style Change Flicker - Issue #371', () => {
         const intervals = [50, 100, 200, 500, 1000];
         for (const ms of intervals) {
             await page.waitForTimeout(ms - (intervals[intervals.indexOf(ms) - 1] || 0));
-            snapshots.push(await captureState(`${ms}ms`));
+            snapshots.push(await captureDiagramVisibility(page, `${ms}ms`));
         }
 
         console.log('Visibility snapshots:', JSON.stringify(snapshots, null, 2));
