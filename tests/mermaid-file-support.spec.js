@@ -575,4 +575,123 @@ graph TD
             }
         });
     });
+
+    test.describe('Edge Cases', () => {
+        test('should render mixed content with markdown + mermaid keywords as markdown', async ({ page }) => {
+            // Content that starts with mermaid keyword but has markdown paragraphs
+            // This should NOT be detected as pure mermaid
+            const mixedContent = `graph TD
+    A[Start] --> B[End]
+
+This is a paragraph that explains the diagram above.
+Here is more text explaining the flow.`;
+
+            await page.evaluate((content) => {
+                globalThis.state.documentMode = null;
+                globalThis.state.cmEditor.setValue(content);
+            }, mixedContent);
+
+            await waitForPreviewRender(page);
+
+            // Should render as markdown (no mermaid diagram)
+            const result = await page.evaluate(() => {
+                const mermaidEl = document.querySelector('.mermaid');
+                // When content is markdown, there may be no .mermaid element at all
+                // or there may be one but without a rendered SVG
+                const hasSvg = mermaidEl ? mermaidEl.querySelector('svg') !== null : false;
+                // Check if the paragraph text is rendered
+                const previewContent = document.querySelector('#preview-content')?.textContent || '';
+                return {
+                    hasMermaidSvg: hasSvg,
+                    hasExplanationText: previewContent.includes('explains the diagram')
+                };
+            });
+
+            // Mixed content should NOT render as pure mermaid
+            // mermaid.parse() should fail on the paragraph text
+            expect(result.hasMermaidSvg).toBe(false);
+        });
+
+        test('should handle mermaid with mermaid-specific config frontmatter', async ({ page }) => {
+            // Mermaid supports its own frontmatter format for configuration
+            const mermaidWithConfig = `---
+config:
+  theme: dark
+---
+graph TD
+    A[Dark Theme] --> B[End]`;
+
+            await page.evaluate((content) => {
+                globalThis.state.documentMode = null;
+                globalThis.state.cmEditor.setValue(content);
+                globalThis.renderMarkdown();
+            }, mermaidWithConfig);
+
+            await waitForMermaidRender(page);
+
+            const result = await page.evaluate(() => {
+                const mermaidEl = document.querySelector('.mermaid');
+                const yamlPanel = document.querySelector('.yaml-front-matter');
+                return {
+                    hasMermaidSvg: mermaidEl ? mermaidEl.querySelector('svg') !== null : false,
+                    hasYamlPanel: yamlPanel !== null
+                };
+            });
+
+            // Should render as mermaid diagram with frontmatter displayed
+            expect(result.hasMermaidSvg).toBe(true);
+            expect(result.hasYamlPanel).toBe(true);
+        });
+
+        test('should handle invalid mermaid syntax gracefully', async ({ page }) => {
+            // Invalid mermaid syntax should not crash - should be treated as markdown
+            const invalidMermaid = `graph TD
+    A[Start] -->
+    B[Missing arrow target]
+    ]]]Invalid brackets[[[`;
+
+            await page.evaluate((content) => {
+                globalThis.state.documentMode = null;
+                globalThis.state.cmEditor.setValue(content);
+            }, invalidMermaid);
+
+            await waitForPreviewRender(page);
+
+            // Should not have a rendered mermaid diagram (parse failed)
+            const hasMermaidSvg = await page.evaluate(() => {
+                const mermaidEl = document.querySelector('.mermaid');
+                // When content is markdown, there may be no .mermaid element at all
+                return mermaidEl ? mermaidEl.querySelector('svg') !== null : false;
+            });
+
+            expect(hasMermaidSvg).toBe(false);
+        });
+
+        test('should handle content that looks like mermaid but is plain text', async ({ page }) => {
+            // Content that contains mermaid keywords but isn't valid mermaid
+            const fakeMermaid = `graph of user growth over time:
+- January: 100 users
+- February: 150 users
+- March: 200 users
+
+This is just a text description, not actual mermaid syntax.`;
+
+            await page.evaluate((content) => {
+                globalThis.state.documentMode = null;
+                globalThis.state.cmEditor.setValue(content);
+            }, fakeMermaid);
+
+            await waitForPreviewRender(page);
+
+            // Should not have a mermaid diagram rendered
+            const hasMermaidSvg = await page.evaluate(() => {
+                const mermaidEl = document.querySelector('.mermaid');
+                // When content is markdown, there may be no .mermaid element at all
+                return mermaidEl ? mermaidEl.querySelector('svg') !== null : false;
+            });
+
+            // Should render as plain markdown, not mermaid
+            expect(hasMermaidSvg).toBe(false);
+        });
+    });
 });
