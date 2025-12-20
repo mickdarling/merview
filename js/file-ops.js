@@ -60,6 +60,7 @@ export async function loadMarkdownFile(file) {
 
         state.currentFilename = file.name;
         state.loadedFromURL = null; // Clear URL source when loading from file
+        state.lastRenderedContent = null; // Clear to prevent stale optimization (#371)
 
         // Set document mode based on file extension (#367)
         const isMermaidFile = /\.(mermaid|mmd)$/i.test(file.name);
@@ -230,6 +231,7 @@ export async function loadMarkdownFromURL(url, displayUrl) {
         const urlPath = new URL(normalizedUrl).pathname;
         state.currentFilename = urlPath.split('/').pop() || 'remote.md';
         state.loadedFromURL = normalizedUrl; // Track URL source
+        state.lastRenderedContent = null; // Clear to prevent stale optimization (#371)
 
         // Set document mode based on file extension (#367)
         const isMermaidFile = /\.(mermaid|mmd)$/i.test(urlPath);
