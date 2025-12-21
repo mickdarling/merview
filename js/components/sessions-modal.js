@@ -12,7 +12,7 @@
  * and ARIA attributes for screen readers.
  */
 
-import { state } from '../state.js';
+import { state, resetEditorState } from '../state.js';
 import { showStatus } from '../utils.js';
 import { renderMarkdown } from '../renderer.js';
 import { updateDocumentSelector } from '../documents.js';
@@ -212,8 +212,7 @@ function clearEditor() {
         cmEditor.setValue('');
     }
     state.currentFilename = null;
-    state.documentMode = null; // Reset to auto-detect mode (#380 fix)
-    state.lastRenderedContent = null; // Clear to prevent stale optimization (#371)
+    resetEditorState();
     renderMarkdown();
 }
 
@@ -327,8 +326,7 @@ function handleClearAll() {
             cmEditor.setValue('');
         }
         state.currentFilename = 'Untitled';
-        state.documentMode = null; // Reset to auto-detect mode (#380 fix)
-        state.lastRenderedContent = null; // Clear to prevent stale optimization (#371)
+        resetEditorState();
         renderMarkdown();
 
         // Update displays

@@ -234,7 +234,7 @@ And some more text.`;
         test('should respect documentMode=mermaid for file extension', async ({ page }) => {
             // Simulate loading a .mermaid file
             await page.evaluate(() => {
-                globalThis.state.documentMode = 'mermaid';
+                globalThis.state.documentMode = globalThis.DOCUMENT_MODE.MERMAID;
                 globalThis.state.cmEditor.setValue('graph TD\n    A --> B');
             });
 
@@ -248,11 +248,12 @@ And some more text.`;
             expect(hasMermaidSvg).toBe(true);
         });
 
-        test('should respect documentMode=markdown even for pure mermaid content', async ({ page }) => {
-            // documentMode=markdown should force markdown rendering
+        test('should respect renderModeOverride=markdown even for pure mermaid content', async ({ page }) => {
+            // renderModeOverride=markdown should force markdown rendering
+            // This tests the user override mechanism (future toggle support)
             // Pure mermaid without fences will be treated as plain text
             await page.evaluate(() => {
-                globalThis.state.documentMode = 'markdown';
+                globalThis.state.renderModeOverride = globalThis.DOCUMENT_MODE.MARKDOWN;
                 globalThis.state.cmEditor.setValue('graph TD\n    A --> B');
             });
 
@@ -271,10 +272,100 @@ And some more text.`;
                 };
             });
 
-            // When documentMode is 'markdown', pure mermaid content without fences
+            // When renderModeOverride is 'markdown', pure mermaid content without fences
             // should NOT render as a diagram - it should be plain text
             expect(result.hasMermaidSvg).toBe(false);
             expect(result.includesGraphText).toBe(true);
+
+            // Clean up override for subsequent tests
+            await page.evaluate(() => {
+                globalThis.state.renderModeOverride = null;
+            });
+        });
+
+        test('content-first detection: should render mermaid even when documentMode was markdown', async ({ page }) => {
+            // This tests the content-first detection architecture
+            // Even if documentMode='markdown' (from loading a .md file),
+            // pure mermaid content should still be detected and rendered as a diagram.
+            // This fixes the "select-all + delete + paste mermaid" scenario.
+            await page.evaluate(() => {
+                // Simulate state after loading a .md file
+                globalThis.state.documentMode = globalThis.DOCUMENT_MODE.MARKDOWN;
+                globalThis.state.renderModeOverride = null; // No user override
+                globalThis.state.cmEditor.setValue('graph TD\n    A --> B');
+            });
+
+            await waitForPreviewRender(page);
+
+            // Should be rendered as a Mermaid diagram because content-first
+            // detection analyzes the content regardless of documentMode
+            const hasMermaidSvg = await page.evaluate(() => {
+                const wrapper = document.querySelector('#preview #wrapper');
+                return wrapper?.querySelector('.mermaid svg') !== null;
+            });
+
+            expect(hasMermaidSvg).toBe(true);
+
+            // Verify documentMode was updated to reflect detected content
+            const updatedMode = await page.evaluate(() => globalThis.state.documentMode);
+            expect(updatedMode).toBe('mermaid');
+        });
+
+        test('documentMode transitions from markdown to mermaid when pure mermaid content is detected', async ({ page }) => {
+            // Test state transition: markdown -> mermaid
+            // This verifies documentMode is updated as derived state
+            await page.evaluate(() => {
+                globalThis.state.documentMode = globalThis.DOCUMENT_MODE.MARKDOWN;
+                globalThis.state.renderModeOverride = null;
+            });
+
+            // Verify initial state
+            const initialMode = await page.evaluate(() => globalThis.state.documentMode);
+            expect(initialMode).toBe('markdown');
+
+            // Set pure mermaid content
+            await page.evaluate(() => {
+                globalThis.state.cmEditor.setValue('sequenceDiagram\n    Alice->>Bob: Hello');
+            });
+
+            await waitForPreviewRender(page);
+
+            // Verify documentMode transitioned to mermaid
+            const finalMode = await page.evaluate(() => globalThis.state.documentMode);
+            expect(finalMode).toBe('mermaid');
+
+            // Verify it rendered as a diagram
+            const hasSvg = await page.evaluate(() => {
+                return document.querySelector('#preview #wrapper .mermaid svg') !== null;
+            });
+            expect(hasSvg).toBe(true);
+        });
+
+        test('documentMode resets to null when mixed content replaces pure mermaid', async ({ page }) => {
+            // Test state transition: mermaid -> null (when content becomes mixed)
+            // First set up pure mermaid content
+            await page.evaluate(() => {
+                globalThis.state.documentMode = null;
+                globalThis.state.renderModeOverride = null;
+                globalThis.state.cmEditor.setValue('graph TD\n    A --> B');
+            });
+
+            await waitForPreviewRender(page);
+
+            // Verify it detected as mermaid
+            const mermaidMode = await page.evaluate(() => globalThis.state.documentMode);
+            expect(mermaidMode).toBe('mermaid');
+
+            // Now replace with mixed content (markdown + mermaid in fences)
+            await page.evaluate(() => {
+                globalThis.state.cmEditor.setValue('# My Document\n\nSome text here.\n\n```mermaid\ngraph TD\n    A --> B\n```');
+            });
+
+            await waitForPreviewRender(page);
+
+            // documentMode should reset to null (auto-detect found non-pure content)
+            const mixedMode = await page.evaluate(() => globalThis.state.documentMode);
+            expect(mixedMode).toBeNull();
         });
     });
 
@@ -454,7 +545,7 @@ graph TD
         test('should wrap pure mermaid in fences when saving as .md', async ({ page }) => {
             // Set up pure mermaid content with mermaid document mode
             await page.evaluate(() => {
-                globalThis.state.documentMode = 'mermaid';
+                globalThis.state.documentMode = globalThis.DOCUMENT_MODE.MERMAID;
                 globalThis.state.cmEditor.setValue('graph TD\n    A --> B');
             });
 
@@ -515,7 +606,7 @@ graph TD
                 const isMermaidExt = filename.toLowerCase().endsWith('.mermaid') ||
                                      filename.toLowerCase().endsWith('.mmd');
                 if (isMermaidExt) {
-                    globalThis.state.documentMode = 'mermaid';
+                    globalThis.state.documentMode = globalThis.DOCUMENT_MODE.MERMAID;
                 }
             });
 
@@ -529,7 +620,7 @@ graph TD
                 const isMermaidExt = filename.toLowerCase().endsWith('.mermaid') ||
                                      filename.toLowerCase().endsWith('.mmd');
                 if (isMermaidExt) {
-                    globalThis.state.documentMode = 'mermaid';
+                    globalThis.state.documentMode = globalThis.DOCUMENT_MODE.MERMAID;
                 }
             });
 
@@ -543,7 +634,7 @@ graph TD
                 const isMarkdownExt = filename.toLowerCase().endsWith('.md') ||
                                       filename.toLowerCase().endsWith('.markdown');
                 if (isMarkdownExt) {
-                    globalThis.state.documentMode = 'markdown';
+                    globalThis.state.documentMode = globalThis.DOCUMENT_MODE.MARKDOWN;
                 }
             });
 

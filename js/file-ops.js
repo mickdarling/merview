@@ -17,7 +17,7 @@
  * can be restored from git history if needed in the future.
  */
 
-import { state } from './state.js';
+import { state, DOCUMENT_MODE } from './state.js';
 import { getElements } from './dom.js';
 import { showStatus, setURLParameter, clearURLParameter } from './utils.js';
 import { isAllowedMarkdownURL, normalizeGitHubContentUrl, isCorsError, getCorsErrorMessage } from './security.js';
@@ -64,7 +64,7 @@ export async function loadMarkdownFile(file) {
 
         // Set document mode based on file extension (#367)
         const isMermaidFile = /\.(mermaid|mmd)$/i.test(file.name);
-        state.documentMode = isMermaidFile ? 'mermaid' : 'markdown';
+        state.documentMode = isMermaidFile ? DOCUMENT_MODE.MERMAID : DOCUMENT_MODE.MARKDOWN;
 
         // Clear URL parameter from address bar when loading local file (Issue #204)
         clearURLParameter();
@@ -235,7 +235,7 @@ export async function loadMarkdownFromURL(url, displayUrl) {
 
         // Set document mode based on file extension (#367)
         const isMermaidFile = /\.(mermaid|mmd)$/i.test(urlPath);
-        state.documentMode = isMermaidFile ? 'mermaid' : 'markdown';
+        state.documentMode = isMermaidFile ? DOCUMENT_MODE.MERMAID : DOCUMENT_MODE.MARKDOWN;
 
         // Persist the original URL (not normalized) in address bar for sharing (Issue #204)
         // Use displayUrl if provided (preserves relative doc paths like "docs/about.md"),
@@ -314,7 +314,7 @@ export function saveFileAs() {
 
         state.currentFilename = finalName;
         // Update document mode based on new filename (#367)
-        state.documentMode = /\.(mermaid|mmd)$/i.test(finalName) ? 'mermaid' : 'markdown';
+        state.documentMode = /\.(mermaid|mmd)$/i.test(finalName) ? DOCUMENT_MODE.MERMAID : DOCUMENT_MODE.MARKDOWN;
 
         downloadFile(finalName);
     }
@@ -415,7 +415,7 @@ function downloadFile(filename) {
     if (isMermaidFile) {
         // Saving as .mermaid/.mmd: strip fences if present
         content = stripMermaidFences(content);
-    } else if (isMarkdownFile && state.documentMode === 'mermaid') {
+    } else if (isMarkdownFile && state.documentMode === DOCUMENT_MODE.MERMAID) {
         // Saving pure Mermaid content as Markdown: wrap in fences
         // Check if content has properly formatted fences (opening + closing)
         const hasFences = hasProperMermaidFences(content);
@@ -568,7 +568,7 @@ export async function loadWelcomePage() {
         // Set document name for the welcome page
         state.currentFilename = 'Welcome.md';
         state.loadedFromURL = null;
-        state.documentMode = 'markdown'; // Welcome page is always markdown (#367)
+        state.documentMode = DOCUMENT_MODE.MARKDOWN; // Welcome page is always markdown (#367)
 
         // Clear URL parameter when loading welcome page (Issue #204)
         clearURLParameter();
@@ -611,7 +611,7 @@ A client-side Markdown editor with first-class Mermaid diagram support.
         // Set document name for the fallback
         state.currentFilename = 'Welcome.md';
         state.loadedFromURL = null;
-        state.documentMode = 'markdown'; // Welcome page is always markdown (#367)
+        state.documentMode = DOCUMENT_MODE.MARKDOWN; // Welcome page is always markdown (#367)
 
         renderMarkdown();
 

@@ -21,6 +21,16 @@
  * exposed to globalThis.
  */
 
+/**
+ * Document mode constants for type-safe mode comparisons.
+ * Used by documentMode and renderModeOverride state properties.
+ * @constant
+ */
+export const DOCUMENT_MODE = Object.freeze({
+    MARKDOWN: 'markdown',
+    MERMAID: 'mermaid'
+});
+
 export const state = {
     // CodeMirror editor instance
     cmEditor: null,
@@ -33,7 +43,8 @@ export const state = {
     // File management
     currentFilename: null,               // Current open file name (for Save functionality)
     loadedFromURL: null,                 // URL if content was loaded from a remote source
-    documentMode: null,                  // Document type: 'markdown', 'mermaid', or null (auto-detect)
+    documentMode: null,                  // Detected/loaded document type for save behavior: 'markdown', 'mermaid', or null
+    renderModeOverride: null,            // User override for rendering: 'markdown', 'mermaid', or null (auto-detect from content)
 
     // Rendering
     mermaidCounter: 0,                   // Counter for generating unique Mermaid diagram IDs
@@ -90,3 +101,17 @@ export const state = {
     editorPanelWidth: null,              // Percentage width of editor panel (null = default 50/50)
     previewPanelWidth: null              // Percentage width of preview panel (null = default 50/50)
 };
+
+/**
+ * Reset editor state for content detection and rendering optimization.
+ * Call this when clearing the editor or starting fresh content to ensure:
+ * - Content-first detection works correctly (documentMode reset)
+ * - Render optimization doesn't skip updates (lastRenderedContent reset)
+ *
+ * @see Issue #380 - Mermaid-only content not rendering after clear
+ * @see Issue #371 - Stale optimization preventing re-renders
+ */
+export function resetEditorState() {
+    state.documentMode = null;
+    state.lastRenderedContent = null;
+}

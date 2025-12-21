@@ -5,7 +5,7 @@
  * Handles converting markdown to HTML with syntax highlighting and mermaid diagrams
  */
 
-import { state } from './state.js';
+import { state, DOCUMENT_MODE } from './state.js';
 import { getElements } from './dom.js';
 import { saveMarkdownContent } from './storage.js';
 import { updateSessionContent, isSessionsInitialized } from './sessions.js';
@@ -1208,36 +1208,43 @@ async function renderPureMermaid(wrapper, content) {
 }
 
 /**
- * Determine if content should be rendered as pure Mermaid based on document mode
- * Handles the priority: 1) documentMode set by file extension, 2) auto-detect from content
- * Updates state.documentMode as a side effect when mode changes are detected.
+ * Determine if content should be rendered as pure Mermaid using content-first detection.
+ *
+ * Priority hierarchy:
+ * 1. renderModeOverride (future user toggle) - explicit user intent, highest priority
+ * 2. Content detection - analyze actual content, source of truth
+ * 3. documentMode - updated as derived state for save behavior only
+ *
+ * This content-first approach ensures that rendering decisions are always based on
+ * what's currently in the editor, not stale state from previously loaded files.
+ *
  * @param {string} markdown - The markdown content to analyze
  * @returns {Promise<boolean>} True if content should be rendered as pure Mermaid
  * @private
  */
 async function determinePureMermaidMode(markdown) {
-    // documentMode === 'markdown' means always treat as markdown (e.g., loaded .md file)
-    if (state.documentMode === 'markdown') {
+    // Priority 1: User explicit override (future toggle support)
+    if (state.renderModeOverride === DOCUMENT_MODE.MARKDOWN) {
         return false;
     }
-
-    if (state.documentMode === 'mermaid') {
-        // File was loaded with .mermaid/.mmd extension - re-check if still pure mermaid
-        // This handles the case where user adds markdown text to a .mermaid file
-        const isPure = await isPureMermaidContent(markdown);
-        if (!isPure) {
-            // Content is no longer pure mermaid, switch to auto-detect mode
-            state.documentMode = null;
-        }
-        return isPure;
+    if (state.renderModeOverride === DOCUMENT_MODE.MERMAID) {
+        return true;
     }
 
-    // Auto-detect mode (documentMode === null) for content typed/pasted into editor
+    // Priority 2: Content detection - always analyze current content
     const isPure = await isPureMermaidContent(markdown);
+
+    // Update documentMode as derived state for save behavior
+    // This ensures Save correctly wraps/unwraps mermaid fences
     if (isPure) {
-        // Update state so Save correctly wraps content in fences if saving as .md
-        state.documentMode = 'mermaid';
+        state.documentMode = DOCUMENT_MODE.MERMAID;
+    } else if (state.documentMode === DOCUMENT_MODE.MERMAID) {
+        // Was detected as mermaid, now isn't - reset to auto
+        state.documentMode = null;
     }
+    // Note: We don't set documentMode = DOCUMENT_MODE.MARKDOWN from content detection.
+    // That value only comes from loading a .md file extension.
+
     return isPure;
 }
 

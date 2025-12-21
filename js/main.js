@@ -4,7 +4,7 @@
  * Orchestrates all modules and handles initialization
  */
 
-import { state } from './state.js';
+import { state, resetEditorState, DOCUMENT_MODE } from './state.js';
 import { initCodeMirror, getEditorContent, setEditorContent } from './editor.js';
 import { renderMarkdown, scheduleRender } from './renderer.js';
 import { initStyleSelector, initSyntaxThemeSelector, initEditorThemeSelector, initMermaidThemeSelector, initPreviewDragDrop, initURLModalHandlers, changeStyle, changeSyntaxTheme, changeEditorTheme, changeMermaidTheme, applyPreviewBackground, applyCachedBackground } from './themes.js';
@@ -31,8 +31,7 @@ function clearEditor() {
         }
         state.currentFilename = null;
         state.loadedFromURL = null;
-        state.documentMode = null; // Reset to auto-detect mode (#380 fix)
-        state.lastRenderedContent = null; // Clear to prevent stale optimization (#371)
+        resetEditorState();
 
         updateDocumentSelector();
         renderMarkdown();
@@ -86,9 +85,10 @@ function insertSpecialCharacter(text) {
  * Expose functions to globalThis for onclick handlers in HTML
  */
 function exposeGlobalFunctions() {
-    // State - exposed for testing and debugging
+    // State and constants - exposed for testing and debugging
     // WARNING: Do not store sensitive data in state. See js/state.js for details.
     globalThis.state = state;
+    globalThis.DOCUMENT_MODE = DOCUMENT_MODE;
 
     // Editor functions
     globalThis.getEditorContent = getEditorContent;
