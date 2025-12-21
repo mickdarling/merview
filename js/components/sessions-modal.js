@@ -212,6 +212,8 @@ function clearEditor() {
         cmEditor.setValue('');
     }
     state.currentFilename = null;
+    state.documentMode = null; // Reset to auto-detect mode (#380 fix)
+    state.lastRenderedContent = null; // Clear to prevent stale optimization (#371)
     renderMarkdown();
 }
 
@@ -325,6 +327,8 @@ function handleClearAll() {
             cmEditor.setValue('');
         }
         state.currentFilename = 'Untitled';
+        state.documentMode = null; // Reset to auto-detect mode (#380 fix)
+        state.lastRenderedContent = null; // Clear to prevent stale optimization (#371)
         renderMarkdown();
 
         // Update displays

@@ -31,6 +31,8 @@ function clearEditor() {
         }
         state.currentFilename = null;
         state.loadedFromURL = null;
+        state.documentMode = null; // Reset to auto-detect mode (#380 fix)
+        state.lastRenderedContent = null; // Clear to prevent stale optimization (#371)
 
         updateDocumentSelector();
         renderMarkdown();
