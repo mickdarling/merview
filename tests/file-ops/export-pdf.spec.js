@@ -211,7 +211,7 @@ test.describe('Export PDF Functionality', () => {
  * Browser-side helper: Check if a print CSS rule exists matching given criteria
  * @param {Object} opts - Search criteria
  * @param {string} opts.selectorContains - Text that must appear in the selector
- * @param {string} [opts.styleProperty] - CSS property name to check
+ * @param {string} [opts.styleProperty] - CSS property name to check (camelCase, e.g., 'pageBreakAfter')
  * @param {string} [opts.styleValue] - Expected value for the CSS property
  * @returns {boolean} True if matching rule found
  */
@@ -235,7 +235,20 @@ function browserFindPrintCssRule({ selectorContains, styleProperty, styleValue }
     const selectorMatches = rule.selectorText?.includes(selectorContains);
     if (!selectorMatches) return false;
     if (!styleProperty) return true;
-    return rule.style?.[styleProperty] === styleValue;
+
+    // Convert camelCase to kebab-case for getPropertyValue
+    // Remove leading hyphen to handle edge cases like PascalCase input
+    const kebabProperty = styleProperty
+      .replaceAll(/([A-Z])/g, '-$1')
+      .toLowerCase()
+      .replace(/^-/, '');
+    const value = rule.style?.getPropertyValue(kebabProperty);
+    // Browser normalization handling: Zero values only.
+    // Browsers may return "0" or "0px" interchangeably for zero-length values.
+    // This special case ONLY applies to zero - other values (e.g., "10px") match exactly.
+    if (styleValue === '0px' && value === '0') return true;
+    if (styleValue === '0' && value === '0px') return true;
+    return value === styleValue;
   });
 }
 
@@ -291,6 +304,41 @@ test.describe('PDF Page Break Functionality', () => {
         styleValue: 'avoid'
       });
       expect(hasRule).toBe(true);
+    });
+
+    /**
+     * REGRESSION TEST: Ensure print media queries are preserved in stylesheets.
+     *
+     * This test prevents regression of the stripPrintMediaQueries() bug where
+     * @media print rules were incorrectly stripped from stylesheets, breaking
+     * page break functionality in PDF exports.
+     *
+     * The application MUST preserve @media print rules so that:
+     * - Page breaks work correctly (hr elements, utility classes)
+     * - Print-specific styling is applied during PDF export
+     * - Content is properly formatted for printing
+     */
+    test('REGRESSION: @media print rules must be preserved in stylesheets', async ({ page }) => {
+      // Count total @media print rules across all stylesheets
+      const printRuleCount = await page.evaluate(() => {
+        let count = 0;
+        for (const sheet of document.styleSheets) {
+          try {
+            for (const rule of sheet.cssRules) {
+              if (rule instanceof CSSMediaRule && rule.conditionText === 'print') {
+                count += rule.cssRules.length;
+              }
+            }
+          } catch {
+            // Skip cross-origin stylesheets
+          }
+        }
+        return count;
+      });
+
+      // We expect at least several print rules for page breaks, visibility, etc.
+      // This prevents accidental removal of print media query handling
+      expect(printRuleCount).toBeGreaterThan(5);
     });
   });
 

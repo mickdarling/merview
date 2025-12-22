@@ -189,74 +189,6 @@ function applyLayoutConstraints() {
     }
 }
 
-// Helper: Check if current position starts a print media query
-function isPrintMediaStart(css, i) {
-    const startsWithPrint = css.substring(i, i + 12) === '@media print';
-    const startsWithScreen = css.substring(i, i + 13) === '@media screen';
-    // Handle indexOf returning -1 (not found) by treating as "no print before brace"
-    const printIndex = css.indexOf('print', i);
-    const braceIndex = css.indexOf('{', i);
-    const hasPrintBeforeBrace = printIndex !== -1 && braceIndex !== -1 && printIndex < braceIndex;
-    return startsWithPrint || (startsWithScreen && hasPrintBeforeBrace);
-}
-
-// Helper: Skip to the opening brace of a media query
-function skipToOpeningBrace(css, startIndex) {
-    let i = startIndex;
-    while (i < css.length && css[i] !== '{') {
-        i++;
-    }
-    return i;
-}
-
-// Helper: Process a character when inside a print media block
-function processInsidePrintMedia(css, i, depth) {
-    if (css[i] === '{') {
-        return { newDepth: depth + 1, stillInPrintMedia: true };
-    }
-    if (css[i] === '}') {
-        const newDepth = depth - 1;
-        return { newDepth, stillInPrintMedia: newDepth > 0 };
-    }
-    return { newDepth: depth, stillInPrintMedia: true };
-}
-
-/**
- * Strip @media print blocks from CSS to preserve screen colors in PDF
- * @param {string} css - CSS text to process
- * @returns {string} CSS with print media queries removed
- */
-function stripPrintMediaQueries(css) {
-    let depth = 0;
-    let inPrintMedia = false;
-    let result = '';
-    let i = 0;
-
-    while (i < css.length) {
-        if (!inPrintMedia && isPrintMediaStart(css, i)) {
-            const restOfLine = css.substring(i, css.indexOf('{', i) + 1);
-            if (restOfLine.includes('print')) {
-                inPrintMedia = true;
-                depth = 0;
-                i = skipToOpeningBrace(css, i);
-                continue;
-            }
-        }
-
-        if (inPrintMedia) {
-            const { newDepth, stillInPrintMedia } = processInsidePrintMedia(css, i, depth);
-            depth = newDepth;
-            inPrintMedia = stillInPrintMedia;
-            i++;
-        } else {
-            result += css[i];
-            i++;
-        }
-    }
-
-    return result;
-}
-
 /**
  * Scope a single CSS selector by adding #wrapper prefix
  * @param {string} selector - Single CSS selector to scope
@@ -525,8 +457,9 @@ async function applyCSSCore(cssText) {
  * @param {object} style - Style config object
  */
 async function applyStyleToPage(cssText, styleName, style) {
-    // Remove @media print blocks that might override colors for printing
-    cssText = stripPrintMediaQueries(cssText);
+    // NOTE: We no longer strip @media print blocks as they're needed for PDF page breaks
+    // The print media queries contain essential rules for hr elements (page breaks),
+    // tables (page-break-inside: avoid), and other print-specific formatting
 
     // Scope the CSS to only affect #wrapper (the content area)
     if (style.source !== 'local' && !cssText.includes('#wrapper')) {
@@ -719,8 +652,9 @@ async function promptForRepositoryStyleWithResult(repoConfig) {
  * @param {string} sourceName - Source name for saving preference
  */
 async function applyCSSDirectly(cssText, sourceName) {
-    // Strip print media queries
-    cssText = stripPrintMediaQueries(cssText);
+    // NOTE: We no longer strip @media print blocks as they're needed for PDF page breaks
+    // The print media queries contain essential rules for hr elements (page breaks),
+    // tables (page-break-inside: avoid), and other print-specific formatting
 
     // Only scope if it doesn't appear to be pre-scoped
     if (!cssText.includes('#wrapper')) {

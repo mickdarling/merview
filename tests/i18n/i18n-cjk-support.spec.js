@@ -683,9 +683,8 @@ graph TD
       await setCodeMirrorContent(page, markdown);
       await renderMarkdownAndWait(page, WAIT_TIMES.EXTRA_LONG);
 
-      // Check that mermaid diagram rendered
-      const mermaidSvg = await page.$('.mermaid svg');
-      expect(mermaidSvg).not.toBeNull();
+      // Wait for mermaid to render the SVG with extended timeout for lazy loading
+      await expect(page.locator('.mermaid svg')).toBeVisible({ timeout: WAIT_TIMES.MERMAID_LAZY_LOAD });
 
       // Note: The actual text content in SVG may be encoded differently
       // This test verifies the diagram renders without errors
@@ -721,8 +720,8 @@ graph LR
       await setCodeMirrorContent(page, markdown);
       await renderMarkdownAndWait(page, WAIT_TIMES.EXTRA_LONG);
 
-      const mermaidSvg = await page.$('.mermaid svg');
-      expect(mermaidSvg).not.toBeNull();
+      // Wait for mermaid to render the SVG with extended timeout for lazy loading
+      await expect(page.locator('.mermaid svg')).toBeVisible({ timeout: WAIT_TIMES.MERMAID_LAZY_LOAD });
     });
   });
 

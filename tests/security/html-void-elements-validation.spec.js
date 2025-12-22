@@ -93,8 +93,8 @@ This HTML block has real unclosed tags:
     await setCodeMirrorContent(page, markdown);
     await renderMarkdownAndWait(page, WAIT_TIMES.LONG);
 
-    // Wait for validation to complete
-    await page.waitForTimeout(WAIT_TIMES.MEDIUM);
+    // Wait for validation to complete (validation runs with 500ms debounce)
+    await page.waitForTimeout(WAIT_TIMES.VALIDATION_DEBOUNCE);
 
     // Check lint panel content
     const lintContent = await page.$eval('#lintContent', el => el.textContent);

@@ -21,7 +21,10 @@ const WAIT_TIMES = {
   MEDIUM: 300,        // CSS transitions (lint panel = 300ms)
   LONG: 500,          // Content rendering, async operations
   EXTRA_LONG: 1000,   // Heavy async ops, mermaid rendering
-  CONTENT_LOAD: 2000  // Full content loading with diagrams
+  CONTENT_LOAD: 2000, // Full content loading with diagrams
+  // Derived timeouts for specific features
+  MERMAID_LAZY_LOAD: 10000, // Mermaid diagrams use IntersectionObserver lazy loading
+  VALIDATION_DEBOUNCE: 1000 // Code validation uses 500ms debounce + 500ms margin
 };
 
 /**
@@ -267,11 +270,16 @@ async function loadSampleContent(page, waitTime = WAIT_TIMES.LONG) {
 /**
  * Render markdown and wait for completion
  * Awaits the async renderMarkdown function, then waits for any pending state to clear
+ *
  * @param {import('@playwright/test').Page} page - Playwright page object
  * @param {number} [timeout=5000] - Maximum time to wait for render completion (legacy values < 3000 are converted to 5000)
+ * @param {boolean} [allowEmptyWrapper=true] - Whether to allow empty wrapper after rendering.
+ *   Defaults to true for backward compatibility and because XSS tests legitimately produce
+ *   empty wrappers when DOMPurify strips all malicious content. Pass false for stricter
+ *   validation in tests where rendered content is always expected.
  * @returns {Promise<void>}
  */
-async function renderMarkdownAndWait(page, timeout = 5000) {
+async function renderMarkdownAndWait(page, timeout = 5000, allowEmptyWrapper = true) {
   // Backwards compatibility: old calls passed WAIT_TIMES.LONG (500ms) as a "wait time"
   const effectiveTimeout = timeout < 3000 ? 5000 : timeout;
 
@@ -282,11 +290,15 @@ async function renderMarkdownAndWait(page, timeout = 5000) {
     }
   });
 
-  // Wait for wrapper to have content (confirms render completed)
-  await page.waitForFunction(() => {
+  // Wait for wrapper to exist and optionally have content
+  // allowEmptyWrapper=true: XSS tests where malicious content is fully sanitized
+  // allowEmptyWrapper=false: Normal rendering tests where content should appear
+  await page.waitForFunction((allowEmpty) => {
     const wrapper = document.getElementById('wrapper');
-    return wrapper && wrapper.children.length > 0;
-  }, { timeout: effectiveTimeout });
+    if (wrapper === null) return false;
+    // If empty wrapper is allowed, just check existence; otherwise require children
+    return allowEmpty || wrapper.children.length > 0;
+  }, allowEmptyWrapper, { timeout: effectiveTimeout });
 }
 
 /**

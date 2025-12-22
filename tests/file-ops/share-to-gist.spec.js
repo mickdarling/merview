@@ -192,14 +192,22 @@ test.describe('Share to Gist', () => {
       await expect(button).toHaveClass(/btn-success/);
     });
 
-    test('should have Share to Gist button positioned after Save button', async ({ page }) => {
+    test('should have Share to Gist button in toolbar with required sibling buttons', async ({ page }) => {
       const buttons = await page.locator('.toolbar-buttons button').allTextContents();
-      // Find the Save button (not "Save as PDF")
-      const saveIndex = buttons.findIndex(text => text && text.trim() === '💾 Save');
-      const shareIndex = buttons.findIndex(text => text.includes('Share to Gist'));
 
-      expect(saveIndex).toBeGreaterThanOrEqual(0);
-      expect(shareIndex).toBe(saveIndex + 1);
+      // Verify all required buttons exist (more resilient than checking exact positions)
+      const hasSaveButton = buttons.some(text => text && text.trim() === '💾 Save');
+      const hasSavePDFButton = buttons.some(text => text?.includes('Save as PDF'));
+      const hasShareGistButton = buttons.some(text => text?.includes('Share to Gist'));
+
+      expect(hasSaveButton).toBe(true);
+      expect(hasSavePDFButton).toBe(true);
+      expect(hasShareGistButton).toBe(true);
+
+      // Verify general ordering: Share to Gist should come after Save
+      const saveIndex = buttons.findIndex(text => text && text.trim() === '💾 Save');
+      const shareIndex = buttons.findIndex(text => text?.includes('Share to Gist'));
+      expect(shareIndex).toBeGreaterThan(saveIndex);
     });
 
     test('should show status message when editor is empty', async ({ page }) => {

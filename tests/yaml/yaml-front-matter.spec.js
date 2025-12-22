@@ -519,9 +519,8 @@ graph TD
       const panelExists = await yamlPanelExists(page);
       expect(panelExists).toBe(true);
 
-      // Check mermaid diagram is rendered
-      const mermaidSvg = await page.$('.mermaid svg');
-      expect(mermaidSvg).not.toBeNull();
+      // Wait for mermaid to render the SVG with extended timeout for lazy loading
+      await expect(page.locator('.mermaid svg')).toBeVisible({ timeout: 10000 });
     });
 
     test('YAML panel does not interfere with code blocks', async ({ page }) => {
