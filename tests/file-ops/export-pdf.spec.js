@@ -211,7 +211,7 @@ test.describe('Export PDF Functionality', () => {
  * Browser-side helper: Check if a print CSS rule exists matching given criteria
  * @param {Object} opts - Search criteria
  * @param {string} opts.selectorContains - Text that must appear in the selector
- * @param {string} [opts.styleProperty] - CSS property name to check (camelCase)
+ * @param {string} [opts.styleProperty] - CSS property name to check (camelCase, e.g., 'pageBreakAfter')
  * @param {string} [opts.styleValue] - Expected value for the CSS property
  * @returns {boolean} True if matching rule found
  */
@@ -237,7 +237,11 @@ function browserFindPrintCssRule({ selectorContains, styleProperty, styleValue }
     if (!styleProperty) return true;
 
     // Convert camelCase to kebab-case for getPropertyValue
-    const kebabProperty = styleProperty.replaceAll(/([A-Z])/g, '-$1').toLowerCase();
+    // Remove leading hyphen to handle edge cases like PascalCase input
+    const kebabProperty = styleProperty
+      .replaceAll(/([A-Z])/g, '-$1')
+      .toLowerCase()
+      .replace(/^-/, '');
     const value = rule.style?.getPropertyValue(kebabProperty);
     // For height: 0, browsers may normalize to "0px" or leave as "0"
     if (styleValue === '0px' && value === '0') return true;

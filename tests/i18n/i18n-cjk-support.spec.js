@@ -684,7 +684,7 @@ graph TD
       await renderMarkdownAndWait(page, WAIT_TIMES.EXTRA_LONG);
 
       // Wait for mermaid to render the SVG with extended timeout for lazy loading
-      await expect(page.locator('.mermaid svg')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('.mermaid svg')).toBeVisible({ timeout: WAIT_TIMES.MERMAID_LAZY_LOAD });
 
       // Note: The actual text content in SVG may be encoded differently
       // This test verifies the diagram renders without errors
@@ -721,7 +721,7 @@ graph LR
       await renderMarkdownAndWait(page, WAIT_TIMES.EXTRA_LONG);
 
       // Wait for mermaid to render the SVG with extended timeout for lazy loading
-      await expect(page.locator('.mermaid svg')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('.mermaid svg')).toBeVisible({ timeout: WAIT_TIMES.MERMAID_LAZY_LOAD });
     });
   });
 

@@ -94,7 +94,7 @@ This HTML block has real unclosed tags:
     await renderMarkdownAndWait(page, WAIT_TIMES.LONG);
 
     // Wait for validation to complete (validation runs with 500ms debounce)
-    await page.waitForTimeout(WAIT_TIMES.EXTRA_LONG);
+    await page.waitForTimeout(WAIT_TIMES.VALIDATION_DEBOUNCE);
 
     // Check lint panel content
     const lintContent = await page.$eval('#lintContent', el => el.textContent);

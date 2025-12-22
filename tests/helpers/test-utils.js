@@ -21,7 +21,10 @@ const WAIT_TIMES = {
   MEDIUM: 300,        // CSS transitions (lint panel = 300ms)
   LONG: 500,          // Content rendering, async operations
   EXTRA_LONG: 1000,   // Heavy async ops, mermaid rendering
-  CONTENT_LOAD: 2000  // Full content loading with diagrams
+  CONTENT_LOAD: 2000, // Full content loading with diagrams
+  // Derived timeouts for specific features
+  MERMAID_LAZY_LOAD: 10000, // Mermaid diagrams use IntersectionObserver lazy loading
+  VALIDATION_DEBOUNCE: 1000 // Code validation uses 500ms debounce + 500ms margin
 };
 
 /**
