@@ -258,23 +258,46 @@ function stripPrintMediaQueries(css) {
 }
 
 /**
+ * Check if a selector is already scoped to #wrapper or #preview
+ * Uses word boundary matching to avoid false positives like #wrapper-other
+ * @param {string} selector - CSS selector to check
+ * @returns {boolean} True if already scoped
+ */
+function isSelectorScoped(selector) {
+    // Match #wrapper or #preview as complete selectors (with word boundaries)
+    // This prevents false matches like #wrapper-container or #preview-panel
+    return /(?:^|[\s,>+~])#wrapper(?:$|[\s,.:#>\[+~])/.test(selector) ||
+           /(?:^|[\s,>+~])#preview(?:$|[\s,.:#>\[+~])/.test(selector);
+}
+
+/**
  * Scope a single CSS selector by adding #wrapper prefix
  * @param {string} selector - Single CSS selector to scope
  * @returns {string} Scoped selector
  */
 function scopeSelector(selector) {
     const trimmed = selector.trim();
-    // Skip empty, @-rules, comments, or already scoped
+    // Skip empty, @-rules, or comments
     if (!trimmed ||
         trimmed.startsWith('@') ||
-        trimmed.startsWith('/*') ||
-        trimmed.includes('#wrapper') ||
-        trimmed.includes('#preview')) {
+        trimmed.startsWith('/*')) {
         return trimmed;
     }
-    // Replace body/html with #wrapper
-    if (trimmed === 'body' || trimmed === 'html') {
+    // Skip if already scoped to #wrapper or #preview
+    if (isSelectorScoped(trimmed)) {
+        return trimmed;
+    }
+    // Replace :root, body, or html with #wrapper (these target the whole document)
+    if (trimmed === ':root' || trimmed === 'body' || trimmed === 'html') {
         return '#wrapper';
+    }
+    // Scope universal selector
+    if (trimmed === '*') {
+        return '#wrapper *';
+    }
+    // Handle compound selectors starting with :root, body, html (e.g., "body.dark", ":root[data-theme]")
+    if (/^(:root|body|html)([.#\[:].*)$/.test(trimmed)) {
+        return trimmed.replace(/^(:root|body|html)/, '#wrapper');
     }
     // Prefix with #wrapper
     return '#wrapper ' + trimmed;
@@ -529,7 +552,9 @@ async function applyStyleToPage(cssText, styleName, style) {
     cssText = stripPrintMediaQueries(cssText);
 
     // Scope the CSS to only affect #wrapper (the content area)
-    if (style.source !== 'local' && !cssText.includes('#wrapper')) {
+    // Always scope non-local CSS - individual already-scoped selectors are handled by scopeSelector()
+    // This fixes #384: CSS with partial #wrapper rules was bypassing scoping entirely
+    if (style.source !== 'local') {
         cssText = scopeCSSToPreview(cssText);
     }
 
