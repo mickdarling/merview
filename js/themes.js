@@ -510,6 +510,62 @@ function isGroupingAtRule(atRuleName) {
 }
 
 /**
+ * Extract @-rule name from CSS starting after '@'
+ * @param {string} css - CSS text
+ * @param {number} start - Position after '@'
+ * @param {number} len - Length of CSS
+ * @returns {{name: string, end: number}} Rule name and position after name
+ */
+function extractAtRuleName(css, start, len) {
+    let end = start;
+    while (end < len && /[a-zA-Z-]/.test(css[end])) {
+        end++;
+    }
+    return { name: css.substring(start, end), end };
+}
+
+/**
+ * Find opening brace or semicolon in @-rule
+ * @param {string} css - CSS text
+ * @param {number} start - Position to start searching
+ * @param {number} len - Length of CSS
+ * @returns {number} Position of brace or semicolon
+ */
+function findAtRuleDelimiter(css, start, len) {
+    let i = start;
+    while (i < len && css[i] !== '{' && css[i] !== ';') {
+        i++;
+    }
+    return i;
+}
+
+/**
+ * Handle @-rule with braces (block rule)
+ * @param {string} css - CSS text
+ * @param {number} atStart - Start of @-rule
+ * @param {number} bracePos - Position of opening brace
+ * @param {string} atRuleName - Name of @-rule
+ * @param {Array<string>} result - Result array
+ * @param {number} depth - Recursion depth
+ * @param {number} len - CSS length
+ * @returns {number} Position after closing brace
+ */
+function handleBlockAtRule(css, atStart, bracePos, atRuleName, result, depth, len) {
+    const contentStart = bracePos + 1;
+    const { end, contentEnd } = findMatchingBrace(css, contentStart, len);
+
+    if (isGroupingAtRule(atRuleName)) {
+        const prelude = css.substring(atStart, bracePos + 1);
+        const innerContent = css.substring(contentStart, contentEnd);
+        const scopedInner = scopeCSSToPreview(innerContent, depth + 1);
+        result.push(prelude, scopedInner, '}');
+    } else {
+        result.push(css.substring(atStart, end));
+    }
+    return end;
+}
+
+/**
  * Parse an @-rule and add it to result, scoping selectors inside grouping rules
  * @param {string} css - CSS text
  * @param {number} i - Current index (pointing at '@')
@@ -522,53 +578,18 @@ function parseAtRule(css, i, result, depth = 0) {
     const len = css.length;
     i++; // Skip '@'
 
-    // Extract the @-rule name (e.g., 'media', 'keyframes', 'font-face')
-    let nameEnd = i;
-    while (nameEnd < len && /[a-zA-Z-]/.test(css[nameEnd])) {
-        nameEnd++;
-    }
-    const atRuleName = css.substring(i, nameEnd);
+    const { name: atRuleName, end: nameEnd } = extractAtRuleName(css, i, len);
+    const delimPos = findAtRuleDelimiter(css, nameEnd, len);
 
-    // Find the opening brace or semicolon
-    i = nameEnd;
-    while (i < len && css[i] !== '{' && css[i] !== ';') {
-        i++;
+    // Block rule with braces
+    if (delimPos < len && css[delimPos] === '{') {
+        return handleBlockAtRule(css, atStart, delimPos, atRuleName, result, depth, len);
     }
 
-    if (i < len && css[i] === '{') {
-        const bracePos = i;
-        // Find matching closing brace (handle nested braces)
-        let braceDepth = 1;
-        i++;
-        const contentStart = i;
-        while (i < len && braceDepth > 0) {
-            if (css[i] === '{') {
-                braceDepth++;
-            } else if (css[i] === '}') {
-                braceDepth--;
-            }
-            i++;
-        }
-        const contentEnd = i - 1; // Position of closing brace
-
-        // For grouping rules (@media, @supports), recursively scope the inner content
-        if (isGroupingAtRule(atRuleName)) {
-            const prelude = css.substring(atStart, bracePos + 1); // "@media screen {"
-            const innerContent = css.substring(contentStart, contentEnd);
-            const scopedInner = scopeCSSToPreview(innerContent, depth + 1); // Recursive call with depth
-            result.push(prelude, scopedInner, '}');
-        } else {
-            // Non-grouping rules (@keyframes, @font-face, etc.) pass through unchanged
-            result.push(css.substring(atStart, i));
-        }
-    } else if (i < len) {
-        i++; // Skip the semicolon
-        result.push(css.substring(atStart, i));
-    } else {
-        result.push(css.substring(atStart, i));
-    }
-
-    return i;
+    // Statement rule ending with semicolon or EOF
+    const ruleEnd = delimPos < len ? delimPos + 1 : delimPos;
+    result.push(css.substring(atStart, ruleEnd));
+    return ruleEnd;
 }
 
 /**
