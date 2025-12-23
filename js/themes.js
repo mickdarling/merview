@@ -52,8 +52,55 @@ let fileInput = null; // Hidden file input for CSS uploads
 // Track dynamically loaded styles (file uploads, URLs) for display in dropdown
 const loadedStyles = [];
 
+// SessionStorage keys for persisting loaded styles across page navigation (#390)
+const LOADED_STYLES_KEY = 'merview-loaded-styles';
+
 // Store the current scoped CSS (before layout stripping) for toggle reapplication
 let currentScopedCSS = null;
+
+/**
+ * Save loaded styles to sessionStorage for persistence across page navigation
+ * Stores the entire loadedStyles array as JSON (Issue #390 fix)
+ */
+function saveLoadedStylesToSession() {
+    try {
+        if (loadedStyles.length === 0) {
+            // Clear sessionStorage if no loaded styles
+            sessionStorage.removeItem(LOADED_STYLES_KEY);
+            return;
+        }
+        sessionStorage.setItem(LOADED_STYLES_KEY, JSON.stringify(loadedStyles));
+    } catch (error) {
+        // SessionStorage can throw if quota exceeded or disabled
+        console.warn('Failed to save loaded styles to sessionStorage:', error);
+    }
+}
+
+/**
+ * Restore loaded styles from sessionStorage on page initialization
+ * Populates loadedStyles array and adds to dropdown (Issue #390 fix)
+ */
+function restoreLoadedStylesFromSession() {
+    try {
+        const saved = sessionStorage.getItem(LOADED_STYLES_KEY);
+        if (!saved) return;
+
+        const restoredStyles = JSON.parse(saved);
+        if (!Array.isArray(restoredStyles)) return;
+
+        // Validate and restore each style
+        restoredStyles.forEach(style => {
+            if (style?.name && style?.css && style?.source) {
+                loadedStyles.push(style);
+            }
+        });
+    } catch (error) {
+        // JSON parse can fail on corrupted data
+        console.warn('Failed to restore loaded styles from sessionStorage:', error);
+        // Clear corrupted data
+        sessionStorage.removeItem(LOADED_STYLES_KEY);
+    }
+}
 
 // Theme loading constants
 const SYNTAX_THEME_LOADING_ID = 'syntax-theme-loading';
@@ -883,6 +930,9 @@ async function handleSpecialStyleSource(style) {
             state.currentStyleLink.remove();
             state.currentStyleLink = null;
         }
+        // Clear loaded styles from memory and sessionStorage (#390)
+        loadedStyles.length = 0;
+        saveLoadedStylesToSession();
         // Reset Mermaid to default (light) theme
         updateMermaidTheme(false);
         showStatus('CSS removed');
@@ -966,6 +1016,8 @@ async function loadCSSFromFile(file) {
         await applyCSSDirectly(cssText, file.name);
         // Add to dropdown with CSS content for re-selection
         addLoadedStyleToDropdown(file.name, 'file', cssText);
+        // Save to sessionStorage for persistence across navigation (#390)
+        saveLoadedStylesToSession();
         showStatus(`Loaded: ${file.name}`);
     } catch (error) {
         showStatus(`Error loading file: ${error.message}`);
@@ -1029,6 +1081,8 @@ async function loadCSSFromURL(url) {
         const displayName = urlParts.at(-1) || normalizedUrl;
         // Add to dropdown with CSS content for re-selection
         addLoadedStyleToDropdown(displayName, 'url', cssText);
+        // Save to sessionStorage for persistence across navigation (#390)
+        saveLoadedStylesToSession();
         showStatus(`Loaded from URL`);
     } catch (error) {
         showStatus(`Error loading URL: ${error.message}`);
@@ -1655,6 +1709,11 @@ async function initStyleSelector() {
     const { styleSelector } = getElements();
     if (!styleSelector) return;
 
+    // FIRST: Restore loaded styles from sessionStorage (#390 fix)
+    // This must happen BEFORE populating the dropdown so restored styles
+    // can be added to the "Loaded" optgroup
+    restoreLoadedStylesFromSession();
+
     populateSelectorWithOptgroups(
         styleSelector,
         availableStyles,
@@ -1678,6 +1737,14 @@ async function initStyleSelector() {
             return option;
         }
     );
+
+    // Add restored styles to dropdown (Issue #390 fix)
+    // This populates the "Loaded" optgroup with styles from sessionStorage
+    if (loadedStyles.length > 0) {
+        loadedStyles.forEach(style => {
+            addLoadedStyleToDropdown(style.name, style.source, style.css);
+        });
+    }
 
     // Load saved style or default
     const savedStyle = getMarkdownStyle();
@@ -1709,6 +1776,8 @@ function addLoadedStyleToDropdown(styleName, source, cssContent) {
         const existingStyle = loadedStyles.find(s => s.name === styleName);
         if (existingStyle) {
             existingStyle.css = cssContent;
+            // Update sessionStorage when CSS content changes (#390)
+            saveLoadedStylesToSession();
         }
         styleSelector.value = styleName;
         return;
