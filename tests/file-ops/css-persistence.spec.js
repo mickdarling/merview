@@ -150,7 +150,7 @@ test.describe('CSS Persistence Across Navigation', () => {
       const wrapper = document.getElementById('wrapper');
       if (!wrapper) return null;
 
-      const computedStyle = window.getComputedStyle(wrapper);
+      const computedStyle = globalThis.getComputedStyle(wrapper);
       return computedStyle.backgroundColor;
     });
 
@@ -280,7 +280,11 @@ test.describe('CSS Persistence Across Navigation', () => {
   });
 
   test('should handle sessionStorage quota exceeded gracefully', async ({ page }) => {
-    // Inject a function that will fail to save to sessionStorage
+    // Set up error listener BEFORE triggering the action
+    const errors = [];
+    page.on('pageerror', error => errors.push(error));
+
+    // Inject a mock that will fail when saving loaded styles
     await page.evaluate(() => {
       const originalSetItem = sessionStorage.setItem.bind(sessionStorage);
       sessionStorage.setItem = function(key, value) {
@@ -291,16 +295,24 @@ test.describe('CSS Persistence Across Navigation', () => {
       };
     });
 
-    // Try to trigger a save (via page interaction)
+    // Actually trigger saveLoadedStylesToSession by loading a CSS file
+    // This exercises the error handling code path
+    await page.evaluate(async () => {
+      const css = '#wrapper { background: red; }';
+      const blob = new Blob([css], { type: 'text/css' });
+      const file = new File([blob], 'quota-test.css', { type: 'text/css' });
+
+      // This should trigger saveLoadedStylesToSession, which will hit the mocked error
+      if (globalThis.loadCSSFromFile) {
+        await globalThis.loadCSSFromFile(file);
+      }
+    });
+
+    await page.waitForTimeout(WAIT_TIMES.SHORT);
+
     // The app should not crash even if sessionStorage fails
     const styleSelector = await page.$('#styleSelector');
     expect(styleSelector).not.toBeNull();
-
-    // Verify no errors in console (warnings are OK)
-    const errors = [];
-    page.on('pageerror', error => errors.push(error));
-
-    await page.waitForTimeout(WAIT_TIMES.SHORT);
 
     // Should have no unhandled errors (warnings are logged but not thrown)
     expect(errors.length).toBe(0);
