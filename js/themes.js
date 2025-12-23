@@ -227,7 +227,8 @@ const LAYOUT_PROPERTIES = new Set([
 function shouldKeepDeclaration(declaration) {
     const trimmed = declaration.trim();
     if (!trimmed) return false;
-    const propRegex = /^([a-z-]+)\s*:\s*(.+)$/i;
+    // Using [^\r\n]+ instead of .+ to avoid ReDoS warning (S5852)
+    const propRegex = /^([a-z-]+)\s*:\s*([^\r\n]+)$/i;
     const propMatch = propRegex.exec(trimmed);
     if (!propMatch) return true;
     const prop = propMatch[1].toLowerCase();
