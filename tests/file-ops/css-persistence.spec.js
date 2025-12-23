@@ -38,7 +38,7 @@ test.describe('CSS Persistence Across Navigation', () => {
     };
 
     await page.evaluate((style) => {
-      sessionStorage.setItem('merview-loaded-styles', JSON.stringify([style]));
+      sessionStorage.setItem('merview-v1-loaded-styles', JSON.stringify([style]));
     }, mockStyle);
 
     // Reload the page to trigger restoration
@@ -61,33 +61,101 @@ test.describe('CSS Persistence Across Navigation', () => {
     expect(hasLoadedStyle).toBe(true);
   });
 
-  test('should save loaded styles to sessionStorage when file is uploaded', async ({ page }) => {
-    // Create a test CSS file
+  test('should save loaded styles to sessionStorage when CSS is loaded via loadCSSFromFile', async ({ page }) => {
+    // Create a test CSS file blob with distinctive styling
     const cssContent = '#wrapper { background: #1e1e1e; color: #fff; }';
     const fileName = 'test-dark.css';
 
-    // Simulate loading CSS via the internal function
-    await page.evaluate(({ css, name }) => {
-      // Simulate the loadCSSFromFile behavior
-      if (globalThis.applyCSSDirectly) {
-        globalThis.applyCSSDirectly(css, name);
+    // Create a mock File object and call the actual loadCSSFromFile function
+    await page.evaluate(async ({ css, name }) => {
+      // Create a Blob from the CSS content
+      const blob = new Blob([css], { type: 'text/css' });
+      // Create a File object from the Blob
+      const file = new File([blob], name, { type: 'text/css' });
+
+      // Call the actual loadCSSFromFile function (now exposed to globalThis)
+      if (globalThis.loadCSSFromFile) {
+        await globalThis.loadCSSFromFile(file);
+      } else {
+        throw new Error('loadCSSFromFile not exposed to globalThis');
       }
-      // Simulate adding to dropdown (this triggers sessionStorage save)
-      const event = new CustomEvent('css-loaded', { detail: { name, css, source: 'file' } });
-      document.dispatchEvent(event);
     }, { css: cssContent, name: fileName });
 
+    // Wait for async operations to complete
     await page.waitForTimeout(WAIT_TIMES.SHORT);
 
-    // Verify sessionStorage was updated
+    // Verify sessionStorage was updated with the loaded style
     const sessionData = await page.evaluate(() => {
-      const data = sessionStorage.getItem('merview-loaded-styles');
+      const data = sessionStorage.getItem('merview-v1-loaded-styles');
       return data ? JSON.parse(data) : null;
     });
 
-    // SessionStorage should contain the loaded style
-    // Note: This test verifies the mechanism exists, even if specific implementation varies
+    // Verify sessionStorage contains the loaded style with correct structure
     expect(sessionData).toBeDefined();
+    expect(Array.isArray(sessionData)).toBe(true);
+    expect(sessionData.length).toBeGreaterThan(0);
+
+    // Verify the loaded style has the expected properties
+    const loadedStyle = sessionData.find(s => s.name === fileName);
+    expect(loadedStyle).toBeDefined();
+    expect(loadedStyle.source).toBe('file');
+    expect(loadedStyle.css).toContain('#wrapper');
+  });
+
+  test('should apply loaded CSS to page after reload', async ({ page }) => {
+    // This test verifies that CSS is not just saved/restored in sessionStorage,
+    // but is actually re-applied to the page with the correct visual styles.
+
+    // Use a distinctive, easily verifiable background color (bright red in rgb format)
+    const testBackgroundColor = 'rgb(255, 0, 0)'; // Bright red
+    const cssContent = `#wrapper { background-color: ${testBackgroundColor}; }`;
+    const fileName = 'test-red-background.css';
+
+    // Step 1: Load CSS using applyCSSDirectly and save to sessionStorage
+    await page.evaluate(({ css, name }) => {
+      // Save to sessionStorage as if it was loaded
+      const mockStyle = {
+        name: name,
+        source: 'file',
+        css: css
+      };
+      sessionStorage.setItem('merview-v1-loaded-styles', JSON.stringify([mockStyle]));
+    }, { css: cssContent, name: fileName });
+
+    // Step 2: Reload the page to trigger CSS restoration from sessionStorage
+    await page.reload();
+    await waitForPageReady(page);
+
+    // Wait for style selector to be ready
+    await page.waitForFunction(() => {
+      const selector = document.getElementById('styleSelector');
+      return selector && selector.options.length > 0;
+    }, { timeout: 5000 });
+
+    // Step 3: Select the loaded style from the dropdown to apply it
+    await page.evaluate((styleName) => {
+      const selector = document.getElementById('styleSelector');
+      const option = Array.from(selector.options).find(opt => opt.value === styleName);
+      if (option) {
+        selector.value = styleName;
+        selector.dispatchEvent(new Event('change'));
+      }
+    }, fileName);
+
+    // Wait for CSS to be applied
+    await page.waitForTimeout(WAIT_TIMES.LONG);
+
+    // Step 4: Verify the computed style actually reflects the loaded CSS
+    const actualBackgroundColor = await page.evaluate(() => {
+      const wrapper = document.getElementById('wrapper');
+      if (!wrapper) return null;
+
+      const computedStyle = window.getComputedStyle(wrapper);
+      return computedStyle.backgroundColor;
+    });
+
+    // Verify the background color was applied correctly
+    expect(actualBackgroundColor).toBe(testBackgroundColor);
   });
 
   test('should clear sessionStorage when "No CSS" is selected', async ({ page }) => {
@@ -98,12 +166,12 @@ test.describe('CSS Persistence Across Navigation', () => {
         source: 'file',
         css: '#wrapper { background: black; }'
       };
-      sessionStorage.setItem('merview-loaded-styles', JSON.stringify([mockStyle]));
+      sessionStorage.setItem('merview-v1-loaded-styles', JSON.stringify([mockStyle]));
     });
 
     // Verify it was saved
     let savedData = await page.evaluate(() => {
-      return sessionStorage.getItem('merview-loaded-styles');
+      return sessionStorage.getItem('merview-v1-loaded-styles');
     });
     expect(savedData).toBeTruthy();
 
@@ -123,7 +191,7 @@ test.describe('CSS Persistence Across Navigation', () => {
 
     // Verify sessionStorage was cleared
     savedData = await page.evaluate(() => {
-      return sessionStorage.getItem('merview-loaded-styles');
+      return sessionStorage.getItem('merview-v1-loaded-styles');
     });
     expect(savedData).toBeNull();
   });
@@ -131,7 +199,7 @@ test.describe('CSS Persistence Across Navigation', () => {
   test('should handle corrupted sessionStorage data gracefully', async ({ page }) => {
     // Set invalid JSON in sessionStorage
     await page.evaluate(() => {
-      sessionStorage.setItem('merview-loaded-styles', 'invalid json{{{');
+      sessionStorage.setItem('merview-v1-loaded-styles', 'invalid json{{{');
     });
 
     // Reload page - should not crash
@@ -144,7 +212,7 @@ test.describe('CSS Persistence Across Navigation', () => {
 
     // Verify corrupted data was cleaned up
     const sessionData = await page.evaluate(() => {
-      return sessionStorage.getItem('merview-loaded-styles');
+      return sessionStorage.getItem('merview-v1-loaded-styles');
     });
     expect(sessionData).toBeNull();
   });
@@ -158,7 +226,7 @@ test.describe('CSS Persistence Across Navigation', () => {
     ];
 
     await page.evaluate((styles) => {
-      sessionStorage.setItem('merview-loaded-styles', JSON.stringify(styles));
+      sessionStorage.setItem('merview-v1-loaded-styles', JSON.stringify(styles));
     }, mockStyles);
 
     // Reload the page
@@ -191,7 +259,7 @@ test.describe('CSS Persistence Across Navigation', () => {
 
     // Load initial style
     await page.evaluate((data) => {
-      sessionStorage.setItem('merview-loaded-styles', JSON.stringify([data]));
+      sessionStorage.setItem('merview-v1-loaded-styles', JSON.stringify([data]));
     }, { name: styleName, source: 'file', css: originalCss });
 
     // Reload page
@@ -216,7 +284,7 @@ test.describe('CSS Persistence Across Navigation', () => {
     await page.evaluate(() => {
       const originalSetItem = sessionStorage.setItem.bind(sessionStorage);
       sessionStorage.setItem = function(key, value) {
-        if (key === 'merview-loaded-styles') {
+        if (key === 'merview-v1-loaded-styles') {
           throw new Error('QuotaExceededError');
         }
         return originalSetItem(key, value);

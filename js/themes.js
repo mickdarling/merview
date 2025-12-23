@@ -53,7 +53,8 @@ let fileInput = null; // Hidden file input for CSS uploads
 const loadedStyles = [];
 
 // SessionStorage keys for persisting loaded styles across page navigation (#390)
-const LOADED_STYLES_KEY = 'merview-loaded-styles';
+// Version prefix allows clean migration if data structure changes in future
+const LOADED_STYLES_KEY = 'merview-v1-loaded-styles';
 
 // Store the current scoped CSS (before layout stripping) for toggle reapplication
 let currentScopedCSS = null;
@@ -1739,7 +1740,11 @@ async function initStyleSelector() {
     );
 
     // Add restored styles to dropdown (Issue #390 fix)
-    // This populates the "Loaded" optgroup with styles from sessionStorage
+    // This populates the "Loaded" optgroup with styles from sessionStorage.
+    // Note: addLoadedStyleToDropdown() has duplicate prevention via
+    // `!loadedStyles.some(s => s.name === styleName)` check, which is necessary
+    // because restoreLoadedStylesFromSession() already populated the loadedStyles
+    // array before this loop runs.
     if (loadedStyles.length > 0) {
         loadedStyles.forEach(style => {
             addLoadedStyleToDropdown(style.name, style.source, style.css);
@@ -1868,5 +1873,7 @@ export {
     changeEditorTheme,
     changeMermaidTheme,
     applyLayoutConstraints,
-    applyPreviewBackground
+    applyPreviewBackground,
+    loadCSSFromFile,
+    applyCSSDirectly
 };

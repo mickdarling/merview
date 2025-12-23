@@ -7,7 +7,7 @@
 import { state, resetEditorState, DOCUMENT_MODE } from './state.js';
 import { initCodeMirror, getEditorContent, setEditorContent } from './editor.js';
 import { renderMarkdown, scheduleRender } from './renderer.js';
-import { initStyleSelector, initSyntaxThemeSelector, initEditorThemeSelector, initMermaidThemeSelector, initPreviewDragDrop, initURLModalHandlers, changeStyle, changeSyntaxTheme, changeEditorTheme, changeMermaidTheme, applyPreviewBackground, applyCachedBackground } from './themes.js';
+import { initStyleSelector, initSyntaxThemeSelector, initEditorThemeSelector, initMermaidThemeSelector, initPreviewDragDrop, initURLModalHandlers, changeStyle, changeSyntaxTheme, changeEditorTheme, changeMermaidTheme, applyPreviewBackground, applyCachedBackground, loadCSSFromFile, applyCSSDirectly } from './themes.js';
 import { loadMarkdownFromURL, loadWelcomePage, clearWelcomePageCache, openFile, saveFile, saveFileAs, isValidMarkdownFile, isValidMarkdownContentType, exportToPDF, initFileInputHandlers, stripMermaidFences, hasProperMermaidFences } from './file-ops.js';
 import { initDocumentSelector, changeDocument, updateDocumentSelector } from './documents.js';
 import { shareToGist, hideGistModal, openGitHubAuth, startDeviceFlow, copyGistUrl, disconnectGitHub } from './gist.js';
@@ -146,6 +146,8 @@ function exposeGlobalFunctions() {
     globalThis.changeEditorTheme = changeEditorTheme;
     globalThis.changeMermaidTheme = changeMermaidTheme;
     globalThis.applyPreviewBackground = applyPreviewBackground;
+    globalThis.loadCSSFromFile = loadCSSFromFile;
+    globalThis.applyCSSDirectly = applyCSSDirectly;
 }
 
 /**
