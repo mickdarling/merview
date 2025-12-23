@@ -200,7 +200,7 @@ function applyLayoutConstraints() {
  * "Respect Style Layout" is OFF. These properties conflict with user
  * control of the preview pane width via the drag handle.
  */
-const LAYOUT_PROPERTIES = [
+const LAYOUT_PROPERTIES = new Set([
     'max-width',
     'min-width',
     'width',
@@ -214,7 +214,72 @@ const LAYOUT_PROPERTIES = [
     'padding-right',
     'padding-top',
     'padding-bottom'
-];
+]);
+
+/**
+ * Check if a declaration is a layout property that should be stripped
+ * @param {string} declaration - CSS declaration to check
+ * @returns {boolean} True if the declaration should be kept
+ */
+function shouldKeepDeclaration(declaration) {
+    const trimmed = declaration.trim();
+    if (!trimmed) return false;
+    const propRegex = /^([a-z-]+)\s*:/i;
+    const propMatch = propRegex.exec(trimmed);
+    if (!propMatch) return true;
+    const prop = propMatch[1].toLowerCase();
+    return !LAYOUT_PROPERTIES.has(prop);
+}
+
+/**
+ * Filter layout properties from a CSS rule body
+ * @param {string} ruleBody - CSS rule body (declarations)
+ * @returns {string} Filtered rule body
+ */
+function filterLayoutProperties(ruleBody) {
+    return ruleBody
+        .split(';')
+        .filter(shouldKeepDeclaration)
+        .join(';');
+}
+
+/**
+ * Check if selector targets #wrapper directly
+ * @param {string} selectorText - CSS selector text
+ * @returns {boolean} True if selector targets #wrapper directly
+ */
+function isDirectWrapperSelector(selectorText) {
+    const trimmed = selectorText.trim();
+    if (trimmed === '#wrapper') return true;
+    return /(?:^|,\s*)#wrapper\s*(?:,|$)/.test(selectorText);
+}
+
+/**
+ * Find matching closing brace and return position after it
+ * @param {string} css - CSS text
+ * @param {number} start - Position after opening brace
+ * @param {number} len - Length of CSS
+ * @returns {{end: number, contentEnd: number}} Position after closing brace and content end
+ */
+function findMatchingBrace(css, start, len) {
+    let depth = 1;
+    let i = start;
+    while (i < len && depth > 0) {
+        if (css[i] === '{') depth++;
+        else if (css[i] === '}') depth--;
+        i++;
+    }
+    return { end: i, contentEnd: i - 1 };
+}
+
+/**
+ * Check if @-rule is a grouping rule that needs recursive processing
+ * @param {string} atRuleName - Name of the @-rule
+ * @returns {boolean} True if grouping rule
+ */
+function isGroupingAtRuleForStrip(atRuleName) {
+    return ['media', 'supports', 'document', 'layer'].includes(atRuleName.toLowerCase());
+}
 
 /**
  * Strip layout-related properties from CSS rules targeting #wrapper.
@@ -224,123 +289,124 @@ const LAYOUT_PROPERTIES = [
  *   #wrapper { max-width: 700px !important; }
  *
  * @param {string} css - CSS text to process
+ * @param {number} depth - Recursion depth (default 0)
  * @returns {string} CSS with layout properties removed from #wrapper rules
  */
-function stripWrapperLayoutProperties(css) {
-    // Match #wrapper rules (including those with additional selectors)
-    // We need to find rule blocks where selector targets #wrapper
+function stripWrapperLayoutProperties(css, depth = 0) {
+    // Prevent infinite recursion
+    if (depth > MAX_CSS_RECURSION_DEPTH) return css;
+
     const result = [];
     let i = 0;
     const len = css.length;
 
     while (i < len) {
-        // Skip whitespace
+        // Skip and preserve whitespace
         const wsStart = i;
         while (i < len && /\s/.test(css[i])) i++;
         if (i > wsStart) result.push(css.substring(wsStart, i));
         if (i >= len) break;
 
-        // Check for comment
+        // Handle comments
         if (css[i] === '/' && css[i + 1] === '*') {
-            const commentStart = i;
-            i += 2;
-            while (i < len - 1 && !(css[i] === '*' && css[i + 1] === '/')) i++;
-            i += 2;
-            result.push(css.substring(commentStart, i));
+            i = parseCommentForStrip(css, i, len, result);
             continue;
         }
 
-        // Check for @-rule
+        // Handle @-rules
         if (css[i] === '@') {
-            const atStart = i;
-            i++;
-            // Get @-rule name
-            let nameEnd = i;
-            while (nameEnd < len && /[a-zA-Z-]/.test(css[nameEnd])) nameEnd++;
-            const atRuleName = css.substring(i, nameEnd);
-            i = nameEnd;
-
-            // Find opening brace or semicolon
-            while (i < len && css[i] !== '{' && css[i] !== ';') i++;
-
-            if (i < len && css[i] === '{') {
-                const bracePos = i;
-                let depth = 1;
-                i++;
-                const contentStart = i;
-                while (i < len && depth > 0) {
-                    if (css[i] === '{') depth++;
-                    else if (css[i] === '}') depth--;
-                    i++;
-                }
-                const contentEnd = i - 1;
-
-                // For @media/@supports, recursively process inner content
-                if (['media', 'supports', 'document', 'layer'].includes(atRuleName.toLowerCase())) {
-                    const prelude = css.substring(atStart, bracePos + 1);
-                    const innerContent = css.substring(contentStart, contentEnd);
-                    const processedInner = stripWrapperLayoutProperties(innerContent);
-                    result.push(prelude, processedInner, '}');
-                } else {
-                    result.push(css.substring(atStart, i));
-                }
-            } else {
-                if (i < len) i++;
-                result.push(css.substring(atStart, i));
-            }
+            i = parseAtRuleForStrip(css, i, len, result, depth);
             continue;
         }
 
-        // Parse selector and block
-        const selectorStart = i;
-        while (i < len && css[i] !== '{') i++;
-        if (i >= len) {
-            result.push(css.substring(selectorStart));
-            break;
-        }
-
-        const selectorText = css.substring(selectorStart, i).trim();
-        const openBrace = css[i];
-        i++;
-
-        // Collect rule body
-        const bodyStart = i;
-        let depth = 1;
-        while (i < len && depth > 0) {
-            if (css[i] === '{') depth++;
-            else if (css[i] === '}') depth--;
-            i++;
-        }
-        const ruleBody = css.substring(bodyStart, i - 1);
-
-        // Check if selector targets #wrapper directly (not descendant like "#wrapper p")
-        const isWrapperRule = /(?:^|,\s*)#wrapper\s*(?:,|$)/.test(selectorText) ||
-                              selectorText.trim() === '#wrapper';
-
-        if (isWrapperRule) {
-            // Strip layout properties from this rule
-            const filteredBody = ruleBody
-                .split(';')
-                .filter(decl => {
-                    const trimmed = decl.trim();
-                    if (!trimmed) return false;
-                    const propMatch = trimmed.match(/^([a-z-]+)\s*:/i);
-                    if (!propMatch) return true;
-                    const prop = propMatch[1].toLowerCase();
-                    return !LAYOUT_PROPERTIES.includes(prop);
-                })
-                .join(';');
-
-            // Only include rule if there are remaining declarations
-            if (filteredBody.trim()) {
-                result.push(selectorText, openBrace, filteredBody, '}');
-            }
-        } else {
-            result.push(selectorText, openBrace, ruleBody, '}');
-        }
+        // Handle regular rules
+        i = parseRuleForStrip(css, i, len, result);
     }
 
     return result.join('');
+}
+
+/**
+ * Parse a CSS comment for stripWrapperLayoutProperties
+ */
+function parseCommentForStrip(css, i, len, result) {
+    const commentStart = i;
+    i += 2;
+    while (i < len - 1 && !(css[i] === '*' && css[i + 1] === '/')) i++;
+    i += 2;
+    result.push(css.substring(commentStart, i));
+    return i;
+}
+
+/**
+ * Parse an @-rule for stripWrapperLayoutProperties
+ */
+function parseAtRuleForStrip(css, i, len, result, depth) {
+    const atStart = i;
+    i++; // Skip '@'
+
+    // Get @-rule name
+    let nameEnd = i;
+    while (nameEnd < len && /[a-zA-Z-]/.test(css[nameEnd])) nameEnd++;
+    const atRuleName = css.substring(i, nameEnd);
+    i = nameEnd;
+
+    // Find opening brace or semicolon
+    while (i < len && css[i] !== '{' && css[i] !== ';') i++;
+
+    if (i >= len || css[i] === ';') {
+        if (i < len) i++;
+        result.push(css.substring(atStart, i));
+        return i;
+    }
+
+    // Has opening brace
+    const bracePos = i;
+    i++;
+    const { end, contentEnd } = findMatchingBrace(css, i, len);
+    i = end;
+
+    if (isGroupingAtRuleForStrip(atRuleName)) {
+        const prelude = css.substring(atStart, bracePos + 1);
+        const innerContent = css.substring(bracePos + 1, contentEnd);
+        const processedInner = stripWrapperLayoutProperties(innerContent, depth + 1);
+        result.push(prelude, processedInner, '}');
+    } else {
+        result.push(css.substring(atStart, i));
+    }
+
+    return i;
+}
+
+/**
+ * Parse a regular CSS rule for stripWrapperLayoutProperties
+ */
+function parseRuleForStrip(css, i, len, result) {
+    const selectorStart = i;
+    while (i < len && css[i] !== '{') i++;
+    if (i >= len) {
+        result.push(css.substring(selectorStart));
+        return len;
+    }
+
+    const selectorText = css.substring(selectorStart, i).trim();
+    const openBrace = css[i];
+    i++;
+
+    const { end, contentEnd } = findMatchingBrace(css, i, len);
+    const ruleBody = css.substring(i, contentEnd);
+    i = end;
+
+    if (isDirectWrapperSelector(selectorText)) {
+        const filteredBody = filterLayoutProperties(ruleBody);
+        if (filteredBody.trim()) {
+            result.push(selectorText, openBrace, filteredBody, '}');
+        }
+    } else {
+        result.push(selectorText, openBrace, ruleBody, '}');
+    }
+
+    return i;
 }
 
 /**
@@ -448,9 +514,10 @@ function isGroupingAtRule(atRuleName) {
  * @param {string} css - CSS text
  * @param {number} i - Current index (pointing at '@')
  * @param {Array<string>} result - Result array to append to
+ * @param {number} depth - Current recursion depth
  * @returns {number} New index after parsing @-rule
  */
-function parseAtRule(css, i, result) {
+function parseAtRule(css, i, result, depth = 0) {
     const atStart = i;
     const len = css.length;
     i++; // Skip '@'
@@ -488,7 +555,7 @@ function parseAtRule(css, i, result) {
         if (isGroupingAtRule(atRuleName)) {
             const prelude = css.substring(atStart, bracePos + 1); // "@media screen {"
             const innerContent = css.substring(contentStart, contentEnd);
-            const scopedInner = scopeCSSToPreview(innerContent); // Recursive call
+            const scopedInner = scopeCSSToPreview(innerContent, depth + 1); // Recursive call with depth
             result.push(prelude, scopedInner, '}');
         } else {
             // Non-grouping rules (@keyframes, @font-face, etc.) pass through unchanged
@@ -582,13 +649,23 @@ function parseSelectorAndBlock(css, i, result) {
     return i;
 }
 
+/** Maximum recursion depth for CSS parsing to prevent infinite loops */
+const MAX_CSS_RECURSION_DEPTH = 10;
+
 /**
  * Scope CSS to only affect #wrapper using a character-by-character parser
  * This avoids regex backtracking vulnerabilities (DoS prevention)
  * @param {string} css - CSS text to scope
+ * @param {number} depth - Current recursion depth (default 0)
  * @returns {string} Scoped CSS
  */
-function scopeCSSToPreview(css) {
+function scopeCSSToPreview(css, depth = 0) {
+    // Prevent infinite recursion on malformed CSS
+    if (depth > MAX_CSS_RECURSION_DEPTH) {
+        console.warn('CSS scoping: max recursion depth exceeded, returning unscoped');
+        return css;
+    }
+
     const result = [];
     let i = 0;
     const len = css.length;
@@ -600,7 +677,7 @@ function scopeCSSToPreview(css) {
 
         // Check for @-rule (pass through unchanged until matching brace)
         if (css[i] === '@') {
-            i = parseAtRule(css, i, result);
+            i = parseAtRule(css, i, result, depth);
             continue;
         }
 
@@ -800,7 +877,7 @@ async function handleSpecialStyleSource(style) {
 async function loadStyle(styleName) {
     // First check if this is a dynamically loaded style
     const loadedStyle = loadedStyles.find(s => s.name === styleName);
-    if (loadedStyle && loadedStyle.css) {
+    if (loadedStyle?.css) {
         showStatus(`Loading style: ${styleName}...`);
         await applyCSSDirectly(loadedStyle.css, styleName);
         showStatus(`Style loaded: ${styleName}`);
@@ -912,7 +989,7 @@ async function loadCSSFromURL(url) {
         await applyCSSDirectly(cssText, normalizedUrl);
         // Extract filename from URL for dropdown display
         const urlParts = normalizedUrl.split('/');
-        const displayName = urlParts[urlParts.length - 1] || normalizedUrl;
+        const displayName = urlParts.at(-1) || normalizedUrl;
         // Add to dropdown with CSS content for re-selection
         addLoadedStyleToDropdown(displayName, 'url', cssText);
         showStatus(`Loaded from URL`);
@@ -1032,6 +1109,51 @@ function applyHRPageBreakStyle() {
 }
 
 /**
+ * Handle the Respect Style Layout toggle
+ * @param {HTMLElement|null} styleSelector - The style selector element
+ */
+async function handleRespectStyleLayoutToggle(styleSelector) {
+    state.respectStyleLayout = !state.respectStyleLayout;
+    saveRespectStyleLayout(state.respectStyleLayout);
+
+    // Reapply CSS with new toggle state if we have stored CSS
+    if (currentScopedCSS) {
+        const cssToApply = state.respectStyleLayout
+            ? currentScopedCSS
+            : stripWrapperLayoutProperties(currentScopedCSS);
+        await applyCSSCore(cssToApply);
+    }
+
+    applyLayoutConstraints();
+    updateLayoutToggleCheckbox();
+
+    // Restore previous selection
+    const currentStyle = getMarkdownStyle() || 'Clean';
+    if (styleSelector) {
+        styleSelector.value = currentStyle;
+    }
+    showStatus(state.respectStyleLayout ? 'Style layout respected' : 'Style layout overridden');
+}
+
+/**
+ * Handle the HR as Page Break toggle
+ * @param {HTMLElement|null} styleSelector - The style selector element
+ */
+function handleHRPageBreakToggle(styleSelector) {
+    state.hrAsPageBreak = !state.hrAsPageBreak;
+    saveHRAsPageBreak(state.hrAsPageBreak);
+    applyHRPageBreakStyle();
+    updateHRPageBreakToggleCheckbox();
+
+    // Restore previous selection
+    const currentStyle = getMarkdownStyle() || 'Clean';
+    if (styleSelector) {
+        styleSelector.value = currentStyle;
+    }
+    showStatus(state.hrAsPageBreak ? 'HR as page break enabled' : 'HR as visual separator enabled');
+}
+
+/**
  * Change the current style
  * Reverts dropdown selection if style loading fails or is cancelled (#108 fix)
  * @param {string} styleName - Name of the style to change to
@@ -1041,45 +1163,14 @@ async function changeStyle(styleName) {
 
     const { styleSelector } = getElements();
 
-    // Handle Respect Style Layout toggle option
+    // Handle toggle options
     if (styleName === 'Respect Style Layout') {
-        state.respectStyleLayout = !state.respectStyleLayout;
-        saveRespectStyleLayout(state.respectStyleLayout);
-
-        // Reapply CSS with new toggle state if we have stored CSS
-        if (currentScopedCSS) {
-            let cssToApply = currentScopedCSS;
-            if (!state.respectStyleLayout) {
-                cssToApply = stripWrapperLayoutProperties(cssToApply);
-            }
-            await applyCSSCore(cssToApply);
-        }
-
-        applyLayoutConstraints();
-        // Update just the checkbox without rebuilding the entire dropdown
-        updateLayoutToggleCheckbox();
-        // Restore previous selection
-        const currentStyle = getMarkdownStyle() || 'Clean';
-        if (styleSelector) {
-            styleSelector.value = currentStyle;
-        }
-        showStatus(state.respectStyleLayout ? 'Style layout respected' : 'Style layout overridden');
+        await handleRespectStyleLayoutToggle(styleSelector);
         return;
     }
 
-    // Handle HR as Page Break toggle option
     if (styleName === 'HR as Page Break') {
-        state.hrAsPageBreak = !state.hrAsPageBreak;
-        saveHRAsPageBreak(state.hrAsPageBreak);
-        applyHRPageBreakStyle();
-        // Update just the checkbox without rebuilding the entire dropdown
-        updateHRPageBreakToggleCheckbox();
-        // Restore previous selection
-        const currentStyle = getMarkdownStyle() || 'Clean';
-        if (styleSelector) {
-            styleSelector.value = currentStyle;
-        }
-        showStatus(state.hrAsPageBreak ? 'HR as page break enabled' : 'HR as visual separator enabled');
+        handleHRPageBreakToggle(styleSelector);
         return;
     }
 
@@ -1594,7 +1685,7 @@ function addLoadedStyleToDropdown(styleName, source, cssContent) {
         // Insert after "Preview Style" optgroup
         const importOptgroup = styleSelector.querySelector('optgroup[label="Import"]');
         if (importOptgroup) {
-            styleSelector.insertBefore(loadedOptgroup, importOptgroup);
+            importOptgroup.before(loadedOptgroup);
         } else {
             styleSelector.appendChild(loadedOptgroup);
         }
@@ -1607,7 +1698,7 @@ function addLoadedStyleToDropdown(styleName, source, cssContent) {
     loadedOptgroup.appendChild(option);
 
     // Track in loadedStyles array with CSS content for re-selection
-    if (!loadedStyles.find(s => s.name === styleName)) {
+    if (!loadedStyles.some(s => s.name === styleName)) {
         loadedStyles.push({ name: styleName, source, css: cssContent });
     }
 
