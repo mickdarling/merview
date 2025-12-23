@@ -675,7 +675,7 @@ graph TD
         });
 
         test('should handle CSS with deeply nested @-rules', async ({ page }) => {
-            // Create deeply nested but valid CSS
+            // Create deeply nested but valid CSS and inject it
             const deeplyNestedCSS = `
                 @media screen {
                     @supports (display: grid) {
@@ -688,12 +688,20 @@ graph TD
                 }
             `;
 
-            // Page should handle this without issues
-            const pageStable = await page.evaluate(() => {
-                return document.querySelector('#wrapper') !== null;
-            });
+            // Inject the deeply nested CSS and verify page handles it
+            const result = await page.evaluate((css) => {
+                const style = document.createElement('style');
+                style.id = 'test-nested-css';
+                style.textContent = css;
+                document.head.appendChild(style);
+                // Verify wrapper still exists after injection
+                const wrapperExists = document.querySelector('#wrapper') !== null;
+                // Clean up
+                style.remove();
+                return wrapperExists;
+            }, deeplyNestedCSS);
 
-            expect(pageStable).toBe(true);
+            expect(result).toBe(true);
         });
 
         test('should handle rapid style selector changes without race conditions', async ({ page }) => {
