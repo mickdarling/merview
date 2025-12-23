@@ -99,7 +99,7 @@ const THEME_SELECTORS = [
     expectedOption: 'GitHub Dark',
     excludeFromSelection: null,
     verifyElement: '#syntax-theme',
-    verifyAttribute: 'integrity',
+    // No verifyAttribute - syntax themes are now <style> elements with @layer, not <link> with integrity
     hasToggleOption: false,
     additionalElement: '#syntax-override'
   },

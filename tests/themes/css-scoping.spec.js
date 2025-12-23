@@ -477,7 +477,7 @@ test.describe('CSS Scoping - Issue #384', () => {
             expect(codeHasHljs).toBe(true);
         });
 
-        test('syntax theme link element should exist after theme change', async ({ page }) => {
+        test('syntax theme style element should exist after theme change', async ({ page }) => {
             await setCodeMirrorContent(page, '```javascript\nconst x = 1;\n```');
             await renderMarkdownAndWait(page);
 
@@ -485,10 +485,10 @@ test.describe('CSS Scoping - Issue #384', () => {
             await page.selectOption('#syntaxThemeSelector', 'GitHub Dark');
             await page.waitForTimeout(WAIT_TIMES.LONG);
 
-            // Verify the syntax theme stylesheet is loaded
+            // Verify the syntax theme stylesheet is loaded (now as style element, not link)
             const themeLoaded = await page.evaluate(() => {
-                const link = document.getElementById('syntax-theme');
-                return link?.href.includes('github-dark') ?? false;
+                const style = document.getElementById('syntax-theme');
+                return style?.textContent.includes('@layer syntax-theme') ?? false;
             });
 
             expect(themeLoaded).toBe(true);

@@ -625,8 +625,8 @@ function scopeCSSToPreview(css) {
  * 2. Syntax theme → Only affect code blocks (from CDN, not hardcoded)
  * 3. Mermaid theme → Only affect mermaid diagrams
  *
- * Problem: Preview CSS scoped to #wrapper has higher specificity than .hljs rules.
- * Solution: Read syntax theme colors from the stylesheet and apply with inline styles.
+ * With CSS Cascade Layers, the layer order handles isolation automatically.
+ * This function now only provides minimal structural styles for code blocks.
  */
 function applySyntaxOverride() {
     let syntaxOverride = document.getElementById('syntax-override');
@@ -635,9 +635,6 @@ function applySyntaxOverride() {
         syntaxOverride.id = 'syntax-override';
         document.head.appendChild(syntaxOverride);
     }
-
-    // Get the syntax theme colors from the loaded stylesheet
-    const syntaxColors = getSyntaxThemeColors();
 
     // Basic structure for code blocks
     syntaxOverride.textContent = `
@@ -668,51 +665,6 @@ function applySyntaxOverride() {
             border-radius: 3px;
         }
     `;
-
-    // Apply syntax theme colors via inline styles (beats any CSS specificity)
-    applyInlineSyntaxColors(syntaxColors);
-}
-
-/**
- * Get the syntax theme colors from the loaded stylesheet
- * Parses the actual CSS rules from the syntax theme link element
- */
-function getSyntaxThemeColors() {
-    const defaults = { background: '#f3f3f3', color: '#444' };
-
-    try {
-        // Find the syntax theme stylesheet
-        const syntaxLink = document.getElementById('syntax-theme');
-        if (!syntaxLink || !syntaxLink.sheet) return defaults;
-
-        // Find the .hljs rule
-        const rules = syntaxLink.sheet.cssRules || syntaxLink.sheet.rules;
-        for (const rule of rules) {
-            if (rule.selectorText === '.hljs') {
-                return {
-                    background: rule.style.background || rule.style.backgroundColor || defaults.background,
-                    color: rule.style.color || defaults.color
-                };
-            }
-        }
-    } catch (e) {
-        // CORS might block access to CDN stylesheet
-        console.log('Could not read syntax theme stylesheet (CORS):', e.message);
-    }
-
-    return defaults;
-}
-
-/**
- * Apply syntax theme colors directly to .hljs elements via inline styles
- * This beats any CSS specificity from preview styles
- */
-function applyInlineSyntaxColors(colors) {
-    const hljsElements = document.querySelectorAll('#wrapper pre code.hljs');
-    hljsElements.forEach(el => {
-        el.style.setProperty('background', colors.background, 'important');
-        el.style.setProperty('color', colors.color, 'important');
-    });
 }
 
 /**
@@ -741,10 +693,10 @@ async function applyCSSCore(cssText) {
         state.currentStyleLink.remove();
     }
 
-    // Create style element with scoped CSS
+    // Create style element with scoped CSS wrapped in preview-styles layer
     const styleElement = document.createElement('style');
     styleElement.id = 'marked-custom-style';
-    styleElement.textContent = cssText;
+    styleElement.textContent = `@layer preview-styles { ${cssText} }`;
     document.head.appendChild(styleElement);
 
     state.currentStyleLink = styleElement;
@@ -765,13 +717,6 @@ async function applyCSSCore(cssText) {
     // Re-render markdown to update Mermaid diagrams with new CSS
     // Note: YAML panel state preservation is handled automatically in renderMarkdown() (#268 fix)
     scheduleRender();
-
-    // Re-apply syntax colors after render completes (new code blocks won't have inline styles)
-    // Use a delay to ensure render has completed
-    setTimeout(() => {
-        const syntaxColors = getSyntaxThemeColors();
-        applyInlineSyntaxColors(syntaxColors);
-    }, 100);
 }
 
 /**
@@ -1184,24 +1129,29 @@ async function loadSyntaxTheme(themeName) {
     const oldThemeLink = state.currentSyntaxThemeLink;
 
     try {
-        // Load new theme FIRST with SRI verification (Issue #376 fix)
-        // Keep old theme in place during load to prevent flicker
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = `https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/${theme.file}.min.css`;
-        link.integrity = sriHash;
-        link.crossOrigin = 'anonymous';
-        link.id = SYNTAX_THEME_LOADING_ID;
+        // Fetch the CSS content first to verify SRI and wrap in layer
+        const cdnUrl = `https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/${theme.file}.min.css`;
 
-        // Wait for CSS to load before continuing
-        await new Promise((resolve, reject) => {
-            link.onload = resolve;
-            link.onerror = reject;
-            document.head.appendChild(link);
+        // Load new theme FIRST (Issue #376 fix)
+        // Keep old theme in place during load to prevent flicker
+        const response = await fetch(cdnUrl, {
+            integrity: sriHash,
+            mode: 'cors'
         });
 
-        // CRITICAL: Wait a bit for browser to parse the stylesheet
-        // The onload event fires when downloaded, but CSSOM might not be ready
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const cssText = await response.text();
+
+        // Create style element with @layer wrapper (instead of link element)
+        const styleElement = document.createElement('style');
+        styleElement.id = SYNTAX_THEME_LOADING_ID;
+        styleElement.textContent = `@layer syntax-theme { ${cssText} }`;
+        document.head.appendChild(styleElement);
+
+        // Brief wait for browser to parse the stylesheet
         await new Promise(resolve => setTimeout(resolve, SYNTAX_THEME_PARSE_DELAY));
 
         // NOW remove old theme (after new one is loaded and ready)
@@ -1210,8 +1160,8 @@ async function loadSyntaxTheme(themeName) {
         }
 
         // Update ID and store reference
-        link.id = SYNTAX_THEME_ID;
-        state.currentSyntaxThemeLink = link;
+        styleElement.id = SYNTAX_THEME_ID;
+        state.currentSyntaxThemeLink = styleElement;
 
         // Save preference
         saveSyntaxTheme(themeName);
