@@ -402,4 +402,59 @@ test.describe('CSS Persistence Across Navigation', () => {
     // Should have no unhandled errors (warnings are logged but not thrown)
     expect(errors.length).toBe(0);
   });
+
+  test('should persist loaded styles when navigating away and back', async ({ page }) => {
+    // This tests actual browser navigation (not just reload)
+    // sessionStorage persists within the same tab's session
+    const styleName = 'navigation-test.css';
+    const cssContent = '#wrapper { border: 2px solid green; }';
+
+    // Load a CSS file
+    await page.evaluate(async ({ css, name }) => {
+      const blob = new Blob([css], { type: 'text/css' });
+      const file = new File([blob], name, { type: 'text/css' });
+      if (globalThis.loadCSSFromFile) {
+        await globalThis.loadCSSFromFile(file);
+      }
+    }, { css: cssContent, name: styleName });
+
+    // Wait for sessionStorage to be updated
+    await page.waitForFunction((key) => {
+      const data = sessionStorage.getItem(key);
+      return data && JSON.parse(data).length > 0;
+    }, 'merview-v1-loaded-styles', { timeout: 5000 });
+
+    // Store the base URL to navigate back to
+    const baseUrl = page.url();
+
+    // Navigate away to a different page
+    await page.goto('about:blank');
+
+    // Navigate back using the URL (goBack may not work from about:blank)
+    await page.goto(baseUrl);
+    await waitForPageReady(page);
+
+    // Wait for style selector to be populated
+    await page.waitForFunction(() => {
+      const selector = document.getElementById('styleSelector');
+      return selector && selector.options.length > 0;
+    }, { timeout: 5000 });
+
+    // Verify the loaded style was restored from sessionStorage
+    const hasLoadedStyle = await page.evaluate((name) => {
+      const selector = document.getElementById('styleSelector');
+      const options = Array.from(selector.options);
+      return options.some(opt => opt.value === name);
+    }, styleName);
+
+    expect(hasLoadedStyle).toBe(true);
+
+    // Verify CSS content is still in sessionStorage
+    const sessionData = await page.evaluate(() => {
+      return JSON.parse(sessionStorage.getItem('merview-v1-loaded-styles'));
+    });
+    const restoredStyle = sessionData.find(s => s.name === styleName);
+    expect(restoredStyle).toBeDefined();
+    expect(restoredStyle.css).toContain('green');
+  });
 });
