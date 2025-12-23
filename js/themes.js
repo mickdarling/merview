@@ -538,14 +538,14 @@ function parseAtRule(css, i, result, depth = 0) {
     if (i < len && css[i] === '{') {
         const bracePos = i;
         // Find matching closing brace (handle nested braces)
-        let depth = 1;
+        let braceDepth = 1;
         i++;
         const contentStart = i;
-        while (i < len && depth > 0) {
+        while (i < len && braceDepth > 0) {
             if (css[i] === '{') {
-                depth++;
+                braceDepth++;
             } else if (css[i] === '}') {
-                depth--;
+                braceDepth--;
             }
             i++;
         }
