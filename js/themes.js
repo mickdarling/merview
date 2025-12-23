@@ -227,12 +227,13 @@ const LAYOUT_PROPERTIES = new Set([
 function shouldKeepDeclaration(declaration) {
     const trimmed = declaration.trim();
     if (!trimmed) return false;
-    // Using [^\r\n]+ instead of .+ to avoid ReDoS warning (S5852)
-    const propRegex = /^([a-z-]+)\s*:\s*([^\r\n]+)$/i;
-    const propMatch = propRegex.exec(trimmed);
-    if (!propMatch) return true;
-    const prop = propMatch[1].toLowerCase();
-    const value = propMatch[2].trim();
+    // Parse CSS property:value using indexOf to avoid regex ReDoS (S5852)
+    const colonIndex = trimmed.indexOf(':');
+    if (colonIndex === -1) return true;
+    const prop = trimmed.slice(0, colonIndex).trim().toLowerCase();
+    // Validate property name (CSS properties are letters and hyphens only)
+    if (!/^[a-z-]+$/.test(prop)) return true;
+    const value = trimmed.slice(colonIndex + 1).trim();
 
     // Preserve margin declarations that use 'auto' for centering
     // Examples: margin: 0 auto, margin-left: auto, margin-right: auto
