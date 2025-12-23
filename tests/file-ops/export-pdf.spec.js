@@ -217,14 +217,24 @@ test.describe('Export PDF Functionality', () => {
  */
 function browserFindPrintCssRule({ selectorContains, styleProperty, styleValue }) {
   // Get all print media rules from stylesheets
+  // Also search inside CSS layers (@layer) for print rules
   const printRules = [];
+
+  function collectPrintRules(rules) {
+    for (const rule of rules) {
+      if (rule instanceof CSSMediaRule && rule.conditionText === 'print') {
+        printRules.push(...rule.cssRules);
+      }
+      // Also search inside CSS layer blocks (PR #392 moved styles into layers)
+      if (rule.constructor.name === 'CSSLayerBlockRule' && rule.cssRules) {
+        collectPrintRules(rule.cssRules);
+      }
+    }
+  }
+
   for (const sheet of document.styleSheets) {
     try {
-      for (const rule of sheet.cssRules) {
-        if (rule instanceof CSSMediaRule && rule.conditionText === 'print') {
-          printRules.push(...rule.cssRules);
-        }
-      }
+      collectPrintRules(sheet.cssRules);
     } catch {
       // Skip cross-origin stylesheets
     }
