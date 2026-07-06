@@ -247,7 +247,8 @@ export async function changeDocument(value) {
             const url = await showURLModal({
                 title: 'Open from URL',
                 placeholder: 'https://github.com/user/repo/blob/main/README.md',
-                context: 'markdown'
+                context: 'markdown',
+                allowedDomains: null
             });
 
             // Check if this request is still current (race condition prevention)
