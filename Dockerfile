@@ -1,5 +1,5 @@
 # Use nginx alpine for a lightweight container
-FROM nginx:alpine
+FROM nginx:1.30.6-alpine
 
 # Set working directory
 WORKDIR /usr/share/nginx/html
